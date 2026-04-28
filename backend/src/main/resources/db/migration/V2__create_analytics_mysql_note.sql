@@ -1,0 +1,64 @@
+-- =====================================================
+-- V2: MySQL Analytics Tables Documentation
+-- =====================================================
+-- The following analytics tables are managed in MySQL via JPA ddl-auto=update.
+-- They are NOT created here (this migration runs against PostgreSQL).
+-- This file documents the MySQL schema for reference.
+--
+-- MySQL Database: mes_analytics
+-- Tables (auto-managed by Hibernate):
+--   1. daily_production_summary
+--      - id (BIGINT AUTO_INCREMENT)
+--      - factory_id (BINARY(16) / UUID)
+--      - summary_date (DATE)
+--      - gauges_completed (INT)
+--      - gauges_rejected (INT)
+--      - operations_completed (INT)
+--      - rejection_rate (DECIMAL)
+--      - UNIQUE(factory_id, summary_date)
+--
+--   2. operation_performance_stats
+--      - id (BIGINT AUTO_INCREMENT)
+--      - factory_id (BINARY(16) / UUID)
+--      - operation_name (VARCHAR)
+--      - std_time_hours (DECIMAL)
+--      - avg_actual_time_hours (DECIMAL)
+--      - sample_count (INT)
+--      - stats_month (VARCHAR)
+--
+--   3. worker_performance_monthly
+--      - id (BIGINT AUTO_INCREMENT)
+--      - factory_id (BINARY(16) / UUID)
+--      - worker_id (BINARY(16) / UUID)
+--      - worker_name (VARCHAR)
+--      - year_month (VARCHAR)
+--      - operations_completed (INT)
+--      - avg_minutes_per_operation (DECIMAL)
+--      - rejection_count (INT)
+--      - rework_count (INT)
+--
+--   4. po_status_snapshots
+--      - id (BIGINT AUTO_INCREMENT)
+--      - factory_id (BINARY(16) / UUID)
+--      - po_id (BINARY(16) / UUID)
+--      - po_number (VARCHAR)
+--      - customer_name (VARCHAR)
+--      - total_gauges (INT)
+--      - completed_gauges (INT)
+--      - rejected_gauges (INT)
+--      - percent_complete (DECIMAL)
+--      - expected_delivery (DATE)
+--      - snapshot_at (DATETIME)
+--
+--   5. rejection_analysis_summary
+--      - id (BIGINT AUTO_INCREMENT)
+--      - factory_id (BINARY(16) / UUID)
+--      - period_month (VARCHAR)
+--      - rejection_category (VARCHAR)
+--      - gauge_type_name (VARCHAR)
+--      - operation_name (VARCHAR)
+--      - worker_name (VARCHAR)
+--      - rejection_count (INT)
+--
+-- This is a documentation-only migration. No SQL is executed.
+SELECT 1;

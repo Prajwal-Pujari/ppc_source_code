@@ -1,0 +1,136 @@
+======================================================================
+MES FACTORY SYSTEM - COMPLETE CLIENT INSTALLATION & DEPLOYMENT GUIDE
+======================================================================
+
+This guide explains step-by-step how to deploy the MES system at a client's 
+factory from absolute scratch. It covers version control, networking (IPs), 
+Docker installation, and running the software.
+
+----------------------------------------------------------------------
+PHASE 1: VERSION CONTROL & SENDING THE CODE
+----------------------------------------------------------------------
+Instead of using a USB drive, the professional way to manage your code 
+and send it to the client server is using Git and GitHub (or GitLab/Bitbucket).
+
+Step 1: Create a Private Repository
+- Go to github.com and create a new repository. Set it to "PRIVATE".
+- This ensures your proprietary source code is protected.
+
+Step 2: Push Your Code (On your developer laptop)
+- Open the terminal in your `mes-factory` folder and run:
+    git init
+    git add .
+    git commit -m "Initial production release"
+    git branch -M main
+    git remote add origin https://github.com/[your-username]/[repo-name].git
+    git push -u origin main
+
+Step 3: Pull the Code (On the Client's Server)
+- When you are at the factory, install Git (git-scm.com) on their server.
+- Open a terminal on their server and clone your private repository:
+    git clone https://github.com/[your-username]/[repo-name].git
+- If you ever make an update at home, you just run `git push`, and at the 
+  client site you run `git pull` to download the new version instantly.
+
+----------------------------------------------------------------------
+PHASE 2: NETWORKING & SETTING A STATIC IP
+----------------------------------------------------------------------
+If the client's server reboots, their router might assign them a new IP 
+address (like changing from 192.168.1.50 to 192.168.1.55). If this happens, 
+the tablets on the shop floor will lose connection. 
+
+To prevent this, you MUST set a "Static IP" on the client's server.
+
+Step 1: Find the Current IP
+- On the client's Windows server, open Command Prompt and type: `ipconfig`
+- Note down the:
+    - IPv4 Address (e.g., 192.168.1.50)
+    - Subnet Mask (e.g., 255.255.255.0)
+    - Default Gateway (e.g., 192.168.1.1)
+
+Step 2: Set the Static IP (Windows)
+1. Press Windows Key -> type "Network Connections" -> open "View network connections".
+2. Right-click their main Ethernet/Wi-Fi connection and select "Properties".
+3. Double-click "Internet Protocol Version 4 (TCP/IPv4)".
+4. Select "Use the following IP address".
+5. Enter the IPv4, Subnet, and Gateway you noted down earlier.
+6. For DNS servers, enter Google's: 8.8.8.8 and 8.8.4.4.
+7. Click OK. 
+
+Now, the server's IP address is permanently locked. All factory tablets will 
+always connect to `http://192.168.1.50` forever.
+
+----------------------------------------------------------------------
+PHASE 3: INSTALLING DOCKER DESKTOP (FROM SCRATCH)
+----------------------------------------------------------------------
+Docker is the engine that runs your entire backend, frontend, and databases.
+
+Step 1: Enable Virtualization (Important)
+- Open Task Manager -> Go to the "Performance" tab.
+- Check if "Virtualization: Enabled" is written at the bottom. 
+- If it says Disabled, you must reboot the server, enter the BIOS, and enable "Intel VT-x" or "AMD-V".
+
+Step 2: Install WSL2 (Windows Subsystem for Linux)
+- Open PowerShell as Administrator on the client server.
+- Run: `wsl --install`
+- Restart the computer.
+
+Step 3: Install Docker Desktop
+- Download Docker Desktop for Windows from: https://www.docker.com/products/docker-desktop/
+- Run the installer. Leave "Use WSL 2 instead of Hyper-V" checked.
+- Once installed, open Docker Desktop. 
+- Accept the terms, skip the tutorial, and make sure the engine is running 
+  (green icon in the bottom left).
+
+Step 4: Configure Docker to Start on Boot
+- In Docker Desktop, click the Gear icon (Settings) in the top right.
+- Under "General", check the box for "Start Docker Desktop when you log in".
+- This ensures that if the server loses power and reboots, Docker turns on automatically.
+
+----------------------------------------------------------------------
+PHASE 4: RUNNING THE MES SOFTWARE
+----------------------------------------------------------------------
+Now that the server has a static IP, Git, and Docker installed, it's time to 
+turn the system on.
+
+Step 1: Open the Project
+- Open PowerShell or VS Code terminal on the client's server.
+- Navigate to the folder where you cloned the code:
+    cd C:\Path\To\mes-factory
+
+Step 2: Launch the System
+- Run the following command:
+    docker-compose -f docker-compose.prod.yml up -d --build
+
+- The `-d` flag runs the server "detached" in the background so you can close the terminal.
+- The `--build` flag ensures your Java and React code is freshly compiled.
+
+Step 3: Auto-Restart Policy
+- Inside your `docker-compose.prod.yml`, make sure every service has this line:
+    restart: always
+- This tells Docker: "If this container crashes, or if the server reboots, instantly turn it back on."
+
+----------------------------------------------------------------------
+PHASE 5: CONNECTING THE SHOP FLOOR
+----------------------------------------------------------------------
+1. Take a tablet or phone connected to the factory Wi-Fi.
+2. Open Google Chrome.
+3. Type the static IP address of the server in the URL bar:
+   Example: http://192.168.1.50
+4. You will see the MES login screen. 
+
+----------------------------------------------------------------------
+SUMMARY CHECKLIST FOR DEPLOYMENT DAY
+----------------------------------------------------------------------
+[ ] Push latest code to private GitHub repo.
+[ ] Arrive at client site.
+[ ] Ensure Virtualization is enabled in BIOS.
+[ ] Install WSL2 (`wsl --install`) and Reboot.
+[ ] Set Static IP on the server via Windows Network Adapters.
+[ ] Install Git.
+[ ] Install Docker Desktop.
+[ ] Set Docker Desktop to "Start when you log in".
+[ ] Clone code from GitHub.
+[ ] Run `docker-compose -f docker-compose.prod.yml up -d`.
+[ ] Test the IP address on a mobile device on the factory Wi-Fi.
+[ ] Handover to client!

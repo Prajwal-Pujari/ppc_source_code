@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="MES Factory - Precision Manufacturing Execution System for gauge manufacturing shop floor" />
+    <title>MES Factory | Precision Manufacturing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root">
+      <style>
+        .initial-loader-wrapper {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          width: 100vw;
+          background-color: #FAF8F5; /* bone-white */
+          font-family: 'Inter', sans-serif;
+        }
+        .initial-spinner {
+          width: 48px;
+          height: 48px;
+          border: 3px solid #E8E2D9; /* silk */
+          border-top-color: #8B6914; /* copper-bronze */
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 24px;
+        }
+        .initial-text {
+          font-size: 13px;
+          color: #8C857D; /* ash */
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+      </style>
+      <div class="initial-loader-wrapper">
+        <div class="initial-spinner"></div>
+        <div class="initial-text">Loading PPC</div>
+      </div>
+    </div>
+    <!-- <script>
+      console.log("INDEX.HTML: Plain script executed!");
+    </script> -->
+    <script type="module" src="/src/main.tsx"></script>
+    <!-- <script type="module">
+      console.log("INDEX.HTML: Module script executed!");
+    </script> -->
+  </body>
+</html>

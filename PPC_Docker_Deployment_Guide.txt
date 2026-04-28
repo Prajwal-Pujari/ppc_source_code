@@ -1,0 +1,357 @@
+======================================================================
+PPC SYSTEM — DOCKER DEPLOYMENT GUIDE (PRODUCTION)
+======================================================================
+This guide explains how to deploy the entire PPC system using Docker 
+so that the client only needs Docker installed — NO Java, NO Node.js, 
+NO manual terminal commands. Everything runs automatically.
+
+======================================================================
+HOW IT WORKS (THE BIG PICTURE)
+======================================================================
+
+When you run Docker on the client's PC, it creates 6 containers:
+
+  ┌─────────────────────────────────────────────────────┐
+  │                  CLIENT'S PC                         │
+  │                                                     │
+  │  ┌───────────┐    ┌───────────┐                     │
+  │  │ FRONTEND  │───►│ BACKEND   │                     │
+  │  │ (Nginx)   │    │ (Java)    │                     │
+  │  │ Port 80   │    │ Internal  │                     │
+  │  └───────────┘    └─────┬─────┘                     │
+  │                         │                           │
+  │        ┌────────────────┼────────────────┐          │
+  │        │                │                │          │
+  │  ┌─────┴─────┐  ┌──────┴──────┐  ┌──────┴──────┐   │
+  │  │ PostgreSQL │  │   MySQL     │  │ Redis/MinIO │   │
+  │  │ (Database) │  │ (Analytics) │  │ (Cache/File)│   │
+  │  └───────────┘  └─────────────┘  └─────────────┘   │
+  └─────────────────────────────────────────────────────┘
+
+Only PORT 80 is exposed to the outside world.
+A tablet on the factory Wi-Fi opens http://192.168.1.50 and sees the 
+login screen. Nginx serves the React app, and automatically forwards 
+all /api/ requests to the Java backend INTERNALLY.
+
+The client does NOT need to install Java, Node.js, Maven, or npm.
+They only need Docker.
+
+
+======================================================================
+PART 1: PREPARE ON YOUR DEVELOPER PC (ONE-TIME SETUP)
+======================================================================
+
+STEP 1.1: Clean the Dummy Data
+----------------------------------------------------------------------
+Open this file:
+  backend\src\main\resources\db\migration\V4__seed_dummy_shop_floor_data.sql
+
+Replace ALL its contents with:
+
+  -- V4: Production deployment — no dummy data
+  SELECT 1;
+
+This ensures only the admin user (admin / Admin@123) exists.
+
+
+STEP 1.2: Push Code to GitHub
+----------------------------------------------------------------------
+  cd D:\mes\mes-factory
+  git add .
+  git commit -m "Production release"
+  git push origin main
+
+
+======================================================================
+PART 2: CLIENT PC SETUP (AT THE FACTORY)
+======================================================================
+
+The client's PC needs ONLY 3 things installed:
+  1. Docker Desktop
+  2. Git
+  3. A Static IP address
+
+That's it. No Java. No Node.js. No Maven. No npm.
+
+
+STEP 2.1: Enable Virtualization in BIOS
+----------------------------------------------------------------------
+  - Open Task Manager → Performance tab
+  - Check "Virtualization: Enabled"
+  - If Disabled: Restart, enter BIOS (F2/DEL), enable VT-x/AMD-V
+
+
+STEP 2.2: Install WSL2
+----------------------------------------------------------------------
+  - Open PowerShell as Administrator
+  - Run: wsl --install
+  - Restart the computer
+
+
+STEP 2.3: Install Docker Desktop
+----------------------------------------------------------------------
+  - Download: https://www.docker.com/products/docker-desktop/
+  - Install with "Use WSL 2" checked
+  - Restart the computer
+  - Open Docker Desktop, accept terms, wait for green icon
+  - Settings → General → CHECK "Start Docker Desktop when you sign in"
+
+
+STEP 2.4: Install Git
+----------------------------------------------------------------------
+  - Download: https://git-scm.com/download/win
+  - Install with all defaults
+  - Verify: git --version
+
+
+STEP 2.5: Set Static IP
+----------------------------------------------------------------------
+  1. Open PowerShell, type: ipconfig
+  2. Note: IPv4 Address, Subnet Mask, Default Gateway
+  3. Windows Key → "Network Connections" → right-click adapter → Properties
+  4. Double-click "TCP/IPv4" → "Use the following IP address"
+  5. Enter your noted values + DNS: 8.8.8.8 / 8.8.4.4
+  6. Click OK
+
+
+======================================================================
+PART 3: DEPLOY THE APPLICATION (5 MINUTES)
+======================================================================
+
+STEP 3.1: Clone the Code
+----------------------------------------------------------------------
+Open PowerShell on the client's PC:
+
+  cd C:\
+  git clone https://github.com/YOUR-USERNAME/mes-factory.git
+  cd mes-factory
+
+
+STEP 3.2: Launch EVERYTHING with ONE Command
+----------------------------------------------------------------------
+Run this single command:
+
+  docker-compose -f docker-compose.prod.yml up -d --build
+
+What happens behind the scenes:
+  1. Docker downloads PostgreSQL 15, MySQL 8, Redis 7, MinIO
+  2. Docker reads backend/Dockerfile:
+     - Downloads Java 17 JDK
+     - Compiles your Spring Boot code into a .jar file
+     - Creates a lightweight container with just the JRE + .jar
+  3. Docker reads frontend/Dockerfile:
+     - Downloads Node.js 20
+     - Runs "npm install" and "npm run build"
+     - Creates a lightweight Nginx container with the built HTML/JS
+  4. Starts all 6 containers in the correct order
+  5. Backend connects to PostgreSQL, runs Flyway migrations
+  6. Frontend Nginx starts serving on port 80
+
+The FIRST build takes 5-10 minutes (downloading images + compiling).
+After that, rebuilds take about 1-2 minutes.
+
+
+STEP 3.3: Verify Everything is Running
+----------------------------------------------------------------------
+  docker ps
+
+You should see 6 containers, all with "Up" status:
+
+  CONTAINER         STATUS        PORT
+  ppc-frontend      Up            0.0.0.0:80->80/tcp
+  ppc-backend       Up            8080/tcp (internal)
+  ppc-postgres      Up            5432/tcp (internal)
+  ppc-mysql         Up            3306/tcp (internal)
+  ppc-redis         Up            6379/tcp (internal)
+  ppc-minio         Up            9000/tcp (internal)
+
+Notice: Only port 80 is exposed to the outside world!
+
+
+STEP 3.4: Access the System
+----------------------------------------------------------------------
+On ANY device connected to the factory Wi-Fi:
+  1. Open Google Chrome
+  2. Type: http://192.168.1.50 (the server's static IP)
+  3. The PPC login screen appears
+  4. Login: admin / Admin@123
+
+
+======================================================================
+PART 4: AUTO-START ON REBOOT
+======================================================================
+
+Because every service in docker-compose.prod.yml has:
+  restart: always
+
+And Docker Desktop is set to "Start when you sign in"...
+
+When the client's PC loses power and reboots:
+  1. Windows starts
+  2. Docker Desktop starts automatically (background)
+  3. Docker sees "restart: always" on all 6 containers
+  4. All 6 containers boot up automatically
+  5. The MES system is fully operational
+
+Nobody needs to open a terminal or type any command.
+It just works.
+
+
+======================================================================
+PART 5: UPDATING THE SOFTWARE
+======================================================================
+
+METHOD A: Git Pull + Rebuild (Recommended)
+----------------------------------------------------------------------
+When you develop a new feature at home:
+
+ON YOUR PC:
+  git add .
+  git commit -m "Added PQC inspection module"
+  git push origin main
+
+ON THE CLIENT'S PC (via remote desktop or on-site):
+  cd C:\mes-factory
+  git pull
+  docker-compose -f docker-compose.prod.yml up -d --build
+
+Docker detects the code has changed, rebuilds ONLY the backend and 
+frontend containers (databases are untouched), and restarts them.
+Total update time: ~2 minutes. Zero data loss.
+
+
+METHOD B: Docker Image Registry (For Multiple Clients)
+----------------------------------------------------------------------
+If you have 10+ clients and don't want to install Git on each PC,
+use Docker Hub to distribute your images.
+
+ON YOUR PC (one-time setup):
+  1. Create account at https://hub.docker.com
+  2. Run: docker login
+
+ON YOUR PC (every release):
+  docker build -t yourcompany/ppc-backend:v1.2 ./backend
+  docker build -t yourcompany/ppc-frontend:v1.2 ./frontend
+  docker push yourcompany/ppc-backend:v1.2
+  docker push yourcompany/ppc-frontend:v1.2
+
+ON THE CLIENT'S PC:
+  docker pull yourcompany/ppc-backend:v1.2
+  docker pull yourcompany/ppc-frontend:v1.2
+  docker-compose -f docker-compose.prod.yml up -d
+
+No Git needed on the client's PC at all!
+
+
+METHOD C: USB Drive (No Internet at Factory)
+----------------------------------------------------------------------
+If the factory has no internet connection:
+
+ON YOUR PC:
+  docker-compose -f docker-compose.prod.yml build
+  docker save ppc-backend ppc-frontend postgres:15 mysql:8 redis:7-alpine minio/minio > ppc-images.tar
+
+Copy ppc-images.tar to a USB drive.
+
+ON THE CLIENT'S PC:
+  docker load < ppc-images.tar
+  docker-compose -f docker-compose.prod.yml up -d
+
+
+======================================================================
+PART 6: MANAGING MULTIPLE CLIENTS (BASE PRODUCT + CUSTOMIZATIONS)
+======================================================================
+
+Since PPC is your base product and each client may request changes, 
+here is the professional strategy using Git branches:
+
+BRANCH STRUCTURE:
+  main              ← Base product (shared features)
+  client/tata       ← Tata Motors customizations
+  client/bosch      ← Bosch customizations
+  client/mahindra   ← Mahindra customizations
+
+WORKFLOW:
+
+1. You develop common features on the "main" branch.
+   These features are shared by ALL clients.
+
+2. When Tata Motors asks for a custom report, you:
+   git checkout client/tata
+   git merge main          ← Get latest base features
+   (make Tata-specific changes)
+   git commit -m "Added Tata custom inspection report"
+   git push origin client/tata
+
+3. When you clone on Tata's server:
+   git clone -b client/tata https://github.com/YOUR-USERNAME/mes-factory.git
+
+4. When Bosch wants a different customization:
+   git checkout client/bosch
+   git merge main
+   (make Bosch-specific changes)
+   git push origin client/bosch
+
+5. When you add a new feature to the BASE product:
+   git checkout main
+   (develop the feature)
+   git push origin main
+
+   Then merge into each client branch:
+   git checkout client/tata && git merge main && git push
+   git checkout client/bosch && git merge main && git push
+
+This way:
+  - Common features are written ONCE on main
+  - Client-specific changes are isolated on their own branch
+  - Updates flow: main → client branches
+  - No client ever accidentally gets another client's changes
+
+
+======================================================================
+PART 7: USEFUL DOCKER COMMANDS
+======================================================================
+
+VIEW RUNNING CONTAINERS:
+  docker ps
+
+VIEW CONTAINER LOGS (if something goes wrong):
+  docker logs ppc-backend
+  docker logs ppc-frontend
+  docker logs ppc-postgres
+
+STOP EVERYTHING:
+  docker-compose -f docker-compose.prod.yml down
+
+STOP AND DELETE ALL DATA (FULL RESET):
+  docker-compose -f docker-compose.prod.yml down -v
+  (The -v flag deletes all database volumes — use with extreme caution!)
+
+RESTART JUST THE BACKEND (after a code update):
+  docker-compose -f docker-compose.prod.yml up -d --build backend
+
+RESTART JUST THE FRONTEND:
+  docker-compose -f docker-compose.prod.yml up -d --build frontend
+
+CHECK DISK USAGE:
+  docker system df
+
+CLEAN UP OLD IMAGES (free disk space):
+  docker system prune -a
+
+
+======================================================================
+QUICK REFERENCE
+======================================================================
+
+Client installs:     Docker Desktop + Git (that's all)
+Deploy command:      docker-compose -f docker-compose.prod.yml up -d --build
+Update command:      git pull && docker-compose -f docker-compose.prod.yml up -d --build
+Access URL:          http://SERVER_IP (port 80, standard HTTP)
+Admin login:         admin / Admin@123
+Auto-restart:        Yes (restart: always + Docker auto-start)
+Data persistence:    Yes (Docker volumes survive reboots and updates)
+
+======================================================================
+END OF DOCKER DEPLOYMENT GUIDE
+======================================================================

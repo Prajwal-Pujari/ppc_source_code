@@ -1,0 +1,23 @@
+# ─── Backend ───
+backend/target/
+backend/*.log
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# ─── Frontend ───
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# ─── IDE ───
+.idea/
+.vscode/
+*.iml
+*.class
+
+# ─── OS ───
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Logs ───
+*.log

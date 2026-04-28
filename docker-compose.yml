@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: mes-postgres
+    environment:
+      POSTGRES_DB: mes_factory
+      POSTGRES_USER: mes_db_user
+      POSTGRES_PASSWORD: mes_db_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - mes-postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8
+    container_name: mes-mysql
+    environment:
+      MYSQL_DATABASE: mes_analytics
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - mes-mysql-data:/var/lib/mysql
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: mes-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - mes-redis-data:/data
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: mes-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: mes_minio
+      MINIO_ROOT_PASSWORD: mes_minio_secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - mes-minio-data:/data
+    restart: unless-stopped
+
+volumes:
+  mes-postgres-data:
+  mes-mysql-data:
+  mes-redis-data:
+  mes-minio-data:

@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    primary:
+      hibernate:
+        show-sql: true
+    secondary:
+      hibernate:
+        show-sql: true
+
+logging:
+  level:
+    com.mes.factory: DEBUG

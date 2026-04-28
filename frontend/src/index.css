@@ -1,0 +1,330 @@
+@import "tailwindcss";
+
+/* ========================================
+   MES Design System — "The Master Chronometer"
+   ======================================== */
+:root {
+  /* Primary Surfaces */
+  --bone-white: #FAF8F5;
+  --warm-white: #F5F2ED;
+  --linen: #EEE9E1;
+  --silk: #E8E2D9;
+  --stone: #D4CCBF;
+  --warm-gray: #B8AFA3;
+
+  /* Text Colors */
+  --charcoal: #1C1A18;
+  --slate: #4A4540;
+  --ash: #8C857D;
+  --dust: #B5AFA9;
+
+  /* Accent */
+  --copper-bronze: #8B6914;
+  --copper-dark: #6F5100;
+
+  /* Status Colors */
+  --status-pending: #4A6FA5;
+  --status-pending-bg: #EEF2F8;
+  --status-queued: #6B5A8B;
+  --status-queued-bg: #F2EFF8;
+  --status-in-progress: #C68B2F;
+  --status-in-progress-bg: #FBF4E8;
+  --status-completed: #3A6B4A;
+  --status-completed-bg: #EBF4EE;
+  --status-rejected: #8B3A3A;
+  --status-rejected-bg: #F8EEEE;
+  --status-on-hold: #6B5A8B;
+  --status-on-hold-bg: #F2EFF8;
+  --status-rework: #A05A2C;
+  --status-rework-bg: #F8F0E8;
+
+  /* Priority */
+  --priority-normal: #8C857D;
+  --priority-high: #C68B2F;
+  --priority-urgent: #8B3A3A;
+
+  /* Sizing */
+  --sidebar-width: 240px;
+  --header-height: 56px;
+  --radius: 10px;
+  --radius-sm: 8px;
+
+  /* Shadows */
+  --shadow-ambient: 0 4px 20px 0 rgba(139, 105, 20, 0.04), 0 12px 40px 0 rgba(48, 49, 47, 0.08);
+  --shadow-card: 0 1px 3px 0 rgba(139, 105, 20, 0.04), 0 4px 12px 0 rgba(48, 49, 47, 0.04);
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: var(--bone-white);
+  color: var(--charcoal);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography Utilities */
+.font-mono {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+.text-display-lg {
+  font-size: 3.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.text-headline-sm {
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.text-data-large {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+.text-data-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+
+/* Card Styles */
+.card {
+  background: var(--warm-white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-ambient);
+  transform: translateY(-1px);
+}
+
+/* Button Styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 1.25rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  outline: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--copper-bronze), var(--copper-dark));
+  color: white;
+}
+
+.btn-primary:hover {
+  filter: saturate(1.1);
+}
+
+.btn-secondary {
+  background: var(--bone-white);
+  color: var(--charcoal);
+  border: 1px solid var(--silk);
+}
+
+.btn-secondary:hover {
+  background: var(--linen);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--status-rejected);
+  border: 1px solid var(--status-rejected);
+}
+
+.btn-danger:hover {
+  background: var(--status-rejected-bg);
+}
+
+/* Input Styles */
+.input {
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border-radius: var(--radius-sm);
+  background: white;
+  border: 1px solid rgba(212, 204, 191, 0.2);
+  font-size: 0.875rem;
+  color: var(--charcoal);
+  transition: border-color 0.2s ease;
+  width: 100%;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--copper-bronze);
+}
+
+.input-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Status Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-pending {
+  background: var(--status-pending-bg);
+  color: var(--status-pending);
+}
+
+.badge-queued {
+  background: var(--status-queued-bg);
+  color: var(--status-queued);
+}
+
+.badge-in-progress {
+  background: var(--status-in-progress-bg);
+  color: var(--status-in-progress);
+}
+
+.badge-completed {
+  background: var(--status-completed-bg);
+  color: var(--status-completed);
+}
+
+.badge-rejected {
+  background: var(--status-rejected-bg);
+  color: var(--status-rejected);
+}
+
+.badge-on-hold {
+  background: var(--status-on-hold-bg);
+  color: var(--status-on-hold);
+}
+
+.badge-rework {
+  background: var(--status-rework-bg);
+  color: var(--status-rework);
+}
+
+/* Table Styles */
+.table-container {
+  overflow-x: auto;
+  border-radius: var(--radius);
+  background: var(--warm-white);
+  box-shadow: var(--shadow-card);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  background: var(--linen);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ash);
+}
+
+td {
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--slate);
+}
+
+tr + tr {
+  margin-top: 4px;
+}
+
+tbody tr {
+  transition: background 0.15s ease;
+}
+
+tbody tr:hover {
+  background: var(--silk);
+}
+
+/* Skeleton Loader */
+.skeleton {
+  background: linear-gradient(90deg, var(--linen) 25%, var(--silk) 50%, var(--linen) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--stone);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--warm-gray);
+}
+
+/* ── Print Styles for Job Card ── */
+@media print {
+  body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Hide everything except the job card */
+  body > div > div > div:first-child, /* sidebar */
+  header,
+  button,
+  .btn { display: none !important; }
+  #job-card-printable {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}

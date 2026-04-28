@@ -1,0 +1,399 @@
+======================================================================
+PPC MES SYSTEM — COMPLETE SETUP GUIDE (FROM SCRATCH)
+======================================================================
+This guide covers EVERYTHING from your developer PC to the client's 
+factory server. Follow every step in exact order.
+
+======================================================================
+PART 1: PREPARE THE CODE ON YOUR DEVELOPER PC
+======================================================================
+
+STEP 1.1: Remove Dummy Data from the Database Migration
+----------------------------------------------------------------------
+Your code currently has a file called:
+  backend\src\main\resources\db\migration\V4__seed_dummy_shop_floor_data.sql
+
+This file seeds fake users (rajesh, suresh, anil, priya), fake customers 
+(Tata Motors, Bosch, etc.), fake purchase orders, and fake job cards.
+
+For a clean client install, you MUST replace the contents of that file 
+with an EMPTY migration. Open the file and replace ALL its contents with:
+
+  -- V4: Production deployment — no dummy data
+  SELECT 1;
+
+DO NOT delete the file itself — Flyway expects migration files to exist 
+in sequence (V1, V2, V3, V4, V5, V6). If you delete it, Flyway will 
+throw a checksum error. Just make it empty with "SELECT 1;".
+
+After this change, when the system boots fresh, only the admin user 
+(username: admin, password: Admin@123) will exist in the database.
+No fake workers, no fake POs, no fake customers. Completely clean.
+
+
+STEP 1.2: Push Your Code to a Private GitHub Repository
+----------------------------------------------------------------------
+If you haven't already, create a private repository on GitHub:
+
+1. Go to https://github.com → Click "New Repository"
+2. Name: mes-factory (or whatever you prefer)  
+3. Visibility: PRIVATE (very important — this is your proprietary code)
+4. Click "Create Repository"
+
+Now push your code. Open PowerShell in your project folder:
+
+  cd D:\mes\mes-factory
+  git init
+  git add .
+  git commit -m "Production release - clean client deployment"
+  git branch -M main
+  git remote add origin https://github.com/YOUR-USERNAME/mes-factory.git
+  git push -u origin main
+
+Your code is now safely stored online and ready to be pulled from 
+any computer in the world.
+
+
+======================================================================
+PART 2: SETTING UP THE CLIENT'S PC (AT THE FACTORY)
+======================================================================
+
+STEP 2.1: Check System Requirements
+----------------------------------------------------------------------
+Minimum requirements for the client's server PC:
+  - Windows 10/11 Pro (64-bit) — Home edition will NOT work
+  - 8 GB RAM minimum (16 GB recommended)
+  - 50 GB free disk space
+  - Connected to the factory's local network (Ethernet preferred)
+
+IMPORTANT: Windows HOME edition does NOT support Docker properly.
+The client MUST have Windows PRO or Windows SERVER.
+
+
+STEP 2.2: Enable Virtualization in BIOS
+----------------------------------------------------------------------
+Docker requires hardware virtualization. Check if it's enabled:
+
+1. Press Ctrl + Shift + Esc to open Task Manager
+2. Go to the "Performance" tab
+3. Look at the bottom — it should say "Virtualization: Enabled"
+
+If it says "Disabled":
+  - Restart the PC
+  - Press F2 / F10 / DEL (depends on the PC brand) to enter BIOS
+  - Find "Intel VT-x" or "AMD-V" or "Virtualization Technology"
+  - Set it to ENABLED
+  - Save and exit BIOS
+
+
+STEP 2.3: Install WSL2 (Windows Subsystem for Linux)
+----------------------------------------------------------------------
+Docker on Windows requires WSL2. Install it:
+
+1. Open PowerShell as ADMINISTRATOR
+2. Run this command:
+     wsl --install
+3. RESTART the computer
+4. After restart, a Ubuntu terminal may open — just close it
+
+
+STEP 2.4: Install Docker Desktop
+----------------------------------------------------------------------
+1. Download Docker Desktop from:
+     https://www.docker.com/products/docker-desktop/
+
+2. Run the installer
+   - Leave "Use WSL 2 instead of Hyper-V" CHECKED
+   - Click "Install"
+
+3. After installation, RESTART the computer
+
+4. After restart, open Docker Desktop
+   - Accept the terms of service
+   - Skip the tutorial
+   - Wait for the Docker engine to start (green icon in bottom left)
+
+5. Configure Docker to start automatically:
+   - Click the Gear icon (top right) → General
+   - CHECK the box: "Start Docker Desktop when you sign in to Windows"
+   - Click "Apply & Restart"
+
+
+STEP 2.5: Install Git
+----------------------------------------------------------------------
+1. Download Git from: https://git-scm.com/download/win
+2. Run the installer — click Next through all defaults
+3. Verify it works: open PowerShell and type:
+     git --version
+   You should see something like: git version 2.44.0
+
+
+STEP 2.6: Install Java 17 (JDK)
+----------------------------------------------------------------------
+The backend requires Java 17 to compile and run.
+
+1. Download Eclipse Temurin JDK 17 from:
+     https://adoptium.net/temurin/releases/?version=17
+   Select: Windows x64, JDK, .msi installer
+
+2. Run the installer
+   - IMPORTANT: Check the box "Set JAVA_HOME variable" during install
+   - Click through and finish
+
+3. Verify it works: open a NEW PowerShell window and type:
+     java -version
+   You should see: openjdk version "17.x.x"
+
+
+STEP 2.7: Install Node.js 20 LTS
+----------------------------------------------------------------------
+The frontend requires Node.js to build.
+
+1. Download Node.js LTS from: https://nodejs.org/
+2. Run the installer — click Next through all defaults
+3. Verify it works: open a NEW PowerShell window and type:
+     node --version
+     npm --version
+
+
+STEP 2.8: Set a Static IP Address
+----------------------------------------------------------------------
+This is CRITICAL. If you skip this, the factory tablets will lose 
+connection every time the server's router assigns a new IP.
+
+1. Open PowerShell and type: ipconfig
+2. Note down:
+     - IPv4 Address (e.g., 192.168.1.50)
+     - Subnet Mask (e.g., 255.255.255.0)
+     - Default Gateway (e.g., 192.168.1.1)
+
+3. Press Windows Key → type "Network Connections" → open it
+4. Right-click the active network adapter → Properties
+5. Double-click "Internet Protocol Version 4 (TCP/IPv4)"
+6. Select "Use the following IP address"
+7. Enter the values you noted down:
+     IP Address: 192.168.1.50 (use the actual IP you noted)
+     Subnet Mask: 255.255.255.0
+     Default Gateway: 192.168.1.1
+     Preferred DNS: 8.8.8.8
+     Alternate DNS: 8.8.4.4
+8. Click OK → Close
+
+The server's IP is now permanently locked.
+
+
+======================================================================
+PART 3: CLONE AND RUN THE APPLICATION
+======================================================================
+
+STEP 3.1: Clone the Code from GitHub
+----------------------------------------------------------------------
+Open PowerShell on the client's PC:
+
+  cd C:\
+  git clone https://github.com/YOUR-USERNAME/mes-factory.git
+  cd mes-factory
+
+
+STEP 3.2: Start the Database Services (Docker)
+----------------------------------------------------------------------
+Make sure Docker Desktop is running (green icon in system tray).
+
+  cd C:\mes-factory
+  docker-compose up -d
+
+This will automatically download and start:
+  - PostgreSQL 15 (port 5433) — main database
+  - MySQL 8 (port 3307) — analytics database
+  - Redis 7 (port 6379) — WebSocket caching
+  - MinIO (port 9000) — file storage
+
+Wait about 30 seconds for all containers to fully start.
+You can verify they are running:
+
+  docker ps
+
+You should see 4 containers all with status "Up".
+
+
+STEP 3.3: Build and Start the Backend
+----------------------------------------------------------------------
+  cd C:\mes-factory\backend
+  .\mvnw spring-boot:run
+
+The first run will take 3-5 minutes as it downloads dependencies.
+Wait until you see:
+
+  Started MesFactoryApplication in X.XXX seconds
+
+At this point, Flyway has automatically created all database tables 
+and inserted the admin user (admin / Admin@123).
+
+
+STEP 3.4: Configure the Frontend
+----------------------------------------------------------------------
+  cd C:\mes-factory\frontend
+
+Create or edit the .env file with the server's static IP:
+
+  VITE_API_BASE_URL=http://SERVER_IP:8080/api/v1
+  VITE_WS_URL=http://SERVER_IP:8080/ws
+  VITE_PUBLIC_URL=http://SERVER_IP:5173
+
+Replace SERVER_IP with the static IP you set earlier.
+Example: If the server IP is 192.168.1.50, the file should contain:
+
+  VITE_API_BASE_URL=http://192.168.1.50:8080/api/v1
+  VITE_WS_URL=http://192.168.1.50:8080/ws
+  VITE_PUBLIC_URL=http://192.168.1.50:5173
+
+
+STEP 3.5: Install Frontend Dependencies and Start
+----------------------------------------------------------------------
+  cd C:\mes-factory\frontend
+  npm install
+  npm run dev -- --host
+
+The "--host" flag is CRITICAL. Without it, the frontend will only be 
+accessible from the server itself. With "--host", it becomes accessible 
+from any device on the factory network.
+
+Wait until you see:
+
+  Local:   http://localhost:5173/
+  Network: http://192.168.1.50:5173/
+
+
+======================================================================
+PART 4: CONNECTING FACTORY DEVICES
+======================================================================
+
+1. Take any tablet, phone, or laptop connected to the factory Wi-Fi
+2. Open Google Chrome
+3. Type: http://192.168.1.50:5173 (use your actual server IP)
+4. The PPC login screen will appear
+5. Login with: admin / Admin@123
+6. You are now in the system!
+
+
+======================================================================
+PART 5: FIRST-TIME SETUP INSIDE THE APPLICATION
+======================================================================
+
+After logging in as admin, set up the system in this exact order:
+
+1. USERS: Go to Settings → Users
+   - Create a Supervisor account
+   - Create Worker accounts for each shop floor person
+   - Create Quality Inspector accounts if needed
+
+2. OPERATIONS: Go to Master Data → Operations
+   - Add all your manufacturing operations (Cutting, Turning, Grinding, etc.)
+
+3. GAUGE TYPES: Go to Master Data → Gauge Master
+   - Add your gauge types (Plain Plug Gauge, Ring Gauge, etc.)
+   - Assign the default operation sequence for each gauge type
+
+4. CUSTOMERS: Go to Master Data → Customers
+   - Add your client companies
+
+5. You are now ready to create your first Purchase Order!
+
+
+======================================================================
+PART 6: MAKING THE SYSTEM START AUTOMATICALLY ON BOOT
+======================================================================
+
+Right now, you have to manually run two commands every time the PC 
+restarts. To automate this completely, we will Dockerize the backend 
+and frontend (see How_To_Automate_Startup.txt for details).
+
+For now, to quickly make it work after a reboot:
+
+OPTION A: Create a Startup Script
+----------------------------------------------------------------------
+Create a file called "start-ppc.bat" on the Desktop with these contents:
+
+  @echo off
+  echo Starting PPC System...
+  
+  echo Starting Docker containers...
+  docker-compose -f C:\mes-factory\docker-compose.yml up -d
+  
+  echo Waiting for databases to start...
+  timeout /t 15
+  
+  echo Starting Backend...
+  start "PPC Backend" cmd /c "cd C:\mes-factory\backend && .\mvnw spring-boot:run"
+  
+  echo Waiting for backend to start...
+  timeout /t 60
+  
+  echo Starting Frontend...
+  start "PPC Frontend" cmd /c "cd C:\mes-factory\frontend && npm run dev -- --host"
+  
+  echo PPC System is starting up. Please wait 2 minutes before accessing.
+  pause
+
+Double-click this file after every reboot to start everything.
+
+OPTION B: Windows Task Scheduler (Fully Automatic)
+----------------------------------------------------------------------
+1. Open "Task Scheduler" from the Start Menu
+2. Click "Create Basic Task"
+3. Name: "Start PPC System"
+4. Trigger: "When the computer starts"
+5. Action: "Start a Program"
+6. Program: C:\mes-factory\start-ppc.bat
+7. Check "Run with highest privileges"
+8. Finish
+
+Now the system will start automatically every time the PC boots!
+
+
+======================================================================
+PART 7: UPDATING THE SOFTWARE
+======================================================================
+
+When you develop new features at home and want to update the client:
+
+ON YOUR DEVELOPER PC:
+  cd D:\mes\mes-factory
+  git add .
+  git commit -m "Description of what changed"
+  git push
+
+ON THE CLIENT'S PC:
+  cd C:\mes-factory
+  git pull
+
+Then restart the backend and frontend:
+  - Stop the backend (Ctrl+C in its terminal)
+  - Run: cd backend && .\mvnw spring-boot:run
+  - Stop the frontend (Ctrl+C in its terminal)  
+  - Run: cd frontend && npm install && npm run dev -- --host
+
+
+======================================================================
+QUICK REFERENCE CARD
+======================================================================
+
+Server IP:           __________ (fill in after setting static IP)
+Admin Username:      admin
+Admin Password:      Admin@123
+
+Backend Port:        8080
+Frontend Port:       5173
+PostgreSQL Port:     5433
+MySQL Port:          3307
+Redis Port:          6379
+MinIO Port:          9000
+
+Frontend URL:        http://SERVER_IP:5173
+Backend API:         http://SERVER_IP:8080/api/v1
+
+GitHub Repo:         https://github.com/YOUR-USERNAME/mes-factory
+
+======================================================================
+END OF SETUP GUIDE
+======================================================================

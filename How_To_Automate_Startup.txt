@@ -1,0 +1,85 @@
+======================================================================
+HOW TO AUTOMATE SYSTEM STARTUP (SKIPPING MANUAL COMMANDS)
+======================================================================
+
+Right now, during development, you manually open two terminals:
+1. `npm run dev` (to start the React frontend)
+2. `.\mvnw spring-boot:run` (to start the Java backend)
+
+When you deploy this to a client's factory, you DO NOT want them to 
+have to open terminals and run these commands every time the server 
+loses power or reboots. 
+
+The goal is: "Turn on the PC, and the whole MES software starts automatically."
+
+Here is the EXACT solution for how we will achieve this using Docker.
+
+----------------------------------------------------------------------
+THE SOLUTION: "DOCKERIZING" YOUR CODE
+----------------------------------------------------------------------
+Right now, only your databases (PostgreSQL, MySQL, Redis) are running 
+inside Docker. Your Java and React code are running directly on your PC.
+
+To automate the startup, we will move your Java code and React code 
+INSIDE Docker as well. 
+
+This requires creating 4 specific files:
+
+1. A Backend "Dockerfile"
+----------------------------------------
+We will create a file named `Dockerfile` in your `backend/` folder.
+This file will tell Docker: 
+"Take this Java code, compile it using Maven, and automatically run the 
+.jar file whenever this container is turned on."
+
+2. A Frontend "Dockerfile"
+----------------------------------------
+We will create a file named `Dockerfile` in your `frontend/` folder.
+This file will tell Docker:
+"Take this React code, compile it into static HTML/JS files, and put 
+them inside a lightning-fast Nginx web server."
+
+3. An Nginx Configuration File
+----------------------------------------
+We will create `nginx.conf` in your `frontend/` folder to tell the 
+web server how to handle your React router links.
+
+4. The Master File: `docker-compose.prod.yml`
+----------------------------------------
+This is where the magic happens. We will create a production version 
+of your Docker Compose file. It will contain your databases AND your 
+new Frontend/Backend containers.
+
+Crucially, every single service in this file will have this exact line:
+    restart: always
+
+----------------------------------------------------------------------
+HOW "RESTART: ALWAYS" WORKS
+----------------------------------------------------------------------
+When Docker sees `restart: always`, it creates a permanent rule on the 
+client's Windows/Linux server. 
+
+If the client's server loses power, crashes, or is restarted for Windows 
+Updates, the moment the server turns back on, the Docker Engine boots up.
+
+The Docker Engine instantly checks its list, sees `restart: always`, and 
+automatically boots up:
+- PostgreSQL
+- MySQL
+- Redis
+- MinIO
+- Your Java Backend
+- Your React Frontend
+
+It does this silently in the background before anyone even logs into the 
+computer. No terminals, no typing commands. It just works.
+
+----------------------------------------------------------------------
+WHAT WE NEED TO DO NEXT
+----------------------------------------------------------------------
+When you are ready, you just need to tell me: 
+"Go ahead and write the Dockerfiles."
+
+I will create those 4 files in your project. Once they are created, 
+your codebase will be 100% ready for a completely hands-free, automated 
+client deployment!
