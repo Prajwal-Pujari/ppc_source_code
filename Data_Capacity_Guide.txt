@@ -1,0 +1,213 @@
+======================================================================
+PPC SYSTEM — DATA CAPACITY & ARCHIVAL GUIDE
+======================================================================
+This document explains how much data the PPC system can hold, 
+storage estimates for the client, and when/how to archive old data.
+
+
+======================================================================
+PART 1: HOW MUCH DATA DOES THE SYSTEM GENERATE?
+======================================================================
+
+Because we use BATCH TRACKING (1 job card per batch, not per unit), 
+the data growth is extremely small.
+
+Let's calculate for a factory doing 500 UNITS per day:
+
+ASSUMPTIONS:
+  - Average batch size: 50 units per job card
+  - Average operations per job card: 7
+  - Average POs per day: 3
+  - NC (rejection) rate: 5%
+
+DAILY DATA GENERATED:
+----------------------------------------------------------------------
+  Table                   Rows/Day    Bytes/Row    Daily Size
+  ─────────────────────   ────────    ─────────    ──────────
+  purchase_orders              3        500 B        1.5 KB
+  po_line_items               10        300 B        3.0 KB
+  gauges (job cards)          10        400 B        4.0 KB
+  gauge_operations            70        500 B       35.0 KB
+  nc_records                   5        400 B        2.0 KB
+  activity_logs              100        300 B       30.0 KB
+  ─────────────────────────────────────────────────────────
+  TOTAL PER DAY:            ~200 rows               ~75 KB
+
+That's only 75 KILOBYTES per day! Less than a single photo on a phone.
+
+
+YEARLY DATA GROWTH:
+----------------------------------------------------------------------
+  Working days per year: ~300
+  Raw data per year: 300 × 75 KB = ~22 MB
+  With indexes & overhead: ~100-150 MB
+  With MinIO files (QR codes, docs): ~500 MB - 1 GB
+
+  TOTAL PER YEAR: Approximately 1 GB
+
+
+======================================================================
+PART 2: HOW MUCH CAN POSTGRESQL HOLD?
+======================================================================
+
+PostgreSQL can handle MASSIVE amounts of data:
+
+  Maximum database size:     Unlimited
+  Maximum table size:        32 TB (32,000 GB)
+  Maximum row count:         Unlimited
+  Maximum single row size:   1.6 TB
+
+For context, even after 50 YEARS of running at 500 units/day:
+  - gauge_operations table: ~1,050,000 rows (trivial for PostgreSQL)
+  - Total database size: ~50 GB
+  - PostgreSQL starts slowing down at: ~100,000,000 rows
+
+The system will NEVER hit PostgreSQL's limits in any realistic 
+manufacturing scenario.
+
+
+======================================================================
+PART 3: STORAGE RECOMMENDATIONS FOR THE CLIENT
+======================================================================
+
+MINIMUM SERVER REQUIREMENTS:
+----------------------------------------------------------------------
+  Component        Recommended    Minimum
+  ────────────     ───────────    ───────
+  RAM              16 GB          8 GB
+  Storage (SSD)    256 GB         128 GB
+  CPU              4 cores        2 cores
+
+STORAGE BREAKDOWN:
+----------------------------------------------------------------------
+  Windows OS:            ~30 GB
+  Docker + Images:       ~10 GB
+  PostgreSQL data:       ~1 GB/year
+  MySQL analytics:       ~200 MB/year
+  MinIO files:           ~500 MB/year
+  Free space buffer:     ~50 GB
+  ─────────────────────────────────
+  128 GB SSD can comfortably run for 50+ years
+
+WHAT TO TELL THE CLIENT:
+----------------------------------------------------------------------
+"A 256 GB SSD server can hold over 50 years of production data 
+without any archival needed. The system generates approximately 
+1 GB of data per year at 500 units/day throughput."
+
+
+======================================================================
+PART 4: WHEN TO ARCHIVE DATA
+======================================================================
+
+RECOMMENDATION: Archive after 3-5 years
+----------------------------------------------------------------------
+Even though the system can technically hold 50+ years of data, 
+it's good practice to archive older data for two reasons:
+  1. Faster queries (less data to search through)
+  2. Smaller backup files (faster to restore if needed)
+
+SUGGESTED ARCHIVAL SCHEDULE:
+  - Keep LAST 3 YEARS of data live in the system
+  - Archive anything older than 3 years
+  - Keep archived data on an external drive or cloud storage
+
+WHAT TO ARCHIVE (oldest data first):
+  - Completed Purchase Orders and their Job Cards
+  - Old NC Records
+  - Old Activity Logs (these grow the fastest)
+  - Old Analytics Summaries
+
+WHAT TO NEVER ARCHIVE:
+  - Master data (Gauge Types, Operations, Customers, Users)
+  - In-progress Purchase Orders
+  - In-progress Job Cards
+
+
+======================================================================
+PART 5: HOW TO ARCHIVE DATA
+======================================================================
+
+STEP 1: Backup the data you want to archive
+----------------------------------------------------------------------
+Run this command on the client's server to export old data:
+
+  docker exec ppc-postgres pg_dump -U mes_db_user mes_factory > backup_full_2026.sql
+
+This creates a complete snapshot of the entire database.
+
+STEP 2: Export ONLY old completed POs (optional, more targeted)
+----------------------------------------------------------------------
+  docker exec ppc-postgres psql -U mes_db_user -d mes_factory -c "\COPY (SELECT * FROM purchase_orders WHERE status = 'COMPLETED' AND created_at < '2024-01-01') TO '/tmp/archived_pos.csv' CSV HEADER"
+
+  docker cp ppc-postgres:/tmp/archived_pos.csv C:\PPC-Archives\archived_pos_2024.csv
+
+STEP 3: Delete the archived data from the live database
+----------------------------------------------------------------------
+WARNING: Only run this AFTER confirming the backup is safe!
+
+  docker exec ppc-postgres psql -U mes_db_user -d mes_factory -c "
+    DELETE FROM nc_records WHERE created_at < '2024-01-01';
+    DELETE FROM gauge_operations WHERE created_at < '2024-01-01';
+    DELETE FROM gauges WHERE created_at < '2024-01-01' AND status = 'COMPLETED';
+    DELETE FROM activity_logs WHERE created_at < '2024-01-01';
+  "
+
+STEP 4: Reclaim disk space
+----------------------------------------------------------------------
+  docker exec ppc-postgres psql -U mes_db_user -d mes_factory -c "VACUUM FULL;"
+
+
+======================================================================
+PART 6: AUTOMATED BACKUPS
+======================================================================
+
+Set up a daily automatic backup so the client never loses data.
+
+CREATE A BACKUP SCRIPT (save as C:\PPC-Backups\daily-backup.bat):
+----------------------------------------------------------------------
+  @echo off
+  set DATE=%date:~10,4%-%date:~4,2%-%date:~7,2%
+  docker exec ppc-postgres pg_dump -U mes_db_user mes_factory > C:\PPC-Backups\ppc_backup_%DATE%.sql
+  
+  REM Delete backups older than 30 days
+  forfiles /p "C:\PPC-Backups" /m "ppc_backup_*.sql" /d -30 /c "cmd /c del @path" 2>nul
+  
+  echo Backup completed: ppc_backup_%DATE%.sql
+
+SCHEDULE IT IN WINDOWS TASK SCHEDULER:
+----------------------------------------------------------------------
+  1. Open Task Scheduler
+  2. Create Basic Task → "PPC Daily Backup"
+  3. Trigger: Daily at 2:00 AM (when factory is idle)
+  4. Action: Start Program → C:\PPC-Backups\daily-backup.bat
+  5. Run with highest privileges
+
+This keeps the last 30 days of backups automatically.
+
+
+======================================================================
+PART 7: CAPACITY SUMMARY TABLE (FOR CLIENT PRESENTATION)
+======================================================================
+
+┌─────────────────────────────────────────────────────────────┐
+│              PPC SYSTEM — CAPACITY SPECIFICATIONS           │
+├──────────────────────┬──────────────────────────────────────┤
+│ Daily Throughput     │ 500+ units/day supported             │
+│ Data Generated/Day   │ ~75 KB (less than a phone photo)     │
+│ Data Generated/Year  │ ~1 GB (including files)              │
+│ Max Storage Capacity │ 50+ years on a 256 GB SSD            │
+│ Max Job Cards        │ Unlimited                            │
+│ Max Operations       │ Unlimited                            │
+│ Max Users            │ Unlimited                            │
+│ Max POs              │ Unlimited                            │
+│ Recommended Archival │ Every 3-5 years                      │
+│ Backup Frequency     │ Daily (automatic at 2 AM)            │
+│ Backup Retention     │ 30 days rolling                      │
+│ Database Engine      │ PostgreSQL 15 (enterprise-grade)     │
+│ Data Persistence     │ Docker volumes (survives reboots)    │
+└──────────────────────┴──────────────────────────────────────┘
+
+======================================================================
+END OF DATA CAPACITY GUIDE
+======================================================================

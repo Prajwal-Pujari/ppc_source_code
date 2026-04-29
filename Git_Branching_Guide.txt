@@ -1,0 +1,336 @@
+======================================================================
+GIT BRANCHING GUIDE — MANAGING MULTIPLE CLIENTS
+======================================================================
+This guide explains how to manage your PPC base product and 
+client-specific customizations using Git branches.
+
+======================================================================
+THE CONCEPT
+======================================================================
+
+Think of branches like separate "copies" of your code that exist 
+inside the same folder. You can switch between them instantly.
+
+Your folder D:\mes\mes-factory stays the same. But depending on 
+which branch you are on, the code inside that folder CHANGES 
+automatically. Like magic.
+
+  main              ← Your base product (common features)
+  client/tata       ← Tata Motors version (has their custom report)
+  client/bosch      ← Bosch version (has their custom inspection)
+  client/mahindra   ← Mahindra version (has their custom dashboard)
+
+You only have ONE folder on your PC, but you can instantly switch 
+between all your clients' code.
+
+
+======================================================================
+PART 1: CREATING A BRANCH FOR A NEW CLIENT
+======================================================================
+
+Let's say you just signed Tata Motors as a new client.
+
+STEP 1: Make sure you are on the main branch first
+----------------------------------------------------------------------
+  cd D:\mes\mes-factory
+  git checkout main
+  git pull                 ← Get latest base code
+
+STEP 2: Create a new branch for Tata
+----------------------------------------------------------------------
+  git checkout -b client/tata
+
+What happened:
+  - Git made a copy of the entire "main" code
+  - Named it "client/tata"
+  - Switched you to that branch
+  - Your folder now contains the Tata version
+
+STEP 3: Push this branch to GitHub
+----------------------------------------------------------------------
+  git push -u origin client/tata
+
+Now this branch exists on GitHub too.
+
+DONE! You now have a Tata-specific branch.
+
+
+======================================================================
+PART 2: MAKING CLIENT-SPECIFIC CHANGES
+======================================================================
+
+Let's say Tata asks you to change their login page title to 
+"Tata Motors PPC System" instead of just "PPC".
+
+STEP 1: Switch to Tata's branch
+----------------------------------------------------------------------
+  git checkout client/tata
+
+Your entire folder instantly shows Tata's version of the code.
+
+STEP 2: Make the changes
+----------------------------------------------------------------------
+Open the code in VS Code, make the changes Tata requested.
+
+STEP 3: Save and push to GitHub
+----------------------------------------------------------------------
+  git add .
+  git commit -m "Changed login title for Tata Motors"
+  git push
+
+DONE! The change is saved on Tata's branch on GitHub.
+The main branch and other client branches are NOT affected.
+
+
+======================================================================
+PART 3: SWITCHING BETWEEN CLIENTS ON YOUR PC
+======================================================================
+
+This is the most powerful part. You have ONE folder but can see 
+ANY client's code instantly.
+
+TO SEE TATA'S CODE:
+  git checkout client/tata
+
+TO SEE BOSCH'S CODE:
+  git checkout client/bosch
+
+TO SEE YOUR BASE PRODUCT:
+  git checkout main
+
+TO SEE WHICH BRANCH YOU ARE ON RIGHT NOW:
+  git branch
+
+The branch with a * next to it is your current branch.
+Example output:
+    main
+  * client/tata          ← You are here
+    client/bosch
+    client/mahindra
+
+
+======================================================================
+PART 4: UPDATING THE CLIENT'S PC
+======================================================================
+
+When you push changes to client/tata on GitHub, you need to update 
+the actual Tata factory server.
+
+ON TATA'S SERVER (the first time — during installation):
+----------------------------------------------------------------------
+  git clone -b client/tata https://github.com/Prajwal-Pujari/ppc_source_code.git
+  cd ppc_source_code
+  docker-compose -f docker-compose.prod.yml up -d --build
+
+The "-b client/tata" flag tells Git to download only Tata's branch.
+
+ON TATA'S SERVER (for updates — after changes):
+----------------------------------------------------------------------
+  cd C:\ppc_source_code
+  git pull
+  docker-compose -f docker-compose.prod.yml up -d --build
+
+That's it! The server pulls the latest Tata code and rebuilds.
+
+
+======================================================================
+PART 5: ADDING A FEATURE TO THE BASE PRODUCT (FOR ALL CLIENTS)
+======================================================================
+
+Let's say you build a new "PQC Inspection Module". You want ALL 
+clients to get it, not just one.
+
+STEP 1: Switch to main
+----------------------------------------------------------------------
+  git checkout main
+
+STEP 2: Build the feature
+----------------------------------------------------------------------
+Write the code for PQC module, test it, make sure it works.
+
+STEP 3: Commit and push to main
+----------------------------------------------------------------------
+  git add .
+  git commit -m "Added PQC Inspection Module"
+  git push origin main
+
+STEP 4: Merge main into EACH client branch
+----------------------------------------------------------------------
+Now you need to push this feature to each client:
+
+  git checkout client/tata
+  git merge main
+  git push
+
+  git checkout client/bosch
+  git merge main
+  git push
+
+  git checkout client/mahindra
+  git merge main
+  git push
+
+What happened:
+  - Each client's branch now has the new PQC module
+  - Their client-specific changes are preserved
+  - Git is smart enough to combine both without breaking anything
+
+STEP 5: Update each client's server
+----------------------------------------------------------------------
+On each client's server, run:
+  git pull
+  docker-compose -f docker-compose.prod.yml up -d --build
+
+
+======================================================================
+PART 6: COPYING A FEATURE FROM ONE CLIENT TO ANOTHER
+======================================================================
+
+Let's say you built a custom report for Tata, and now Bosch says 
+"We want the exact same report!" 
+
+You DON'T need to rewrite it. You can "cherry-pick" that specific 
+change from Tata's branch.
+
+STEP 1: Find the commit ID of the feature on Tata's branch
+----------------------------------------------------------------------
+  git checkout client/tata
+  git log --oneline -10
+
+You will see something like:
+  a1b2c3d  Changed login title for Tata Motors
+  e4f5g6h  Added custom Tata inspection report    ← This is the one!
+  ...
+
+Note the ID: e4f5g6h
+
+STEP 2: Switch to Bosch's branch and cherry-pick
+----------------------------------------------------------------------
+  git checkout client/bosch
+  git cherry-pick e4f5g6h
+  git push
+
+DONE! Bosch now has the exact same report as Tata, without any of 
+Tata's other customizations.
+
+ALTERNATIVE: If the feature spans multiple commits
+----------------------------------------------------------------------
+If the feature was built across multiple commits, it's better to 
+use "merge" instead of cherry-pick. But if you want ONLY specific 
+changes, cherry-pick each commit:
+
+  git cherry-pick a1b2c3d
+  git cherry-pick e4f5g6h
+
+
+======================================================================
+PART 7: VIEWING WHAT'S DIFFERENT BETWEEN BRANCHES
+======================================================================
+
+TO SEE WHAT'S DIFFERENT BETWEEN MAIN AND TATA:
+----------------------------------------------------------------------
+  git diff main..client/tata --stat
+
+This shows a list of files that are different.
+
+TO SEE THE ACTUAL CODE DIFFERENCES:
+----------------------------------------------------------------------
+  git diff main..client/tata
+
+TO SEE ALL COMMITS ON TATA THAT ARE NOT ON MAIN:
+----------------------------------------------------------------------
+  git log main..client/tata --oneline
+
+This shows you exactly what custom work was done for Tata.
+
+
+======================================================================
+PART 8: REMEMBERING WHAT YOU DID (GIT LOG)
+======================================================================
+
+As you grow and won't remember what you did, Git remembers everything.
+
+SEE THE LAST 20 CHANGES ON THE CURRENT BRANCH:
+----------------------------------------------------------------------
+  git log --oneline -20
+
+SEE CHANGES WITH DATES AND DETAILS:
+----------------------------------------------------------------------
+  git log -10
+
+SEE WHO CHANGED WHAT IN A SPECIFIC FILE:
+----------------------------------------------------------------------
+  git log --follow frontend/src/pages/dashboard/DashboardPage.tsx
+
+SEE ALL BRANCHES AND THEIR LAST COMMIT:
+----------------------------------------------------------------------
+  git branch -v
+
+SEARCH FOR A SPECIFIC CHANGE (e.g., "inspection"):
+----------------------------------------------------------------------
+  git log --all --oneline --grep="inspection"
+
+
+======================================================================
+PART 9: QUICK COMMAND CHEAT SHEET
+======================================================================
+
+CREATE NEW CLIENT BRANCH:
+  git checkout main
+  git pull
+  git checkout -b client/CLIENT_NAME
+  git push -u origin client/CLIENT_NAME
+
+SWITCH TO A CLIENT:
+  git checkout client/CLIENT_NAME
+
+SAVE CHANGES:
+  git add .
+  git commit -m "Description of what you changed"
+  git push
+
+UPDATE ALL CLIENTS WITH A BASE FEATURE:
+  git checkout main
+  (make changes)
+  git add . && git commit -m "New feature" && git push
+  git checkout client/tata && git merge main && git push
+  git checkout client/bosch && git merge main && git push
+
+COPY A FEATURE FROM ONE CLIENT TO ANOTHER:
+  git log --oneline client/tata      ← Find commit ID
+  git checkout client/bosch
+  git cherry-pick COMMIT_ID
+  git push
+
+SEE ALL BRANCHES:
+  git branch -a
+
+SEE WHAT'S DIFFERENT:
+  git diff main..client/tata --stat
+
+SEE COMMIT HISTORY:
+  git log --oneline -20
+
+INSTALL ON CLIENT'S SERVER (FIRST TIME):
+  git clone -b client/CLIENT_NAME https://github.com/Prajwal-Pujari/ppc_source_code.git
+
+UPDATE CLIENT'S SERVER:
+  git pull
+  docker-compose -f docker-compose.prod.yml up -d --build
+
+
+======================================================================
+GOLDEN RULES
+======================================================================
+
+1. NEVER develop directly on main unless it's a feature for ALL clients.
+2. ALWAYS switch to the correct client branch before making changes.
+3. ALWAYS commit before switching branches (or your changes will bleed).
+4. When in doubt, run "git branch" to see where you are.
+5. Write clear commit messages — your future self will thank you.
+   BAD:  "fixed stuff"
+   GOOD: "Added custom tolerance report for Tata Motors PO page"
+
+======================================================================
+END OF GIT BRANCHING GUIDE
+======================================================================
