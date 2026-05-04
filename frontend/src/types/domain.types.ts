@@ -74,6 +74,7 @@ export interface GaugeOperation {
   sequenceOrder: number;
   status: OperationStatus;
   assignedTo?: { id: string; fullName: string; employeeCode: string };
+  completedBy?: { id: string; fullName: string; employeeCode: string };
   assignedAt?: string;
   scheduledStart?: string;
   scheduledEnd?: string;
@@ -143,4 +144,39 @@ export interface DashboardSummary {
   operationsInProgress: number;
   operationsOverdue: number;
   posDueWithin7Days: number;
+}
+
+export type QuestionType = 'PASS_FAIL' | 'NUMERIC' | 'TEXT' | 'CHOICE';
+
+export interface PqcQuestion {
+  id?: string;
+  sequenceOrder: number;
+  questionText: string;
+  questionType: QuestionType;
+  expectedAnswer?: string;
+  unit?: string;
+  minValue?: number;
+  maxValue?: number;
+  choices?: string[];
+  isCritical: boolean;
+  isActive?: boolean;
+}
+
+export interface PqcQuestionSet {
+  id: string;
+  operationMaster: OperationMaster;
+  name: string;
+  inspectionFrequency: string;
+  isActive: boolean;
+  questions: PqcQuestion[];
+  createdAt?: string;
+}
+
+export interface CompletionProgress {
+  operationId: string;
+  operationName: string;
+  plannedQty: number;
+  totalPassedQty: number;
+  totalActualQty: number;
+  readyForCompletion: boolean;
 }

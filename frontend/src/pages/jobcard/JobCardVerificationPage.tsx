@@ -143,7 +143,11 @@ export default function JobCardVerificationPage() {
               <div style={{ background: '#F5F2ED', padding: '8px 24px', fontSize: 11, fontWeight: 800, color: '#1C1A18', textTransform: 'uppercase' }}>Gauge Specifications</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
                 <Cell label="Gauge Name / Type" value={gauge.gaugeTypeName} borderRight />
-                <Cell label="Nominal Size" value={`${gauge.nominalSize} ${gauge.sizeUnit}`} mono />
+                <Cell label="Qty." value={`${gauge.batchQuantity || 1}`} mono />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
+                <Cell label="Nominal Size" value={`${gauge.nominalSize} ${gauge.sizeUnit}`} mono borderRight />
+                <Cell label="Material Grade" value={gauge.materialGrade || '—'} />
               </div>
             </div>
 
@@ -154,7 +158,7 @@ export default function JobCardVerificationPage() {
                 <thead>
                   <tr style={{ background: '#FFFFFF', borderTop: '1px solid #D4CCBF', borderBottom: '1px solid #D4CCBF' }}>
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: '#8C857D', fontWeight: 600, fontSize: 10, textTransform: 'uppercase' }}>Op</th>
-                    <th style={{ padding: '10px 14px', textAlign: 'left', color: '#8C857D', fontWeight: 600, fontSize: 10, textTransform: 'uppercase' }}>Worker</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'left', color: '#8C857D', fontWeight: 600, fontSize: 10, textTransform: 'uppercase' }}>Completed By</th>
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: '#8C857D', fontWeight: 600, fontSize: 10, textTransform: 'uppercase' }}>Start</th>
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: '#8C857D', fontWeight: 600, fontSize: 10, textTransform: 'uppercase' }}>End</th>
                   </tr>
@@ -163,7 +167,7 @@ export default function JobCardVerificationPage() {
                   {ops.map((op: any, idx: number) => (
                     <tr key={op.id} style={{ borderBottom: '1px solid #E8E2D9', background: idx % 2 === 0 ? '#FFFFFF' : '#FAFAF8' }}>
                       <td style={{ padding: '10px 14px', fontWeight: 600, color: '#1C1A18' }}>{op.operationName}</td>
-                      <td style={{ padding: '10px 14px', color: '#1C1A18' }}>{op.assignedTo?.fullName || '—'}</td>
+                      <td style={{ padding: '10px 14px', color: '#1C1A18' }}>{op.completedBy?.fullName || op.assignedTo?.fullName || '—'}</td>
                       <td style={{ padding: '10px 14px', color: '#8C857D', fontSize: 11 }}>{op.actualStart ? new Date(op.actualStart).toLocaleString() : '—'}</td>
                       <td style={{ padding: '10px 14px', color: '#8C857D', fontSize: 11 }}>{op.actualEnd ? new Date(op.actualEnd).toLocaleString() : '—'}</td>
                     </tr>

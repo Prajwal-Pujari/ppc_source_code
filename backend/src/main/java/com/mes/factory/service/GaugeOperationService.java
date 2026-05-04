@@ -129,10 +129,14 @@ public class GaugeOperationService {
             throw new BusinessException("Operation must be IN_PROGRESS to complete", "INVALID_STATUS");
         }
 
+        User worker = userRepository.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", workerId));
+
         operation.setStatus(OperationStatus.COMPLETED);
         operation.setActualEnd(OffsetDateTime.now());
         operation.setRemarks(remarks);
         operation.setQualityParams(qualityParams);
+        operation.setCompletedBy(worker);
         operation = gaugeOperationRepository.save(operation);
 
         // Check and queue next operation

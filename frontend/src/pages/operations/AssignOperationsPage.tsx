@@ -1,19 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useUiStore } from '@/store/uiStore';
-import { getWorkers } from '@/api/users.api';
-import { assignOperation } from '@/api/gauge-operations.api';
+import { startOperation } from '@/api/gauge-operations.api';
 import api from '@/lib/axios';
-import { Users, UserPlus, CheckCircle, Clock, Play } from 'lucide-react';
+import { Users, CheckCircle, Clock, Play } from 'lucide-react';
+import { Loader } from 'lucide-react';
 
 export default function AssignOperationsPage() {
   const setPageTitle = useUiStore((s: any) => s.setPageTitle);
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState('PENDING,QUEUED');
-  const [assignModalOp, setAssignModalOp] = useState<any>(null);
-  const [selectedWorker, setSelectedWorker] = useState('');
 
-  useEffect(() => { setPageTitle('Assign Operations'); }, [setPageTitle]);
+  useEffect(() => { setPageTitle('Shop Floor Queue'); }, [setPageTitle]);
 
   const { data: opsData, isLoading } = useQuery({
     queryKey: ['assign-operations', statusFilter],
@@ -23,20 +21,12 @@ export default function AssignOperationsPage() {
     },
   });
 
-  const { data: workersData } = useQuery({
-    queryKey: ['workers-list'],
-    queryFn: getWorkers,
-  });
-
   const ops = opsData?.data || [];
-  const workers = workersData?.data || [];
 
-  const assignMut = useMutation({
-    mutationFn: ({ opId, workerId }: { opId: string; workerId: string }) => assignOperation(opId, workerId),
+  const startMut = useMutation({
+    mutationFn: (opId: string) => startOperation(opId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assign-operations'] });
-      setAssignModalOp(null);
-      setSelectedWorker('');
     },
   });
 
@@ -57,7 +47,7 @@ export default function AssignOperationsPage() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)' }}>Operations Queue</h2>
+        <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)' }}>Shop Floor Queue</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           {filters.map((f) => (
             <button key={f.value} onClick={() => setStatusFilter(f.value)}
@@ -83,7 +73,7 @@ export default function AssignOperationsPage() {
               <th>Op #</th>
               <th>Operation</th>
               <th>Status</th>
-              <th>Assigned To</th>
+              <th>Started By</th>
               <th>Started</th>
               <th>Completed</th>
               <th style={{ width: 100 }}>Action</th>
@@ -133,10 +123,13 @@ export default function AssignOperationsPage() {
                     </td>
                     <td>
                       {(op.status === 'PENDING' || op.status === 'QUEUED') && (
-                        <button onClick={() => { setAssignModalOp(op); setSelectedWorker(op.assignedTo?.id || ''); }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 500, cursor: 'pointer', background: 'rgba(139,105,20,0.06)', border: '1px solid var(--copper-bronze)', color: 'var(--copper-bronze)' }}>
-                          <UserPlus size={12} /> Assign
+                        <button onClick={() => startMut.mutate(op.id)} disabled={startMut.isPending}
+                          style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 500, cursor: 'pointer', background: 'rgba(26,115,232,0.06)', border: '1px solid #1a73e8', color: '#1a73e8' }}>
+                          {startMut.isPending ? <Loader size={12} className="spin" /> : <Play size={12} />} Start
                         </button>
+                      )}
+                      {op.status === 'IN_PROGRESS' && (
+                        <Clock size={16} color="var(--status-in-progress)" />
                       )}
                       {op.status === 'COMPLETED' && (
                         <CheckCircle size={16} color="var(--status-completed)" />
@@ -149,36 +142,6 @@ export default function AssignOperationsPage() {
           </tbody>
         </table>
       </div>
-
-      {/* Assign Modal */}
-      {assignModalOp && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}
-          onClick={() => setAssignModalOp(null)}>
-          <div className="card" style={{ padding: 24, width: 420, maxHeight: '80vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)', marginBottom: 16 }}>Assign Worker</h3>
-            <div style={{ padding: 12, borderRadius: 8, background: 'var(--bone-white)', marginBottom: 16 }}>
-              <p className="font-mono" style={{ fontSize: 13, fontWeight: 600, color: 'var(--copper-bronze)' }}>
-                {assignModalOp.gauge?.serialNumber} (Qty: {assignModalOp.gauge?.batchQuantity || 1})
-              </p>
-              <p style={{ fontSize: 13, color: 'var(--slate)', marginTop: 4 }}>Op #{assignModalOp.sequenceOrder}: <strong>{assignModalOp.operationName}</strong></p>
-            </div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 6 }}>Select Worker</label>
-            <select className="input" value={selectedWorker} onChange={(e) => setSelectedWorker(e.target.value)}>
-              <option value="">Choose worker...</option>
-              {workers.map((w: any) => (
-                <option key={w.id} value={w.id}>{w.fullName} ({w.employeeCode})</option>
-              ))}
-            </select>
-            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button className="btn btn-primary" disabled={!selectedWorker || assignMut.isPending}
-                onClick={() => assignMut.mutate({ opId: assignModalOp.id, workerId: selectedWorker })}>
-                {assignMut.isPending ? 'Assigning...' : 'Assign'}
-              </button>
-              <button className="btn btn-secondary" onClick={() => setAssignModalOp(null)}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

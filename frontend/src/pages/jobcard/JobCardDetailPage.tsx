@@ -218,7 +218,7 @@ export default function JobCardDetailPage() {
           <SectionTitle text="Gauge Specifications" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
             <Cell label="Gauge Name / Type" value={gauge.gaugeTypeName} bold borderRight />
-            <Cell label="Qty." value={`${po?.totalGauges || 1}`} mono />
+            <Cell label="Qty." value={`${gauge.batchQuantity || 1}`} mono />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
             <Cell label="Nominal Size" value={`${gauge.nominalSize} ${gauge.sizeUnit}`} mono borderRight />
@@ -240,7 +240,7 @@ export default function JobCardDetailPage() {
                 <th style={thStyle}>#</th>
                 <th style={{ ...thStyle, textAlign: 'left' }}>Operation</th>
                 <th style={thStyle}>Status</th>
-                <th style={thStyle}>Assigned To</th>
+                <th style={thStyle}>Work Completed By</th>
                 <th style={thStyle}>Start</th>
                 <th style={thStyle}>End</th>
               </tr>
@@ -269,8 +269,8 @@ export default function JobCardDetailPage() {
                       </span>
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'center', fontSize: 11 }}>
-                      {op.assignedTo ? `${op.assignedTo.fullName}` : '—'}
-                      {op.assignedTo?.employeeCode && <div style={{ fontSize: 9, color: '#8C857D', fontFamily: "'JetBrains Mono', monospace" }}>{op.assignedTo.employeeCode}</div>}
+                      {op.completedBy ? `${op.completedBy.fullName}` : op.assignedTo ? `${op.assignedTo.fullName}` : '—'}
+                      {(op.completedBy?.employeeCode || op.assignedTo?.employeeCode) && <div style={{ fontSize: 9, color: '#8C857D', fontFamily: "'JetBrains Mono', monospace" }}>{op.completedBy?.employeeCode || op.assignedTo?.employeeCode}</div>}
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }}>
                       {fmtDateTime(op.actualStart)}

@@ -76,6 +76,11 @@ public class GaugeOperation {
     @Column(name = "assigned_at")
     private OffsetDateTime assignedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "completed_by")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "passwordHash", "factory"})
+    private User completedBy;
+
     @Column(name = "scheduled_start")
     private OffsetDateTime scheduledStart;
 
