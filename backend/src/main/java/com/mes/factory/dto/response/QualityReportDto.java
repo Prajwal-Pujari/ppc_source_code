@@ -1,0 +1,62 @@
+package com.mes.factory.dto.response;
+
+import lombok.Builder;
+import lombok.Data;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+@Data
+@Builder
+public class QualityReportDto {
+    private UUID poId;
+    private String poNumber;
+    private String customerName;
+    private UUID gaugeId;
+    private String serialNumber;
+    private String partName; // from gaugeMaster
+    private Integer targetQuantity;
+    private String reportType; // IN_PROCESS, PDIR, NCR, LAYOUT
+    private OffsetDateTime generatedAt;
+
+    private List<OperationLogDto> operations;
+
+    @Data
+    @Builder
+    public static class OperationLogDto {
+        private UUID operationId;
+        private String operationName;
+        private Integer sequenceOrder;
+        private List<BatchLogDto> batches;
+    }
+
+    @Data
+    @Builder
+    public static class BatchLogDto {
+        private UUID logId;
+        private OffsetDateTime logTime;
+        private String inspectorName;
+        private Integer inspectedQty;
+        private Integer passedQty;
+        private Integer rejectedQty;
+        private Integer reworkQty;
+        private Integer scrapQty;
+        private String remarks;
+        private List<MeasurementDto> measurements;
+    }
+
+    @Data
+    @Builder
+    public static class MeasurementDto {
+        private String questionId;
+        private String parameterName;
+        private String expectedAnswer;
+        private BigDecimal minValue;
+        private BigDecimal maxValue;
+        private String unit;
+        private Object actualValue; // Could be boolean, numeric, or text
+    }
+}

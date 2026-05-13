@@ -23,6 +23,8 @@ import AssignOperationsPage from '@/pages/operations/AssignOperationsPage';
 import NcRecordsPage from '@/pages/nc/NcRecordsPage';
 import UserManagementPage from '@/pages/settings/UserManagementPage';
 import { InspectorLiveEntryPage } from '@/pages/pqc/InspectorLiveEntryPage';
+import PqcQuestionSetMasterPage from '@/pages/master/PqcQuestionSetMasterPage';
+import PqcReportDashboard from './pages/pqc/PqcReportDashboard';
 import PqcDashboardPage from '@/pages/pqc/PqcDashboardPage';
 import PqcSettingsPage from '@/pages/pqc/PqcSettingsPage';
 import './index.css';
@@ -50,10 +52,11 @@ export default function App() {
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/assign-operations" element={<AssignOperationsPage />} />
               <Route path="/nc-records" element={<NcRecordsPage />} />
-              <Route path="/reports" element={<PlaceholderPage title="Reports" />} />
+              <Route path="/reports" element={<PqcReportDashboard />} />
               <Route path="/master/gauges" element={<GaugeMasterPage />} />
               <Route path="/master/operations" element={<OperationMasterPage />} />
               <Route path="/master/customers" element={<CustomerMasterPage />} />
+              <Route path="/master/pqc-question-sets" element={<PqcQuestionSetMasterPage />} />
               <Route path="/settings/users" element={<UserManagementPage />} />
               <Route path="/inspection" element={<InspectorLiveEntryPage />} />
             </Route>
@@ -62,7 +65,11 @@ export default function App() {
             <Route element={<PqcLayout />}>
               <Route path="/pqc/dashboard" element={<PqcDashboardPage />} />
               <Route path="/pqc/inspect" element={<InspectorLiveEntryPage />} />
+              <Route path="/pqc/reports" element={<PqcReportDashboard />} />
               <Route path="/pqc/batch-records" element={<PlaceholderPage title="Batch Records" />} />
+              <Route path="/pqc/question-sets" element={<PqcQuestionSetMasterPage />} />
+              <Route path="/pqc/gauges" element={<GaugeMasterPage />} />
+              <Route path="/pqc/operations" element={<OperationMasterPage />} />
               <Route path="/pqc/personnel" element={<PlaceholderPage title="Personnel" />} />
               <Route path="/pqc/analytics" element={<PlaceholderPage title="PQC Analytics" />} />
               <Route path="/pqc/settings" element={<PqcSettingsPage />} />

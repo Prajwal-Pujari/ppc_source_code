@@ -44,21 +44,12 @@ export default function MyTasksPage() {
 
   const [passedQty, setPassedQty] = useState<number>(0);
   const [rejectedQty, setRejectedQty] = useState<number>(0);
-  const [questionAnswers, setQuestionAnswers] = useState<Record<string, any>>({});
 
   useEffect(() => { setPageTitle('My Tasks'); }, [setPageTitle]);
 
   /* ─── queries ─── */
   const { data, isLoading } = useQuery({ queryKey: ['worker-tasks'], queryFn: getMyTasks, refetchInterval: 15000 });
   const { data: summaryData } = useQuery({ queryKey: ['worker-task-summary'], queryFn: getMyTaskSummary, refetchInterval: 15000 });
-  const { data: qsData } = useQuery({ 
-    queryKey: ['question-sets'], 
-    queryFn: async () => {
-      const res = await pqcApi.getAllQuestionSets();
-      return res.data;
-    } 
-  });
-  const questionSets = qsData || [];
 
   /* ─── mutations ─── */
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ['worker-tasks'] }); queryClient.invalidateQueries({ queryKey: ['worker-task-summary'] }); };
@@ -76,10 +67,7 @@ export default function MyTasksPage() {
         remarks,
         questionAnswers: answersArray
       });
-      const progress = await pqcApi.getCompletionProgress(task.id);
-      if (progress.data.readyForCompletion) {
-        await completeOperation(task.id, { remarks: 'Completed via PQC inspection' });
-      }
+      // Backend auto-completes the operation when totalPassed >= plannedQty
     },
     onSuccess: () => { invalidate(); setCompleteModal(null); setRemarks(''); },
     onError: (err: any) => { alert('Error logging inspection: ' + err.message); }
@@ -100,7 +88,6 @@ export default function MyTasksPage() {
     setReading('');
     setPassedQty(task.gauge?.batchQuantity || 0);
     setRejectedQty(0);
-    setQuestionAnswers({});
   };
 
   const tasks = data?.data || [];
@@ -375,11 +362,10 @@ export default function MyTasksPage() {
 
                           {/* ─── INLINE: Complete Modal ─── */}
                           {completeModal === task.id && (() => {
-                            const qs = questionSets.find(q => q.operationMaster.operationName === task.operationName);
                             return (
                               <div style={{ marginTop: 8, padding: 20, background: 'white', borderRadius: 10, border: '1px solid rgba(34,139,34,0.3)', boxShadow: '0 4px 12px rgba(34,139,34,0.08)' }}>
                                 <h4 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 600, color: '#1B1C1A', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <CheckCircle size={16} color="#228B22" /> Complete Operation & Inspection
+                                  <CheckCircle size={16} color="#228B22" /> Complete Operation
                                 </h4>
                                 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
@@ -395,73 +381,27 @@ export default function MyTasksPage() {
                                   </div>
                                 </div>
 
-                                {qs && qs.questions.length > 0 && (
-                                  <div style={{ background: '#F5F3F0', padding: 16, borderRadius: 8, marginBottom: 16 }}>
-                                    <h5 style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 600, color: '#6F5100', textTransform: 'uppercase' }}>Inspection Checklist</h5>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                      {qs.questions.map((q, idx) => (
-                                        <div key={q.id || idx} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                          <label style={{ fontSize: 13, color: '#1B1C1A', fontWeight: 500 }}>
-                                            {idx + 1}. {q.questionText}
-                                          </label>
-                                          {q.questionType === 'PASS_FAIL' ? (
-                                            <select 
-                                              value={questionAnswers[q.id || idx] || ''} 
-                                              onChange={e => setQuestionAnswers(p => ({...p, [q.id || idx]: e.target.value}))}
-                                              style={{ height: 36, borderRadius: 6, border: '1px solid #D1C5B2', background: 'white' }}
-                                            >
-                                              <option value="">Select...</option>
-                                              <option value="PASS">PASS</option>
-                                              <option value="FAIL">FAIL</option>
-                                            </select>
-                                          ) : q.questionType === 'CHOICE' && q.choices ? (
-                                            <select 
-                                              value={questionAnswers[q.id || idx] || ''} 
-                                              onChange={e => setQuestionAnswers(p => ({...p, [q.id || idx]: e.target.value}))}
-                                              style={{ height: 36, borderRadius: 6, border: '1px solid #D1C5B2', background: 'white' }}
-                                            >
-                                              <option value="">Select...</option>
-                                              {q.choices.map(c => <option key={c} value={c}>{c}</option>)}
-                                            </select>
-                                          ) : (
-                                            <div style={{ display: 'flex', gap: 8 }}>
-                                              <input 
-                                                type={q.questionType === 'NUMERIC' ? 'number' : 'text'} 
-                                                value={questionAnswers[q.id || idx] || ''} 
-                                                onChange={e => setQuestionAnswers(p => ({...p, [q.id || idx]: e.target.value}))}
-                                                style={{ height: 36, flex: 1, borderRadius: 6, border: '1px solid #D1C5B2', padding: '0 10px' }}
-                                                placeholder={q.questionType === 'NUMERIC' ? 'Enter value...' : 'Enter text...'}
-                                              />
-                                              {q.unit && <span style={{ padding: '8px 12px', background: 'var(--silk)', borderRadius: 6, fontSize: 13, color: '#807665' }}>{q.unit}</span>}
-                                            </div>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+                                  <div>
+                                    <label style={{ fontSize: 11, fontWeight: 600, color: '#807665', textTransform: 'uppercase', letterSpacing: '.06em', display: 'block', marginBottom: 6 }}>Reading</label>
+                                    <input type="text" className="input font-mono" value={reading} onChange={e => setReading(e.target.value)}
+                                      style={{ height: 40, width: '100%', borderRadius: 8, border: '1px solid #D1C5B2' }} placeholder="Enter measurement reading..." />
                                   </div>
-                                )}
-
-                                <div>
-                                  <label style={{ fontSize: 11, fontWeight: 600, color: '#807665', textTransform: 'uppercase', letterSpacing: '.06em', display: 'block', marginBottom: 6 }}>Remarks</label>
-                                  <input type="text" className="input" value={remarks} onChange={e => setRemarks(e.target.value)}
-                                    style={{ height: 40, width: '100%', borderRadius: 8, border: '1px solid #D1C5B2' }} placeholder="Add observations..." />
+                                  <div>
+                                    <label style={{ fontSize: 11, fontWeight: 600, color: '#807665', textTransform: 'uppercase', letterSpacing: '.06em', display: 'block', marginBottom: 6 }}>Observation</label>
+                                    <input type="text" className="input" value={remarks} onChange={e => setRemarks(e.target.value)}
+                                      style={{ height: 40, width: '100%', borderRadius: 8, border: '1px solid #D1C5B2' }} placeholder="Any observations..." />
+                                  </div>
                                 </div>
 
                                 <div style={{ display: 'flex', gap: 10, marginTop: 14, justifyContent: 'flex-end' }}>
                                   <button className="btn" onClick={() => { setCompleteModal(null); setReading(''); setRemarks(''); }}
                                     style={{ height: 38, padding: '0 18px', background: 'white', border: '1px solid var(--silk)', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
                                   
-                                  {qs ? (
-                                    <button onClick={() => logInspectionMut.mutate({ task, passedQty, rejectedQty, remarks, answers: questionAnswers })} disabled={logInspectionMut.isPending}
-                                      style={{ height: 38, padding: '0 22px', background: '#228B22', color: 'white', border: 'none', borderRadius: 8, fontWeight: 500, fontSize: 13, cursor: 'pointer' }}>
-                                      {logInspectionMut.isPending ? <Loader size={14} className="spin" /> : 'Log Inspection & Complete'}
-                                    </button>
-                                  ) : (
-                                    <button onClick={() => completeMut.mutate({ id: task.id, remarks, reading: passedQty.toString() })} disabled={completeMut.isPending}
-                                      style={{ height: 38, padding: '0 22px', background: '#228B22', color: 'white', border: 'none', borderRadius: 8, fontWeight: 500, fontSize: 13, cursor: 'pointer' }}>
-                                      {completeMut.isPending ? <Loader size={14} className="spin" /> : 'Complete'}
-                                    </button>
-                                  )}
+                                  <button onClick={() => logInspectionMut.mutate({ task, passedQty, rejectedQty, remarks, answers: {} })} disabled={logInspectionMut.isPending}
+                                    style={{ height: 38, padding: '0 22px', background: '#228B22', color: 'white', border: 'none', borderRadius: 8, fontWeight: 500, fontSize: 13, cursor: 'pointer' }}>
+                                    {logInspectionMut.isPending ? <Loader size={14} className="spin" /> : 'Complete'}
+                                  </button>
                                 </div>
                               </div>
                             );

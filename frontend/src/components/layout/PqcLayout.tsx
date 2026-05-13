@@ -12,6 +12,10 @@ import {
 const pqcNavItems = [
   { label: 'Dashboard', path: '/pqc/dashboard', icon: 'dashboard' },
   { label: 'Inspections', path: '/pqc/inspect', icon: 'content_paste_search' },
+  { label: 'Reports', path: '/pqc/reports', icon: 'description' },
+  { label: 'Question Sets', path: '/pqc/question-sets', icon: 'checklist' },
+  { label: 'Gauge Master', path: '/pqc/gauges', icon: 'straighten' },
+  { label: 'Operations', path: '/pqc/operations', icon: 'build' },
   { label: 'Batch Records', path: '/pqc/batch-records', icon: 'layers' },
   { label: 'Personnel', path: '/pqc/personnel', icon: 'badge' },
   { label: 'Analytics', path: '/pqc/analytics', icon: 'bar_chart' },

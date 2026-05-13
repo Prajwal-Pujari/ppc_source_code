@@ -42,8 +42,9 @@ public class PqcQuestionSetController {
     @GetMapping("/by-operation/{operationMasterId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PqcQuestionSet>> getByOperation(
-            @PathVariable UUID operationMasterId) {
-        return questionSetService.getByOperationMasterId(operationMasterId)
+            @PathVariable UUID operationMasterId,
+            @RequestParam(required = false) UUID gaugeMasterId) {
+        return questionSetService.getForOperationAndGauge(operationMasterId, gaugeMasterId)
                 .map(set -> ResponseEntity.ok(ApiResponse.success(set, "Question set found")))
                 .orElse(ResponseEntity.ok(ApiResponse.success(null, "No question set for this operation")));
     }

@@ -62,7 +62,7 @@ public class GaugeService {
 
     @Transactional(readOnly = true)
     public List<GaugeOperation> getGaugeOperations(UUID gaugeId) {
-        return gaugeOperationRepository.findByGaugeIdOrderBySequenceOrder(gaugeId);
+        return gaugeOperationRepository.findByGaugeIdWithUsersOrderBySequenceOrder(gaugeId);
     }
 
     @Transactional(readOnly = true)

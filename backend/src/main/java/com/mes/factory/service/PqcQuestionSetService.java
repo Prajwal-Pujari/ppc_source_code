@@ -17,13 +17,16 @@ public class PqcQuestionSetService {
 
     private final PqcQuestionSetRepository questionSetRepository;
     private final OperationMasterRepository operationMasterRepository;
+    private final GaugeMasterRepository gaugeMasterRepository;
     private final UserRepository userRepository;
 
     public PqcQuestionSetService(PqcQuestionSetRepository questionSetRepository,
                                   OperationMasterRepository operationMasterRepository,
+                                  GaugeMasterRepository gaugeMasterRepository,
                                   UserRepository userRepository) {
         this.questionSetRepository = questionSetRepository;
         this.operationMasterRepository = operationMasterRepository;
+        this.gaugeMasterRepository = gaugeMasterRepository;
         this.userRepository = userRepository;
     }
 
@@ -39,8 +42,14 @@ public class PqcQuestionSetService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<PqcQuestionSet> getByOperationMasterId(UUID operationMasterId) {
-        return questionSetRepository.findActiveByOperationMasterId(operationMasterId);
+    public Optional<PqcQuestionSet> getForOperationAndGauge(UUID operationMasterId, UUID gaugeMasterId) {
+        if (gaugeMasterId != null) {
+            List<PqcQuestionSet> sets = questionSetRepository.findActiveByOperationMasterIdAndGaugeMasterId(operationMasterId, gaugeMasterId);
+            if (!sets.isEmpty()) {
+                return Optional.of(sets.get(0)); // Gets the best match due to ORDER BY
+            }
+        }
+        return questionSetRepository.findActiveGlobalByOperationMasterId(operationMasterId);
     }
 
     @Transactional
@@ -51,8 +60,15 @@ public class PqcQuestionSetService {
         OperationMaster opMaster = operationMasterRepository.findById(request.getOperationMasterId())
                 .orElseThrow(() -> new ResourceNotFoundException("OperationMaster", "id", request.getOperationMasterId()));
 
+        GaugeMaster gaugeMaster = null;
+        if (request.getGaugeMasterId() != null) {
+            gaugeMaster = gaugeMasterRepository.findById(request.getGaugeMasterId())
+                    .orElseThrow(() -> new ResourceNotFoundException("GaugeMaster", "id", request.getGaugeMasterId()));
+        }
+
         PqcQuestionSet set = PqcQuestionSet.builder()
                 .operationMaster(opMaster)
+                .gaugeMaster(gaugeMaster)
                 .factory(user.getFactory())
                 .name(request.getName())
                 .inspectionFrequency(request.getInspectionFrequency())
@@ -95,6 +111,14 @@ public class PqcQuestionSetService {
             OperationMaster opMaster = operationMasterRepository.findById(request.getOperationMasterId())
                     .orElseThrow(() -> new ResourceNotFoundException("OperationMaster", "id", request.getOperationMasterId()));
             set.setOperationMaster(opMaster);
+        }
+
+        if (request.getGaugeMasterId() != null) {
+            GaugeMaster gaugeMaster = gaugeMasterRepository.findById(request.getGaugeMasterId())
+                    .orElseThrow(() -> new ResourceNotFoundException("GaugeMaster", "id", request.getGaugeMasterId()));
+            set.setGaugeMaster(gaugeMaster);
+        } else {
+            set.setGaugeMaster(null);
         }
 
         // Replace questions

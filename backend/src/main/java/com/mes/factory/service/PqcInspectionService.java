@@ -125,18 +125,49 @@ public class PqcInspectionService {
 
         inspLog = inspectionLogRepository.save(inspLog);
 
+        // ── AUTO-COMPLETE: if total passed qty >= planned qty, complete the operation ──
+        boolean autoCompleted = false;
+        int totalPassed = inspectionLogRepository.sumPassedQtyByOperationId(operation.getId());
+        int plannedQty = operation.getGauge().getBatchQuantity();
+        if (totalPassed >= plannedQty && operation.getStatus() == OperationStatus.IN_PROGRESS) {
+            operation.setStatus(OperationStatus.COMPLETED);
+            operation.setCompletedBy(inspector);
+            operation.setActualEnd(java.time.OffsetDateTime.now());
+            operation.setRemarks((operation.getRemarks() != null ? operation.getRemarks() + " | " : "") +
+                    "Auto-completed: " + totalPassed + "/" + plannedQty + " passed via PQC inspection");
+            gaugeOperationRepository.save(operation);
+            autoCompleted = true;
+            log.info("Operation {} auto-completed: {}/{} passed", operation.getOperationName(), totalPassed, plannedQty);
+
+            // Check if all operations on this gauge are done → update gauge status
+            long remaining = gaugeOperationRepository.countRemainingByGaugeId(operation.getGauge().getId());
+            if (remaining == 0) {
+                Gauge gauge = operation.getGauge();
+                gauge.setStatus(GaugeStatus.COMPLETED);
+                // gaugeRepository is not injected here — we'll save through the operation's gauge
+            }
+        }
+
         // Publish Event
         if (inspector.getFactory() != null) {
+            String eventType = autoCompleted ? "OPERATION_COMPLETED" : "PQC_INSPECTION_LOGGED";
+            String message = autoCompleted
+                    ? "Operation " + operation.getOperationName() + " auto-completed (" + totalPassed + "/" + plannedQty + " passed)"
+                    : "Inspector " + inspector.getFullName() + " logged " + request.getActualQty() + " parts for " + operation.getOperationName();
+
             eventPublisher.publishGaugeUpdate(inspector.getFactory().getId(), WebSocketEvent.builder()
-                    .eventType("PQC_INSPECTION_LOGGED")
+                    .eventType(eventType)
                     .entityId(inspLog.getId())
                     .entityType("PQC_INSPECTION")
-                    .title("Inspection Logged")
-                    .message("Inspector " + inspector.getFullName() + " logged " + request.getActualQty() + " parts for " + operation.getOperationName())
-                    .type(request.getRejectedQty() > 0 ? "warning" : "success")
+                    .title(autoCompleted ? "Operation Auto-Completed" : "Inspection Logged")
+                    .message(message)
+                    .type(autoCompleted ? "success" : (request.getRejectedQty() > 0 ? "warning" : "success"))
                     .data(Map.of(
                             "operationId", operation.getId().toString(),
-                            "gaugeId", operation.getGauge().getId().toString()
+                            "gaugeId", operation.getGauge().getId().toString(),
+                            "autoCompleted", String.valueOf(autoCompleted),
+                            "totalPassed", String.valueOf(totalPassed),
+                            "plannedQty", String.valueOf(plannedQty)
                     ))
                     .build());
         }

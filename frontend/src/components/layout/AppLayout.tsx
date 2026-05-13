@@ -52,6 +52,7 @@ const navSections = [
       { label: 'Gauge Master', path: '/master/gauges', icon: Database, roles: ['ADMIN'] },
       { label: 'Operations', path: '/master/operations', icon: Wrench, roles: ['ADMIN'] },
       { label: 'Customers', path: '/master/customers', icon: Users, roles: ['ADMIN'] },
+      { label: 'Question Sets', path: '/master/pqc-question-sets', icon: CheckCheck, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
     ],
   },
   {

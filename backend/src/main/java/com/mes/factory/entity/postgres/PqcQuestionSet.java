@@ -32,6 +32,11 @@ public class PqcQuestionSet {
     private OperationMaster operationMaster;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "gauge_master_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "operations", "factory"})
+    private GaugeMaster gaugeMaster;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "factory_id", nullable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Factory factory;

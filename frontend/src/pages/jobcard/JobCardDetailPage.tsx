@@ -6,7 +6,7 @@ import { getGauge, getGaugeOperations, getGaugeNcRecords } from '@/api/gauges.ap
 import { ArrowLeft, Download, Printer, CheckCircle, Clock, PlayCircle, Pause, XCircle, AlertTriangle } from 'lucide-react';
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeCanvas } from 'qrcode.react';
 
 /* ────── Status visual config ────── */
 const statusConfig: Record<string, { color: string; bg: string; icon: any; label: string }> = {
@@ -176,7 +176,7 @@ export default function JobCardDetailPage() {
           <div style={{ textAlign: 'right', display: 'flex', gap: 20, alignItems: 'center' }}>
             {/* Verification URL QR Code */}
             <div style={{ background: 'white', padding: '6px 6px 4px', borderRadius: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-              <QRCodeSVG value={`${baseUrl}/verify/${gauge.id}`} size={54} />
+              <QRCodeCanvas value={`${baseUrl}/verify/${gauge.id}`} size={54} />
               <span style={{ fontSize: 7, fontWeight: 700, marginTop: 4, color: 'var(--charcoal)', letterSpacing: '0.05em' }}>VERIFY</span>
             </div>
             

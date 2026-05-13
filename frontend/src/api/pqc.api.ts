@@ -38,8 +38,8 @@ export const pqcApi = {
     return response.data;
   },
 
-  getQuestionSetByOperation: async (operationMasterId: string): Promise<{ data: PqcQuestionSet | null }> => {
-    const response = await api.get(`/pqc/question-sets/by-operation/${operationMasterId}`);
+  getQuestionSetByOperation: async (operationMasterId: string, gaugeMasterId?: string): Promise<{ data: PqcQuestionSet | null }> => {
+    const response = await api.get(`/pqc/question-sets/by-operation/${operationMasterId}${gaugeMasterId ? `?gaugeMasterId=${gaugeMasterId}` : ''}`);
     return response.data;
   },
 

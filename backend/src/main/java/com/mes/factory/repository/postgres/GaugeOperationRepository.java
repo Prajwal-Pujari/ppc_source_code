@@ -17,6 +17,14 @@ public interface GaugeOperationRepository extends JpaRepository<GaugeOperation, 
 
     List<GaugeOperation> findByGaugeIdOrderBySequenceOrder(UUID gaugeId);
 
+    @Query("SELECT go FROM GaugeOperation go " +
+           "LEFT JOIN FETCH go.assignedTo " +
+           "LEFT JOIN FETCH go.assignedBy " +
+           "LEFT JOIN FETCH go.completedBy " +
+           "WHERE go.gauge.id = :gaugeId " +
+           "ORDER BY go.sequenceOrder")
+    List<GaugeOperation> findByGaugeIdWithUsersOrderBySequenceOrder(@Param("gaugeId") UUID gaugeId);
+
     List<GaugeOperation> findByAssignedToIdAndStatusIn(UUID workerId, List<OperationStatus> statuses);
 
     long countByStatusAndGaugeId(OperationStatus status, UUID gaugeId);
@@ -56,8 +64,16 @@ public interface GaugeOperationRepository extends JpaRepository<GaugeOperation, 
             "AND go.scheduledEnd < CURRENT_TIMESTAMP AND go.gauge.factory.id = :factoryId")
     long countOverdueOperations(@Param("factoryId") UUID factoryId);
 
-    @Query("SELECT go FROM GaugeOperation go WHERE go.gauge.factory.id = :factoryId " +
-            "AND go.status IN :statuses ORDER BY go.gauge.serialNumber, go.sequenceOrder")
+    @Query("SELECT go FROM GaugeOperation go " +
+           "JOIN FETCH go.gauge g " +
+           "JOIN FETCH g.purchaseOrder po " +
+           "LEFT JOIN FETCH po.customer c " +
+           "LEFT JOIN FETCH g.poLineItem li " +
+           "LEFT JOIN FETCH g.gaugeMaster gm " +
+           "LEFT JOIN FETCH go.operationMaster om " +
+           "WHERE g.factory.id = :factoryId " +
+           "AND go.status IN :statuses " +
+           "ORDER BY g.serialNumber, go.sequenceOrder")
     List<GaugeOperation> findByFactoryAndStatuses(@Param("factoryId") UUID factoryId,
                                                    @Param("statuses") List<OperationStatus> statuses);
 
@@ -67,6 +83,7 @@ public interface GaugeOperationRepository extends JpaRepository<GaugeOperation, 
            "LEFT JOIN FETCH po.customer c " +
            "LEFT JOIN FETCH g.poLineItem li " +
            "LEFT JOIN FETCH g.gaugeMaster gm " +
+           "LEFT JOIN FETCH go.operationMaster om " +
            "WHERE go.assignedTo.id = :workerId AND go.status IN :statuses " +
            "ORDER BY g.serialNumber, go.sequenceOrder")
     List<GaugeOperation> findWorkerTasksWithRelations(@Param("workerId") UUID workerId, @Param("statuses") List<OperationStatus> statuses);
@@ -77,6 +94,7 @@ public interface GaugeOperationRepository extends JpaRepository<GaugeOperation, 
            "LEFT JOIN FETCH po.customer c " +
            "LEFT JOIN FETCH g.poLineItem li " +
            "LEFT JOIN FETCH g.gaugeMaster gm " +
+           "LEFT JOIN FETCH go.operationMaster om " +
            "WHERE g.factory.id = :factoryId " +
            "AND go.status IN :statuses " +
            "AND po.status IN ('CONFIRMED', 'IN_PROGRESS') " +

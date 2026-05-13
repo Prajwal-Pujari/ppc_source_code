@@ -165,6 +165,7 @@ export interface PqcQuestion {
 export interface PqcQuestionSet {
   id: string;
   operationMaster: OperationMaster;
+  gaugeMaster?: GaugeMaster;
   name: string;
   inspectionFrequency: string;
   isActive: boolean;
@@ -179,4 +180,47 @@ export interface CompletionProgress {
   totalPassedQty: number;
   totalActualQty: number;
   readyForCompletion: boolean;
+}
+
+export interface PqcMeasurement {
+  questionId: string;
+  parameterName: string;
+  expectedAnswer?: string;
+  minValue?: number;
+  maxValue?: number;
+  unit?: string;
+  actualValue?: any;
+}
+
+export interface PqcBatchLog {
+  logId: string;
+  logTime: string;
+  inspectorName: string;
+  inspectedQty: number;
+  passedQty: number;
+  rejectedQty: number;
+  reworkQty: number;
+  scrapQty: number;
+  remarks?: string;
+  measurements: PqcMeasurement[];
+}
+
+export interface QualityReportOperation {
+  operationId: string;
+  operationName: string;
+  sequenceOrder: number;
+  batches: PqcBatchLog[];
+}
+
+export interface QualityReportDto {
+  poId: string;
+  poNumber: string;
+  customerName: string;
+  gaugeId: string;
+  serialNumber: string;
+  partName: string;
+  targetQuantity: number;
+  reportType: string;
+  generatedAt: string;
+  operations: QualityReportOperation[];
 }

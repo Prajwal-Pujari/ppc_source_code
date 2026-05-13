@@ -15,6 +15,8 @@ public class CreateQuestionSetRequest {
     @NotNull
     private UUID operationMasterId;
 
+    private UUID gaugeMasterId; // Optional: Link to a specific Part/Item
+
     @NotBlank
     private String name;
 
