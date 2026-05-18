@@ -67,6 +67,7 @@ public interface GaugeOperationRepository extends JpaRepository<GaugeOperation, 
            "LEFT JOIN FETCH po.customer c " +
            "LEFT JOIN FETCH g.poLineItem li " +
            "LEFT JOIN FETCH g.gaugeMaster gm " +
+           "LEFT JOIN FETCH go.operationMaster om " +
            "WHERE go.assignedTo.id = :workerId AND go.status IN :statuses " +
            "ORDER BY g.serialNumber, go.sequenceOrder")
     List<GaugeOperation> findWorkerTasksWithRelations(@Param("workerId") UUID workerId, @Param("statuses") List<OperationStatus> statuses);
@@ -77,6 +78,7 @@ public interface GaugeOperationRepository extends JpaRepository<GaugeOperation, 
            "LEFT JOIN FETCH po.customer c " +
            "LEFT JOIN FETCH g.poLineItem li " +
            "LEFT JOIN FETCH g.gaugeMaster gm " +
+           "LEFT JOIN FETCH go.operationMaster om " +
            "WHERE g.factory.id = :factoryId " +
            "AND go.status IN :statuses " +
            "AND po.status IN ('CONFIRMED', 'IN_PROGRESS') " +

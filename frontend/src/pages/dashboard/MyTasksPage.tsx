@@ -5,7 +5,7 @@ import { getMyTasks, getMyTaskSummary } from '@/api/analytics.api';
 import { startOperation, completeOperation, flagIssue } from '@/api/gauge-operations.api';
 import type { GaugeOperation } from '@/types/domain.types';
 import { useNavigate } from 'react-router-dom';
-import { Play, CheckCircle, AlertTriangle, Clock, ListChecks, Loader, Wrench, ChevronDown, FileText } from 'lucide-react';
+import { Play, CheckCircle, AlertTriangle, Clock, ListChecks, Loader, Wrench, ChevronDown, FileText, Search, Filter } from 'lucide-react';
 import OperationFlowLoader from '@/components/ui/loader/OperationFlowLoader';
 
 type TabKey = 'in_progress' | 'queued' | 'all';
@@ -33,6 +33,8 @@ export default function MyTasksPage() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<TabKey>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [customerFilter, setCustomerFilter] = useState('');
   const [completeModal, setCompleteModal] = useState<string | null>(null);
   const [remarks, setRemarks] = useState('');
   const [reading, setReading] = useState('');
@@ -67,10 +69,43 @@ export default function MyTasksPage() {
   const activeTasks = tasks.filter((t: GaugeOperation) => t.status !== 'COMPLETED');
   const completedCount = tasks.length - activeTasks.length;
 
-  const filteredTasks = activeTasks.filter((t: GaugeOperation) => {
-    if (activeTab === 'in_progress') return t.status === 'IN_PROGRESS';
-    if (activeTab === 'queued') return t.status === 'QUEUED' || t.status === 'PENDING';
-    return true;
+  const uniqueCustomers = Array.from(
+    new Set(activeTasks.map((t: any) => t.gauge?.purchaseOrder?.customer?.name || t.gauge?.purchaseOrder?.customerName).filter(Boolean))
+  ).sort() as string[];
+
+  const filteredTasks = activeTasks.filter((t: any) => {
+    if (activeTab === 'in_progress' && t.status !== 'IN_PROGRESS') return false;
+    if (activeTab === 'queued' && t.status !== 'QUEUED' && t.status !== 'PENDING') return false;
+
+    const opName = t.operationName?.toLowerCase() || '';
+    const opCode = t.operationMaster?.operationCode?.toLowerCase() || '';
+    const opNo = t.sequenceOrder?.toString() || '';
+    const serialNo = t.gauge?.serialNumber?.toLowerCase() || '';
+    const custName = (t.gauge?.purchaseOrder?.customer?.name || t.gauge?.purchaseOrder?.customerName || '').toLowerCase();
+    
+    const term = searchTerm.toLowerCase();
+    const tokens = term.split(/\s+/).filter(Boolean);
+    
+    const cleanOpCode = opCode.replace(/[\s\-#_]/g, '');
+    const cleanOpName = opName.replace(/[\s\-#_]/g, '');
+
+    const matchesSearch = tokens.length === 0 || tokens.every(token => {
+      const cleanToken = token.replace(/[\s\-#_]/g, '');
+      const numOnly = cleanToken.replace(/^op/i, ''); // If they typed 'op10', this becomes '10'
+      const asOp = `op${numOnly}`; // Becomes 'op10'
+
+      return cleanOpName.includes(cleanToken) || 
+             cleanOpName.includes(asOp) ||
+             cleanOpCode.includes(cleanToken) || 
+             cleanOpCode.includes(asOp) ||
+             cleanOpCode.includes(numOnly) ||
+             opNo.includes(numOnly) ||
+             serialNo.includes(token);
+    });
+    
+    const matchesCustomer = !customerFilter || custName === customerFilter.toLowerCase();
+    
+    return matchesSearch && matchesCustomer;
   });
 
   /* ─── group by PO ─── */
@@ -159,14 +194,55 @@ export default function MyTasksPage() {
             }}>
               <Icon size={15} />
               {tab.label}
-              <span className="font-mono" style={{ fontSize: 12, background: active ? '#8B6914' : 'var(--silk)', color: active ? 'white' : '#807665', padding: '1px 8px', borderRadius: 999, fontWeight: 600 }}>{tab.count}</span>
+              <span style={{
+                background: active ? '#8B6914' : '#D1C5B2', color: 'white',
+                padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600
+              }}>
+                {tab.count}
+              </span>
             </button>
           );
         })}
       </div>
 
-      {/* ─── Empty State ─── */}
-      {groupedTasks.length === 0 ? (
+      {/* ─── Search & Filters ─── */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: '1 1 300px' }}>
+          <Search size={16} color="#807665" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+          <input 
+            type="text" 
+            placeholder="Search by operation name or code..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ 
+              width: '100%', height: 42, paddingLeft: 40, paddingRight: 16,
+              borderRadius: 10, border: '1px solid var(--silk)', background: 'white',
+              fontSize: 14, color: '#1B1C1A', outline: 'none', transition: 'border-color 0.2s'
+            }} 
+          />
+        </div>
+        <div style={{ position: 'relative', minWidth: 200 }}>
+          <Filter size={16} color="#807665" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+          <select 
+            value={customerFilter}
+            onChange={(e) => setCustomerFilter(e.target.value)}
+            style={{ 
+              width: '100%', height: 42, paddingLeft: 40, paddingRight: 16,
+              borderRadius: 10, border: '1px solid var(--silk)', background: 'white',
+              fontSize: 14, color: '#1B1C1A', outline: 'none', appearance: 'none', cursor: 'pointer'
+            }}
+          >
+            <option value="">All Customers</option>
+            {uniqueCustomers.map(cust => (
+              <option key={cust} value={cust}>{cust}</option>
+            ))}
+          </select>
+          <ChevronDown size={16} color="#807665" style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+        </div>
+      </div>
+
+      {/* ─── Job Cards ─── */}
+      {filteredTasks.length === 0 ? (
         <div style={{ padding: 80, textAlign: 'center', background: 'var(--warm-white)', border: '1px dashed var(--silk)', borderRadius: 10 }}>
           <Wrench size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
           <p style={{ fontSize: 18, fontWeight: 500, color: 'var(--charcoal)' }}>No tasks in this category</p>

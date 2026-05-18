@@ -21,6 +21,7 @@ import AnalyticsPage from '@/pages/analytics/AnalyticsPage';
 import AssignOperationsPage from '@/pages/operations/AssignOperationsPage';
 import NcRecordsPage from '@/pages/nc/NcRecordsPage';
 import UserManagementPage from '@/pages/settings/UserManagementPage';
+import ProductionPlanningPage from '@/pages/reports/ProductionPlanningPage';
 import './index.css';
 
 export default function App() {
@@ -45,7 +46,7 @@ export default function App() {
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/assign-operations" element={<AssignOperationsPage />} />
               <Route path="/nc-records" element={<NcRecordsPage />} />
-              <Route path="/reports" element={<PlaceholderPage title="Reports" />} />
+              <Route path="/reports" element={<ProductionPlanningPage />} />
               <Route path="/master/gauges" element={<GaugeMasterPage />} />
               <Route path="/master/operations" element={<OperationMasterPage />} />
               <Route path="/master/customers" element={<CustomerMasterPage />} />
