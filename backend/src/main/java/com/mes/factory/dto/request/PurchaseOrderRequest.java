@@ -40,8 +40,8 @@ public class PurchaseOrderRequest {
         @NotNull(message = "Gauge master ID is required")
         private UUID gaugeMasterId;
 
-        @NotNull(message = "Nominal size is required")
-        private BigDecimal nominalSize;
+        @NotBlank(message = "Nominal size is required")
+        private String nominalSize;
 
         private String sizeUnit;
 
@@ -50,6 +50,11 @@ public class PurchaseOrderRequest {
 
         private String materialGradeOverride;
         private String lineNotes;
+
+        private String toleranceType;
+        private BigDecimal higherSize;
+        private BigDecimal lowerSize;
+
         private List<OperationOverride> operations;
     }
 

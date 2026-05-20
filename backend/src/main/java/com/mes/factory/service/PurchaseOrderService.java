@@ -64,6 +64,7 @@ public class PurchaseOrderService {
     private final GaugeMasterService gaugeMasterService;
     private final QrCodeService qrCodeService;
     private final MesEventPublisher eventPublisher;
+    private final Is3455CalculationService is3455CalculationService;
 
     public PurchaseOrderService(PurchaseOrderRepository purchaseOrderRepository,
                                  PoLineItemRepository poLineItemRepository,
@@ -76,7 +77,8 @@ public class PurchaseOrderService {
                                  CustomerService customerService,
                                  GaugeMasterService gaugeMasterService,
                                  QrCodeService qrCodeService,
-                                 MesEventPublisher eventPublisher) {
+                                 MesEventPublisher eventPublisher,
+                                 Is3455CalculationService is3455CalculationService) {
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.poLineItemRepository = poLineItemRepository;
         this.gaugeRepository = gaugeRepository;
@@ -89,6 +91,7 @@ public class PurchaseOrderService {
         this.gaugeMasterService = gaugeMasterService;
         this.qrCodeService = qrCodeService;
         this.eventPublisher = eventPublisher;
+        this.is3455CalculationService = is3455CalculationService;
     }
 
     @Transactional(readOnly = true)
@@ -162,7 +165,12 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
                         .quantity(liReq.getQuantity())
                         .materialGradeOverride(liReq.getMaterialGradeOverride())
                         .lineNotes(liReq.getLineNotes())
+                        .toleranceType(liReq.getToleranceType())
+                        .higherSize(liReq.getHigherSize())
+                        .lowerSize(liReq.getLowerSize())
                         .build();
+
+                is3455CalculationService.calculateAndApplyTolerances(lineItem);
 
                 lineItem = poLineItemRepository.save(lineItem);
 
@@ -325,6 +333,21 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
                             .quantity(li.getQuantity())
                             .materialGradeOverride(li.getMaterialGradeOverride())
                             .lineNotes(li.getLineNotes())
+                            .toleranceType(li.getToleranceType())
+                            .higherSize(li.getHigherSize())
+                            .lowerSize(li.getLowerSize())
+                            .workpieceToleranceT(li.getWorkpieceToleranceT())
+                            .gaugeToleranceH(li.getGaugeToleranceH())
+                            .wearAllowanceY(li.getWearAllowanceY())
+                            .gaugeAllowanceZ(li.getGaugeAllowanceZ())
+                            .wearLimit(li.getWearLimit())
+                            .goSize(li.getGoSize())
+                            .nogoSize(li.getNogoSize())
+                            .goTolPlus(li.getGoTolPlus())
+                            .goTolMinus(li.getGoTolMinus())
+                            .nogoTolPlus(li.getNogoTolPlus())
+                            .nogoTolMinus(li.getNogoTolMinus())
+                            .nogoWearAllowanceA(li.getNogoWearAllowanceA())
                             .gaugeMaster(gmInfo)
                             .build();
                 })
@@ -351,7 +374,12 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
                 .quantity(request.getQuantity())
                 .materialGradeOverride(request.getMaterialGradeOverride())
                 .lineNotes(request.getLineNotes())
+                .toleranceType(request.getToleranceType())
+                .higherSize(request.getHigherSize())
+                .lowerSize(request.getLowerSize())
                 .build();
+
+        is3455CalculationService.calculateAndApplyTolerances(lineItem);
 
         lineItem = poLineItemRepository.save(lineItem);
         log.info("Added line item to PO {}: gauge={}, qty={}", po.getPoNumber(), gm.getGaugeTypeName(), request.getQuantity());

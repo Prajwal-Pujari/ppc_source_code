@@ -1,0 +1,1 @@
+ALTER TABLE operation_master ADD COLUMN IF NOT EXISTS is_calibration BOOLEAN DEFAULT FALSE;

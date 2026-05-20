@@ -13,6 +13,7 @@ const userSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
   role: z.enum(['ADMIN', 'SUPERVISOR', 'WORKER', 'QUALITY_INSPECTOR', 'VIEWER'] as const),
   canManageUsers: z.boolean(),
+  isCalibrationWorker: z.boolean().optional().default(false),
 });
 
 type UserForm = z.infer<typeof userSchema>;
@@ -32,6 +33,7 @@ export default function UserCreateForm({ onSuccess, onCancel }: Props) {
     defaultValues: {
       role: 'WORKER',
       canManageUsers: false,
+      isCalibrationWorker: false,
     }
   });
 
@@ -92,6 +94,13 @@ export default function UserCreateForm({ onSuccess, onCancel }: Props) {
               </label>
             </div>
           )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--warm-white)', padding: 12, borderRadius: 8 }}>
+            <input type="checkbox" {...register('isCalibrationWorker')} id="isCalibrationWorker" style={{ width: 16, height: 16 }} />
+            <label htmlFor="isCalibrationWorker" style={{ fontSize: 13, color: 'var(--charcoal)', fontWeight: 500, cursor: 'pointer' }}>
+              Assign Calibration Profession
+            </label>
+          </div>
 
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 6 }}>Password</label>

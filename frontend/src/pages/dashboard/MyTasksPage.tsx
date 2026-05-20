@@ -5,8 +5,9 @@ import { getMyTasks, getMyTaskSummary } from '@/api/analytics.api';
 import { startOperation, completeOperation, flagIssue } from '@/api/gauge-operations.api';
 import type { GaugeOperation } from '@/types/domain.types';
 import { useNavigate } from 'react-router-dom';
-import { Play, CheckCircle, AlertTriangle, Clock, ListChecks, Loader, Wrench, ChevronDown, FileText, Search, Filter } from 'lucide-react';
+import { Play, CheckCircle, AlertTriangle, Clock, ListChecks, Loader, Wrench, ChevronDown, FileText, Search, Filter, ClipboardList } from 'lucide-react';
 import OperationFlowLoader from '@/components/ui/loader/OperationFlowLoader';
+import CalibrationObservationForm from './CalibrationObservationForm';
 
 type TabKey = 'in_progress' | 'queued' | 'all';
 
@@ -42,6 +43,7 @@ export default function MyTasksPage() {
   const [flagText, setFlagText] = useState('');
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
   const [expandedPOs, setExpandedPOs] = useState<Record<string, boolean>>({});
+  const [activeObservation, setActiveObservation] = useState<{ taskId: string; gauge: any } | null>(null);
 
   useEffect(() => { setPageTitle('My Tasks'); }, [setPageTitle]);
 
@@ -310,17 +312,31 @@ export default function MyTasksPage() {
                           {/* ─── Action Buttons ─── */}
                           <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid #D1C5B2' + '33', display: 'flex', gap: 8 }}>
                             {(task.status === 'QUEUED' || task.status === 'PENDING') && (
-                              <button onClick={() => startMut.mutate(task.id)} disabled={startMut.isPending}
-                                className="gradient-copper" style={{ flex: 1, color: 'white', padding: '10px 0', borderRadius: 10, border: 'none', fontWeight: 500, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'filter .2s' }}>
-                                {startMut.isPending ? <Loader size={14} className="spin" /> : <Play size={14} />} Start Job
-                              </button>
+                              task.status === 'PENDING' && task.operationMaster?.isCalibration ? (
+                                <button disabled
+                                  style={{ flex: 1, background: '#F5F3F0', color: '#A0A0A0', padding: '10px 0', borderRadius: 10, border: '1px solid #D1C5B240', fontWeight: 500, fontSize: 12, cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                  Cannot Start (Prerequisites Pending)
+                                </button>
+                              ) : (
+                                <button onClick={() => startMut.mutate(task.id)} disabled={startMut.isPending}
+                                  className="gradient-copper" style={{ flex: 1, color: 'white', padding: '10px 0', borderRadius: 10, border: 'none', fontWeight: 500, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'filter .2s' }}>
+                                  {startMut.isPending ? <Loader size={14} className="spin" /> : <Play size={14} />} Start Job
+                                </button>
+                              )
                             )}
                             {isInProgress && (
                               <>
-                                <button onClick={() => setCompleteModal(task.id)}
-                                  style={{ flex: 1, background: '#228B22', color: 'white', padding: '10px 0', borderRadius: 10, border: 'none', fontWeight: 500, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                                  <CheckCircle size={14} /> Complete
-                                </button>
+                                {task.operationMaster?.isCalibration ? (
+                                  <button onClick={() => setActiveObservation({ taskId: task.id, gauge: task.gauge })}
+                                    style={{ flex: 1, background: '#8B6914', color: 'white', padding: '10px 0', borderRadius: 10, border: 'none', fontWeight: 500, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                    <ClipboardList size={14} /> Enter Observations
+                                  </button>
+                                ) : (
+                                  <button onClick={() => setCompleteModal(task.id)}
+                                    style={{ flex: 1, background: '#228B22', color: 'white', padding: '10px 0', borderRadius: 10, border: 'none', fontWeight: 500, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                    <CheckCircle size={14} /> Complete
+                                  </button>
+                                )}
                                 <button onClick={() => setFlagModal(task.id)}
                                   style={{ background: 'white', color: '#BA1A1A', padding: '10px 14px', borderRadius: 10, border: '1px solid #BA1A1A40', fontWeight: 500, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                                   <AlertTriangle size={14} />
@@ -479,6 +495,49 @@ export default function MyTasksPage() {
             </span>
           </div>
           <span style={{ fontSize: 13, color: '#228B22', fontWeight: 500 }}>View Completed Work →</span>
+        </div>
+      )}
+
+      {/* ─── FLOATING MODAL OVERLAY: Calibration Observations ─── */}
+      {activeObservation && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '24px'
+          }} 
+          onClick={() => setActiveObservation(null)}
+        >
+          <div 
+            style={{
+              width: '100%',
+              maxWidth: 1100,
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              background: 'white',
+              borderRadius: 12,
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid var(--silk)',
+              position: 'relative'
+            }} 
+            onClick={e => e.stopPropagation()}
+          >
+            <CalibrationObservationForm
+              gaugeOperationId={activeObservation.taskId}
+              gauge={activeObservation.gauge}
+              onClose={() => setActiveObservation(null)}
+              onCompleted={() => {
+                setActiveObservation(null);
+                invalidate();
+              }}
+            />
+          </div>
         </div>
       )}
     </div>

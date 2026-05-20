@@ -24,4 +24,5 @@ public class UserCreateRequest {
     private UserRole role;
 
     private boolean canManageUsers;
+    private boolean isCalibrationWorker;
 }

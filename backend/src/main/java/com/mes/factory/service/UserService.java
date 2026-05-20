@@ -52,6 +52,7 @@ public class UserService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole())
                 .canManageUsers(request.getRole() == UserRole.SUPERVISOR && request.isCanManageUsers())
+                .isCalibrationWorker(request.isCalibrationWorker())
                 .isActive(true)
                 .build();
 
@@ -73,6 +74,24 @@ public class UserService {
         }
 
         user.setCanManageUsers(canManage);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User toggleCalibrationWorker(UUID userId, boolean isCalibration, CustomUserDetails currentUser) {
+        // Only Admins or Supervisors with manage perms can grant permissions
+        if (!UserRole.ADMIN.name().equals(currentUser.getRole())) {
+            User currentEntity = userRepository.findById(currentUser.getUserId())
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+            if (!Boolean.TRUE.equals(currentEntity.getCanManageUsers())) {
+                throw new SecurityException("You do not have permission to modify users");
+            }
+        }
+
+        User user = userRepository.findByIdAndFactoryId(userId, currentUser.getFactoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        user.setIsCalibrationWorker(isCalibration);
         return userRepository.save(user);
     }
 }

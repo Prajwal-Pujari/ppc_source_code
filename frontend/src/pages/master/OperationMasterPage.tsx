@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useUiStore } from '@/store/uiStore';
 import { getOperationMasters, createOperationMaster, updateOperationMaster, deleteOperationMaster } from '@/api/operation-master.api';
-import { Plus, Edit2, Trash2, ExternalLink } from 'lucide-react';
+import { Plus, Edit2, Trash2, ExternalLink, ShieldCheck } from 'lucide-react';
 
 export default function OperationMasterPage() {
   const setPageTitle = useUiStore((s: any) => s.setPageTitle);
@@ -39,6 +39,7 @@ export default function OperationMasterPage() {
       skillLevel: fd.get('skillLevel'),
       instructions: fd.get('instructions'),
       isOutsourced: fd.get('isOutsourced') === 'on',
+      isCalibration: fd.get('isCalibration') === 'on',
     };
     if (editing) updateMut.mutate({ id: editing.id, d });
     else createMut.mutate(d);
@@ -90,6 +91,10 @@ export default function OperationMasterPage() {
                 <input type="checkbox" name="isOutsourced" id="isOutsourced" defaultChecked={editing?.isOutsourced || false} />
                 <label htmlFor="isOutsourced" style={{ fontSize: 13, color: 'var(--slate)' }}>Outsourced Operation</label>
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 22 }}>
+                <input type="checkbox" name="isCalibration" id="isCalibration" defaultChecked={editing?.isCalibration || false} />
+                <label htmlFor="isCalibration" style={{ fontSize: 13, color: 'var(--slate)' }}>Calibration Operation</label>
+              </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Instructions</label>
                 <textarea className="input" name="instructions" rows={2} defaultValue={editing?.instructions || ''} style={{ minHeight: 60, padding: '8px 12px' }} />
@@ -115,16 +120,17 @@ export default function OperationMasterPage() {
               <th>Std Time</th>
               <th>Skill Level</th>
               <th>Type</th>
+              <th>Category</th>
               <th style={{ width: 100 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i}>{Array.from({ length: 7 }).map((_, j) => (<td key={j}><div className="skeleton" style={{ height: 18, width: '80%' }} /></td>))}</tr>
+                <tr key={i}>{Array.from({ length: 8 }).map((_, j) => (<td key={j}><div className="skeleton" style={{ height: 18, width: '80%' }} /></td>))}</tr>
               ))
             ) : operations.length === 0 ? (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--ash)' }}>No operations found</td></tr>
+              <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: 'var(--ash)' }}>No operations found</td></tr>
             ) : (
               operations.map((op: any) => (
                 <tr key={op.id}>
@@ -147,6 +153,15 @@ export default function OperationMasterPage() {
                       </span>
                     ) : (
                       <span style={{ fontSize: 11, color: 'var(--status-completed)' }}>In-house</span>
+                    )}
+                  </td>
+                  <td>
+                    {op.isCalibration ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#4A6FA5', fontWeight: 600 }}>
+                        <ShieldCheck size={12} /> Calibration
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: 'var(--ash)' }}>Standard</span>
                     )}
                   </td>
                   <td>

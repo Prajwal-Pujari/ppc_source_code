@@ -28,13 +28,28 @@ public class WorkerTaskController {
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','WORKER')")
     public ResponseEntity<ApiResponse<List<GaugeOperation>>> getMyTasks(
             @AuthenticationPrincipal CustomUserDetails user) {
-        return ResponseEntity.ok(ApiResponse.success(gaugeOperationService.getWorkerTasks(user.getUserId())));
+        // Pass false to get normal tasks
+        return ResponseEntity.ok(ApiResponse.success(gaugeOperationService.getWorkerTasks(user.getUserId(), false)));
     }
 
     @GetMapping("/summary")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','WORKER')")
     public ResponseEntity<ApiResponse<Map<String, Long>>> getMyTaskSummary(
             @AuthenticationPrincipal CustomUserDetails user) {
-        return ResponseEntity.ok(ApiResponse.success(gaugeOperationService.getWorkerTaskSummary(user.getUserId())));
+        return ResponseEntity.ok(ApiResponse.success(gaugeOperationService.getWorkerTaskSummary(user.getUserId(), false)));
+    }
+
+    @GetMapping("/calibration")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','WORKER')")
+    public ResponseEntity<ApiResponse<List<GaugeOperation>>> getCalibrationTasks(
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return ResponseEntity.ok(ApiResponse.success(gaugeOperationService.getWorkerTasks(user.getUserId(), true)));
+    }
+
+    @GetMapping("/calibration/summary")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','WORKER')")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getCalibrationTaskSummary(
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return ResponseEntity.ok(ApiResponse.success(gaugeOperationService.getWorkerTaskSummary(user.getUserId(), true)));
     }
 }

@@ -78,6 +78,10 @@ public class User {
     @Builder.Default
     private Boolean canManageUsers = false;
 
+    @Column(name = "is_calibration_worker")
+    @Builder.Default
+    private Boolean isCalibrationWorker = false;
+
     @Column(name = "last_login_at")
     private OffsetDateTime lastLoginAt;
 

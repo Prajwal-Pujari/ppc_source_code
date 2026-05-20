@@ -16,6 +16,7 @@ import com.mes.factory.websocket.MesEventPublisher;
 import com.mes.factory.websocket.WebSocketEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,17 +35,20 @@ public class GaugeOperationService {
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final UserRepository userRepository;
     private final MesEventPublisher eventPublisher;
+    private final CalibrationObservationService calibrationObservationService;
 
     public GaugeOperationService(GaugeOperationRepository gaugeOperationRepository,
                                   GaugeRepository gaugeRepository,
                                   PurchaseOrderRepository purchaseOrderRepository,
                                   UserRepository userRepository,
-                                  MesEventPublisher eventPublisher) {
+                                  MesEventPublisher eventPublisher,
+                                  @Lazy CalibrationObservationService calibrationObservationService) {
         this.gaugeOperationRepository = gaugeOperationRepository;
         this.gaugeRepository = gaugeRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.userRepository = userRepository;
         this.eventPublisher = eventPublisher;
+        this.calibrationObservationService = calibrationObservationService;
     }
 
     @Transactional
@@ -115,6 +119,16 @@ public class GaugeOperationService {
         gaugeRepository.save(gauge);
 
         publishGaugeUpdate(gauge, "OPERATION_STARTED", operation);
+
+        // Auto-initialize calibration observations if this is a calibration operation
+        if (operation.getOperationMaster() != null && Boolean.TRUE.equals(operation.getOperationMaster().getIsCalibration())) {
+            try {
+                calibrationObservationService.initializeObservations(operationId);
+                log.info("Auto-initialized calibration observations for operation {}", operationId);
+            } catch (Exception e) {
+                log.error("Failed to auto-initialize calibration observations for operation {}", operationId, e);
+            }
+        }
 
         log.info("Started operation {} by worker {}", operationId, workerId);
         return operation;
@@ -210,33 +224,33 @@ public class GaugeOperationService {
     }
 
    @Transactional(readOnly = true)
-public List<GaugeOperation> getWorkerTasks(UUID workerId) {
+public List<GaugeOperation> getWorkerTasks(UUID workerId, boolean isCalibration) {
     User worker = userRepository.findById(workerId)
             .orElseThrow(() -> new ResourceNotFoundException("User", "id", workerId));
     UUID factoryId = worker.getFactory() != null ? worker.getFactory().getId() : null;
     if (factoryId == null) {
         return gaugeOperationRepository.findWorkerTasksWithRelations(workerId,
-                List.of(OperationStatus.QUEUED, OperationStatus.IN_PROGRESS, OperationStatus.COMPLETED));
+                List.of(OperationStatus.QUEUED, OperationStatus.IN_PROGRESS, OperationStatus.COMPLETED), isCalibration);
     }
     // Only show operations from CONFIRMED or IN_PROGRESS POs
     return gaugeOperationRepository.findByFactoryAndStatusesForConfirmedPOs(factoryId,
-            List.of(OperationStatus.PENDING, OperationStatus.QUEUED, OperationStatus.IN_PROGRESS, OperationStatus.COMPLETED));
+            List.of(OperationStatus.PENDING, OperationStatus.QUEUED, OperationStatus.IN_PROGRESS, OperationStatus.COMPLETED), isCalibration);
 }
 
     @Transactional(readOnly = true)
-public Map<String, Long> getWorkerTaskSummary(UUID workerId) {
+public Map<String, Long> getWorkerTaskSummary(UUID workerId, boolean isCalibration) {
     User worker = userRepository.findById(workerId)
             .orElseThrow(() -> new ResourceNotFoundException("User", "id", workerId));
     UUID factoryId = worker.getFactory() != null ? worker.getFactory().getId() : null;
 
     List<GaugeOperation> tasks;
     if (factoryId == null) {
-        tasks = gaugeOperationRepository.findByAssignedToIdAndStatusIn(
-                workerId, List.of(OperationStatus.QUEUED, OperationStatus.IN_PROGRESS, OperationStatus.COMPLETED));
+        tasks = gaugeOperationRepository.findWorkerTasksWithRelations(
+                workerId, List.of(OperationStatus.QUEUED, OperationStatus.IN_PROGRESS, OperationStatus.COMPLETED), isCalibration);
     } else {
         tasks = gaugeOperationRepository.findByFactoryAndStatusesForConfirmedPOs(factoryId,
                 List.of(OperationStatus.PENDING, OperationStatus.QUEUED, 
-                        OperationStatus.IN_PROGRESS, OperationStatus.COMPLETED));
+                        OperationStatus.IN_PROGRESS, OperationStatus.COMPLETED), isCalibration);
     }
 
     long queued = tasks.stream()

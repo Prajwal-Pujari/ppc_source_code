@@ -13,6 +13,7 @@ export interface User {
   role: UserRole;
   isActive: boolean;
   canManageUsers: boolean;
+  isCalibrationWorker?: boolean;
   department?: string;
   phone?: string;
 }
@@ -73,6 +74,7 @@ export interface GaugeOperation {
   operationName: string;
   sequenceOrder: number;
   status: OperationStatus;
+  operationMaster?: { id: string; operationName: string; isCalibration?: boolean };
   assignedTo?: { id: string; fullName: string; employeeCode: string };
   assignedAt?: string;
   scheduledStart?: string;
@@ -144,3 +146,25 @@ export interface DashboardSummary {
   operationsOverdue: number;
   posDueWithin7Days: number;
 }
+
+export interface CalibrationObservation {
+  id: string;
+  gaugeOperationId: string;
+  gaugeId: string;
+  unitNumber: number;
+  nominalGo: number;
+  nominalNogo: number;
+  specifiedGoPlus: number;
+  specifiedGoMinus: number;
+  specifiedNogoPlus: number;
+  specifiedNogoMinus: number;
+  wearLimit?: number;
+  observedGo: number | null;
+  observedNogo: number | null;
+  result: 'PENDING' | 'PASS' | 'FAIL';
+  remarks?: string;
+  recordedBy?: any;
+  recordedAt?: string;
+  createdAt?: string;
+}
+

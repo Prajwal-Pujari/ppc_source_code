@@ -17,6 +17,8 @@ export interface UserInfo {
   role: UserRole;
   employeeCode: string;
   factoryId: string;
+  calibrationWorker?: boolean;
+  isCalibrationWorker?: boolean;
 }
 
 export type UserRole = 'ADMIN' | 'SUPERVISOR' | 'WORKER' | 'QUALITY_INSPECTOR' | 'VIEWER';

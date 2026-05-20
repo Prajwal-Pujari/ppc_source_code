@@ -29,5 +29,6 @@ public class AuthResponse {
         private String role;
         private String employeeCode;
         private UUID factoryId;
+        private boolean isCalibrationWorker;
     }
 }

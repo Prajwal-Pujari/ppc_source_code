@@ -21,6 +21,7 @@ const navSections = [
     title: 'Work Floor',
     items: [
       { label: 'My Tasks', path: '/my-tasks', icon: ClipboardList, roles: ['WORKER'] },
+      { label: 'Calibration Tasks', path: '/calibration-tasks', icon: ClipboardList, roles: ['WORKER'], condition: (u: any) => u?.isCalibrationWorker },
       { label: 'Completed Work', path: '/completed-tasks', icon: CheckCircle, roles: ['WORKER'] },
       { label: 'Assign Operations', path: '/assign-operations', icon: Users, roles: ['SUPERVISOR', 'ADMIN'] },
     ],
@@ -57,6 +58,7 @@ const navSections = [
     title: 'System',
     items: [
       { label: 'Users', path: '/settings/users', icon: Settings, roles: ['ADMIN'] },
+      { label: 'IS 3455 Tables', path: '/settings/is3455', icon: Database, roles: ['ADMIN'] },
     ],
   },
 ];
@@ -132,7 +134,11 @@ export default function AppLayout() {
         {/* Navigation */}
         <nav style={{ flex: 1, overflow: 'auto', padding: '12px 12px' }}>
           {navSections.map((section) => {
-            const visibleItems = section.items.filter((item) => item.roles.includes(userRole));
+            const visibleItems = section.items.filter((item) => {
+              const roleMatch = item.roles.includes(userRole);
+              const conditionMatch = item.condition ? item.condition(user) : true;
+              return roleMatch && conditionMatch;
+            });
             if (visibleItems.length === 0) return null;
             return (
               <div key={section.title} style={{ marginBottom: 20 }}>

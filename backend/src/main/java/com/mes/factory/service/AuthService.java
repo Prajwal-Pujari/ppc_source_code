@@ -52,7 +52,8 @@ public class AuthService {
                     userDetails.getUsername(),
                     userDetails.getRole(),
                     userDetails.getFullName(),
-                    userDetails.getEmployeeCode()
+                    userDetails.getEmployeeCode(),
+                    userDetails.isCalibrationWorker()
             );
             String refreshToken = tokenProvider.generateRefreshToken(userDetails.getUserId());
 
@@ -73,6 +74,7 @@ public class AuthService {
                             .role(userDetails.getRole())
                             .employeeCode(userDetails.getEmployeeCode())
                             .factoryId(userDetails.getFactoryId())
+                            .isCalibrationWorker(userDetails.isCalibrationWorker())
                             .build())
                     .build();
 
@@ -97,7 +99,8 @@ public class AuthService {
                 user.getUsername(),
                 user.getRole().name(),
                 user.getFullName(),
-                user.getEmployeeCode()
+                user.getEmployeeCode(),
+                Boolean.TRUE.equals(user.getIsCalibrationWorker())
         );
 
         return AuthResponse.builder()
@@ -111,6 +114,7 @@ public class AuthService {
                         .role(user.getRole().name())
                         .employeeCode(user.getEmployeeCode())
                         .factoryId(user.getFactory() != null ? user.getFactory().getId() : null)
+                        .isCalibrationWorker(Boolean.TRUE.equals(user.getIsCalibrationWorker()))
                         .build())
                 .build();
     }

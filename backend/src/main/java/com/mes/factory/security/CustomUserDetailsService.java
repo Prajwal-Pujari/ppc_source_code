@@ -32,6 +32,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .fullName(user.getFullName())
                 .employeeCode(user.getEmployeeCode())
                 .active(user.getIsActive())
+                .isCalibrationWorker(Boolean.TRUE.equals(user.getIsCalibrationWorker()))
                 .build();
     }
 }

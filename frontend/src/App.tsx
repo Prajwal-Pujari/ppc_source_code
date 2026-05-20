@@ -7,6 +7,8 @@ import { ProtectedRoute } from '@/components/layout/AuthGuards';
 import LoginPage from '@/pages/auth/LoginPage';
 import DashboardPage from '@/pages/dashboard/DashboardPage';
 import MyTasksPage from '@/pages/dashboard/MyTasksPage';
+import CalibrationTasksPage from '@/pages/dashboard/CalibrationTasksPage';
+import CalibrationReportPage from '@/pages/jobcard/CalibrationReportPage';
 import CompletedTasksPage from '@/pages/dashboard/CompletedTasksPage';
 import PurchaseOrderListPage from '@/pages/po/PurchaseOrderListPage';
 import PurchaseOrderCreatePage from '@/pages/po/PurchaseOrderCreatePage';
@@ -21,6 +23,7 @@ import AnalyticsPage from '@/pages/analytics/AnalyticsPage';
 import AssignOperationsPage from '@/pages/operations/AssignOperationsPage';
 import NcRecordsPage from '@/pages/nc/NcRecordsPage';
 import UserManagementPage from '@/pages/settings/UserManagementPage';
+import Is3455MasterPage from '@/pages/settings/Is3455MasterPage';
 import ProductionPlanningPage from '@/pages/reports/ProductionPlanningPage';
 import './index.css';
 
@@ -37,12 +40,14 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/my-tasks" element={<MyTasksPage />} />
+              <Route path="/calibration-tasks" element={<CalibrationTasksPage />} />
               <Route path="/completed-tasks" element={<CompletedTasksPage />} />
               <Route path="/purchase-orders" element={<PurchaseOrderListPage />} />
               <Route path="/purchase-orders/new" element={<PurchaseOrderCreatePage />} />
               <Route path="/purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
               <Route path="/job-cards" element={<JobCardListPage />} />
               <Route path="/job-cards/:id" element={<JobCardDetailPage />} />
+              <Route path="/calibration-report/:id" element={<CalibrationReportPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/assign-operations" element={<AssignOperationsPage />} />
               <Route path="/nc-records" element={<NcRecordsPage />} />
@@ -51,6 +56,7 @@ export default function App() {
               <Route path="/master/operations" element={<OperationMasterPage />} />
               <Route path="/master/customers" element={<CustomerMasterPage />} />
               <Route path="/settings/users" element={<UserManagementPage />} />
+              <Route path="/settings/is3455" element={<Is3455MasterPage />} />
             </Route>
           </Route>
 

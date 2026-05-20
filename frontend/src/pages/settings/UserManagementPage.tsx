@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getUsersApi, toggleUserPermissionApi } from '@/api/users.api';
+import { getUsersApi, toggleUserPermissionApi, toggleCalibrationWorkerApi } from '@/api/users.api';
 import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import type { User } from '@/types/domain.types';
@@ -36,6 +36,16 @@ export default function UserManagementPage() {
       fetchUsers();
     } catch (error: any) {
       addNotification('Error', error.response?.data?.message || 'Failed to update permissions', 'error');
+    }
+  };
+
+  const handleToggleCalibration = async (userId: string, currentStatus: boolean) => {
+    try {
+      await toggleCalibrationWorkerApi(userId, !currentStatus);
+      addNotification('Success', 'Calibration profession updated', 'success');
+      fetchUsers();
+    } catch (error: any) {
+      addNotification('Error', error.response?.data?.message || 'Failed to update calibration status', 'error');
     }
   };
 
@@ -133,44 +143,72 @@ export default function UserManagementPage() {
                     </span>
                   </td>
                   <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                    {user.role === 'SUPERVISOR' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
-                        <span style={{ fontSize: 12, color: user.canManageUsers ? 'var(--status-completed)' : 'var(--ash)', fontWeight: 500 }}>
-                          {user.canManageUsers ? 'Can Add Users' : 'No Add Access'}
-                        </span>
-                        {isAdmin && (
-                          <button
-                            onClick={() => handleTogglePermission(user.id, user.canManageUsers)}
-                            style={{
-                              background: user.canManageUsers ? 'var(--status-completed)' : 'var(--border)',
-                              border: 'none',
-                              width: 44,
-                              height: 24,
-                              borderRadius: 12,
-                              position: 'relative',
-                              cursor: 'pointer',
-                              transition: 'background 0.3s'
-                            }}
-                          >
-                            <div style={{
-                              width: 20,
-                              height: 20,
-                              background: 'white',
-                              borderRadius: 10,
-                              position: 'absolute',
-                              top: 2,
-                              left: user.canManageUsers ? 22 : 2,
-                              transition: 'left 0.3s',
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                            }} />
-                          </button>
+                        {user.role === 'SUPERVISOR' && (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
+                            <span style={{ fontSize: 12, color: user.canManageUsers ? 'var(--status-completed)' : 'var(--ash)', fontWeight: 500 }}>
+                              {user.canManageUsers ? 'Can Add Users' : 'No Add Access'}
+                            </span>
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleTogglePermission(user.id, user.canManageUsers)}
+                                style={{
+                                  background: user.canManageUsers ? 'var(--status-completed)' : 'var(--border)',
+                                  border: 'none',
+                                  width: 44,
+                                  height: 24,
+                                  borderRadius: 12,
+                                  position: 'relative',
+                                  cursor: 'pointer',
+                                  transition: 'background 0.3s'
+                                }}
+                              >
+                                <div style={{
+                                  width: 20,
+                                  height: 20,
+                                  background: 'white',
+                                  borderRadius: 10,
+                                  position: 'absolute',
+                                  top: 2,
+                                  left: user.canManageUsers ? 22 : 2,
+                                  transition: 'left 0.3s',
+                                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                }} />
+                              </button>
+                            )}
+                          </div>
                         )}
-                      </div>
-                    ) : (
-                      <span style={{ fontSize: 12, color: 'var(--ash)' }}>
-                        {user.role === 'ADMIN' ? 'Full Access' : 'Standard Access'}
-                      </span>
-                    )}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+                          <span style={{ fontSize: 12, color: user.isCalibrationWorker ? '#8B6914' : 'var(--ash)', fontWeight: 500 }}>
+                            {user.isCalibrationWorker ? 'Calibration Prof.' : 'Standard Work'}
+                          </span>
+                          {canAddUser && (
+                            <button
+                              onClick={() => handleToggleCalibration(user.id, user.isCalibrationWorker || false)}
+                              style={{
+                                background: user.isCalibrationWorker ? '#8B6914' : 'var(--border)',
+                                border: 'none',
+                                width: 44,
+                                height: 24,
+                                borderRadius: 12,
+                                position: 'relative',
+                                cursor: 'pointer',
+                                transition: 'background 0.3s'
+                              }}
+                            >
+                              <div style={{
+                                width: 20,
+                                height: 20,
+                                background: 'white',
+                                borderRadius: 10,
+                                position: 'absolute',
+                                top: 2,
+                                left: user.isCalibrationWorker ? 22 : 2,
+                                transition: 'left 0.3s',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                              }} />
+                            </button>
+                          )}
+                        </div>
                   </td>
                 </tr>
               ))

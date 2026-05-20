@@ -39,6 +39,7 @@ export default function LoginPage() {
             role: res.data.user.role,
             employeeCode: res.data.user.employeeCode,
             factoryId: res.data.user.factoryId,
+            isCalibrationWorker: res.data.user.calibrationWorker || res.data.user.isCalibrationWorker || false,
           },
           res.data.accessToken,
           res.data.refreshToken

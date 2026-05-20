@@ -55,6 +55,7 @@ public class OperationMasterService {
         existing.setSkillLevel(updates.getSkillLevel());
         existing.setInstructions(updates.getInstructions());
         existing.setIsOutsourced(updates.getIsOutsourced());
+        existing.setIsCalibration(updates.getIsCalibration());
         return operationMasterRepository.save(existing);
     }
 

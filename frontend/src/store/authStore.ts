@@ -8,6 +8,7 @@ interface UserInfo {
   role: string;
   employeeCode: string;
   factoryId: string;
+  isCalibrationWorker?: boolean;
 }
 
 interface AuthState {

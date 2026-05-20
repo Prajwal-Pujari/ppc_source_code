@@ -12,6 +12,16 @@ export const getMyTaskSummary = async () => {
   return res.data;
 };
 
+export const getCalibrationTasks = async () => {
+  const res = await api.get<ApiResponse<GaugeOperation[]>>('/worker/tasks/calibration');
+  return res.data;
+};
+
+export const getCalibrationTaskSummary = async () => {
+  const res = await api.get<ApiResponse<Record<string, number>>>('/worker/tasks/calibration/summary');
+  return res.data;
+};
+
 export const getDashboardSummary = async () => {
   const res = await api.get<ApiResponse<DashboardSummary>>('/analytics/dashboard-summary');
   return res.data;

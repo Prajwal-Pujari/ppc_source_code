@@ -1,0 +1,2 @@
+ALTER TABLE po_line_items ALTER COLUMN nominal_size TYPE VARCHAR(100);
+ALTER TABLE gauges ALTER COLUMN nominal_size TYPE VARCHAR(100);

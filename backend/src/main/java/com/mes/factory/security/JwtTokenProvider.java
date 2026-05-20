@@ -42,7 +42,7 @@ public class JwtTokenProvider {
     }
 
     public String generateAccessToken(UUID userId, UUID factoryId, String username,
-                                       String role, String fullName, String employeeCode) {
+                                       String role, String fullName, String employeeCode, boolean isCalibrationWorker) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + accessTokenExpirationMs);
 
@@ -53,6 +53,7 @@ public class JwtTokenProvider {
                 .claim("role", role)
                 .claim("full_name", fullName)
                 .claim("employee_code", employeeCode)
+                .claim("is_calibration_worker", isCalibrationWorker)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(key, SignatureAlgorithm.HS256)

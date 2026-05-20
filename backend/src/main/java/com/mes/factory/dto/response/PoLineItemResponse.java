@@ -15,11 +15,27 @@ import java.util.UUID;
 public class PoLineItemResponse {
 
     private UUID id;
-    private BigDecimal nominalSize;
+    private String nominalSize;
     private String sizeUnit;
     private Integer quantity;
     private String materialGradeOverride;
     private String lineNotes;
+    
+    private String toleranceType;
+    private BigDecimal higherSize;
+    private BigDecimal lowerSize;
+    private BigDecimal workpieceToleranceT;
+    private BigDecimal gaugeToleranceH;
+    private BigDecimal wearAllowanceY;
+    private BigDecimal gaugeAllowanceZ;
+    private BigDecimal wearLimit;
+    private BigDecimal goSize;
+    private BigDecimal nogoSize;
+    private BigDecimal goTolPlus;
+    private BigDecimal goTolMinus;
+    private BigDecimal nogoTolPlus;
+    private BigDecimal nogoTolMinus;
+    private BigDecimal nogoWearAllowanceA;
 
     private GaugeMasterInfo gaugeMaster;
 

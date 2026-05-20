@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useUiStore } from '@/store/uiStore';
 import { createPurchaseOrder } from '@/api/purchase-orders.api';
+import { calculateIs3455 } from '@/api/is3455.api';
 import { getGaugeMasters, getGaugeMasterOperations } from '@/api/gauge-master.api';
 import { getCustomers, createCustomer } from '@/api/customers.api';
 import {
   ArrowLeft, Plus, Trash2, AlertCircle, ChevronDown,
-  X, UserPlus, Check, ChevronRight,
+  X, UserPlus, Check, ChevronRight, Info,
 } from 'lucide-react';
 import type { FieldError } from '@/types/api.types';
 
@@ -19,6 +20,9 @@ interface LineItem {
   quantity: string;
   materialGradeOverride: string;
   lineNotes: string;
+  toleranceType: string;
+  higherSize: string;
+  lowerSize: string;
 }
 
 // ─── Operation Sequence Preview ───────────────────────────────────────────────
@@ -243,6 +247,126 @@ function GaugeOperationsPreview({ gaugeMasterId }: { gaugeMasterId: string }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Live Tolerance Preview ──────────────────────────────────────────────────
+
+function LiveTolerancePreview({ nominalSize, toleranceType, higherSize, lowerSize }: { nominalSize: string; toleranceType: string; higherSize: string; lowerSize: string }) {
+  const [showFormulas, setShowFormulas] = useState(false);
+  const { data, isLoading } = useQuery({
+    queryKey: ['calc-is3455', nominalSize, toleranceType, higherSize, lowerSize],
+    queryFn: () => calculateIs3455({
+      nominalSize: nominalSize,
+      toleranceType,
+      higherSize: parseFloat(higherSize),
+      lowerSize: parseFloat(lowerSize)
+    }),
+    enabled: !!(nominalSize && toleranceType && higherSize && lowerSize && !isNaN(parseFloat(higherSize)) && !isNaN(parseFloat(lowerSize)))
+  });
+
+  if (!nominalSize || !toleranceType || !higherSize || !lowerSize) return null;
+
+  if (isLoading) return <span style={{ fontSize: 11, color: 'var(--ash)', marginTop: 8, display: 'block' }}>Calculating IS 3455 tolerances...</span>;
+
+  if (!data || !data.workpieceToleranceT) {
+    return (
+      <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, background: 'rgba(220,53,69,0.06)', border: '1px solid rgba(220,53,69,0.2)' }}>
+        <p style={{ fontSize: 11, color: 'var(--status-rejected)', margin: 0 }}>
+          No matching IS 3455 standard found for this nominal size and tolerance. H/Y/Z defaults to fallback estimation.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 12, padding: 12, borderRadius: 6, background: 'white', border: '1px solid var(--silk)', position: 'relative' }}>
+      {/* Header with info icon and matched group info */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, borderBottom: '1px solid var(--bone-white)', paddingBottom: 10 }}>
+        
+        {/* Left side: Calculation Parameters */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, flex: 1 }}>
+          <div><span style={{ fontSize: 10, color: 'var(--ash)', display: 'block' }}>T (Workpiece)</span><span style={{ fontSize: 12, fontWeight: 600, color: 'var(--copper-bronze)' }}>{data.workpieceToleranceT.toFixed(4)}</span></div>
+          <div><span style={{ fontSize: 10, color: 'var(--ash)', display: 'block' }}>H/2 (Mfg Tol)</span><span style={{ fontSize: 12, fontWeight: 600 }}>{data.gaugeToleranceH.toFixed(4)}</span></div>
+          <div><span style={{ fontSize: 10, color: 'var(--ash)', display: 'block' }}>Y (Wear Allw)</span><span style={{ fontSize: 12, fontWeight: 600 }}>{data.wearAllowanceY.toFixed(4)}</span></div>
+          <div><span style={{ fontSize: 10, color: 'var(--ash)', display: 'block' }}>Z (Gauge Allw)</span><span style={{ fontSize: 12, fontWeight: 600 }}>{data.gaugeAllowanceZ.toFixed(4)}</span></div>
+          <div><span style={{ fontSize: 10, color: 'var(--ash)', display: 'block' }}>A (NOGO Wear)</span><span style={{ fontSize: 12, fontWeight: 600 }}>{data.nogoWearAllowanceA?.toFixed(4) || '0.0000'}</span></div>
+        </div>
+
+        {/* Right side: Selected Match Info & Icon */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderLeft: '1px solid var(--silk)', paddingLeft: 12, marginLeft: 12 }}>
+          {data.matchedRange && data.matchedGrade && (
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: 10, color: 'var(--ash)', display: 'block', textTransform: 'uppercase' }}>Match Found</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--charcoal)', display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(139, 105, 20, 0.05)', padding: '2px 6px', borderRadius: 4 }}>
+                <Check size={12} color="var(--status-success)" />
+                {data.matchedRange} (IT{data.matchedGrade})
+              </span>
+            </div>
+          )}
+          <button 
+            type="button" 
+            onClick={() => setShowFormulas(!showFormulas)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: showFormulas ? 'var(--copper-bronze)' : 'var(--ash)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4 }}
+            title="Show calculation formulas"
+          >
+            <Info size={16} />
+          </button>
+        </div>
+      </div>
+
+      {showFormulas && (
+        <div style={{ marginBottom: 12, padding: 12, background: 'var(--bone-white)', borderRadius: 6, border: '1px solid var(--silk)', fontSize: 11, color: 'var(--charcoal)' }}>
+          <strong style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: 'var(--copper-bronze)' }}>
+            <Info size={14} /> IS 3455 Calculation Logic ({toleranceType})
+          </strong>
+          {toleranceType.toUpperCase() === 'PLUG' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+              <div><strong>GO Center:</strong> <span style={{ fontFamily: 'monospace' }}>Lower + Z = {lowerSize} + {data.gaugeAllowanceZ} = {data.goSize.toFixed(4)}</span></div>
+              <div><strong>NOGO Center:</strong> <span style={{ fontFamily: 'monospace' }}>Higher = {higherSize} = {data.nogoSize.toFixed(4)}</span></div>
+              
+              <div><strong>GO Tol:</strong> <span style={{ fontFamily: 'monospace' }}>Center ± H/2 = {data.goSize.toFixed(4)} ± {data.gaugeToleranceH}</span></div>
+              <div><strong>NOGO Tol:</strong> <span style={{ fontFamily: 'monospace' }}>Center ± H/2 = {data.nogoSize.toFixed(4)} ± {data.gaugeToleranceH}</span></div>
+              
+              <div><strong>Wear Limit:</strong> <span style={{ fontFamily: 'monospace' }}>Lower - Y = {lowerSize} - {data.wearAllowanceY} = {data.wearLimit.toFixed(4)}</span></div>
+              <div><strong>NOGO Wear Limit:</strong> <span style={{ fontFamily: 'monospace' }}>Higher + A = {higherSize} + {data.nogoWearAllowanceA || 0} = {(parseFloat(higherSize) + (data.nogoWearAllowanceA || 0)).toFixed(4)}</span></div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+              <div><strong>GO Center:</strong> <span style={{ fontFamily: 'monospace' }}>Higher - Z = {higherSize} - {data.gaugeAllowanceZ} = {data.goSize.toFixed(4)}</span></div>
+              <div><strong>NOGO Center:</strong> <span style={{ fontFamily: 'monospace' }}>Lower = {lowerSize} = {data.nogoSize.toFixed(4)}</span></div>
+              
+              <div><strong>GO Tol:</strong> <span style={{ fontFamily: 'monospace' }}>Center ± H/2 = {data.goSize.toFixed(4)} ± {data.gaugeToleranceH}</span></div>
+              <div><strong>NOGO Tol:</strong> <span style={{ fontFamily: 'monospace' }}>Center ± H/2 = {data.nogoSize.toFixed(4)} ± {data.gaugeToleranceH}</span></div>
+              
+              <div><strong>Wear Limit:</strong> <span style={{ fontFamily: 'monospace' }}>Higher + Y = {higherSize} + {data.wearAllowanceY} = {data.wearLimit.toFixed(4)}</span></div>
+              <div><strong>NOGO Wear Limit:</strong> <span style={{ fontFamily: 'monospace' }}>Lower - A = {lowerSize} - {data.nogoWearAllowanceA || 0} = {(parseFloat(lowerSize) - (data.nogoWearAllowanceA || 0)).toFixed(4)}</span></div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+        <div>
+          <span style={{ fontSize: 10, color: 'var(--ash)', display: 'block', textTransform: 'uppercase' }}>GO Tolerance</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--charcoal)', display: 'block' }}>{data.goSize.toFixed(4)}</span>
+          <span style={{ fontSize: 10, color: 'var(--status-success)' }}>+{data.goTolPlus.toFixed(4)}</span>
+          <br/>
+          <span style={{ fontSize: 10, color: 'var(--status-rejected)' }}>-{data.goTolMinus.toFixed(4)}</span>
+        </div>
+        <div>
+          <span style={{ fontSize: 10, color: 'var(--ash)', display: 'block', textTransform: 'uppercase' }}>NOGO Tolerance</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--charcoal)', display: 'block' }}>{data.nogoSize.toFixed(4)}</span>
+          <span style={{ fontSize: 10, color: 'var(--status-success)' }}>+{data.nogoTolPlus.toFixed(4)}</span>
+          <br/>
+          <span style={{ fontSize: 10, color: 'var(--status-rejected)' }}>-{data.nogoTolMinus.toFixed(4)}</span>
+        </div>
+        <div>
+          <span style={{ fontSize: 10, color: 'var(--ash)', display: 'block', textTransform: 'uppercase' }}>Wear Limit</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--charcoal)' }}>{data.wearLimit.toFixed(4)}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -479,6 +603,7 @@ export default function PurchaseOrderCreatePage() {
     setLines([...lines, {
       gaugeMasterId: '', gaugeTypeName: '', nominalSize: '',
       sizeUnit: 'mm', quantity: '1', materialGradeOverride: '', lineNotes: '',
+      toleranceType: '', higherSize: '', lowerSize: '',
     }]);
 
   const removeLine = (i: number) => setLines(lines.filter((_, idx) => idx !== i));
@@ -536,11 +661,14 @@ export default function PurchaseOrderCreatePage() {
       specialInstructions: instructions || null,
       lineItems: lines.map((l) => ({
         gaugeMasterId: l.gaugeMasterId,
-        nominalSize: parseFloat(l.nominalSize),
+        nominalSize: l.nominalSize,
         sizeUnit: l.sizeUnit || 'mm',
         quantity: parseInt(l.quantity, 10),
         materialGradeOverride: l.materialGradeOverride || null,
         lineNotes: l.lineNotes || null,
+        toleranceType: l.toleranceType || null,
+        higherSize: l.higherSize ? parseFloat(l.higherSize) : null,
+        lowerSize: l.lowerSize ? parseFloat(l.lowerSize) : null,
       })),
     });
   };
@@ -649,8 +777,8 @@ export default function PurchaseOrderCreatePage() {
                       </div>
                       <div>
                         <label style={{ display: 'block', fontSize: 11, color: 'var(--ash)', marginBottom: 2 }}>Nominal Size *</label>
-                        <input className="input font-mono" type="number" step="0.001" min="0" value={line.nominalSize}
-                          onChange={(e) => updateLine(i, 'nominalSize', e.target.value)} required placeholder="6.500" />
+                        <input className="input font-mono" type="text" value={line.nominalSize}
+                          onChange={(e) => updateLine(i, 'nominalSize', e.target.value)} required placeholder="e.g. 34.50g6" />
                       </div>
                       <div>
                         <label style={{ display: 'block', fontSize: 11, color: 'var(--ash)', marginBottom: 2 }}>Unit</label>
@@ -676,6 +804,40 @@ export default function PurchaseOrderCreatePage() {
                         <input className="input" value={line.lineNotes}
                           onChange={(e) => updateLine(i, 'lineNotes', e.target.value)} placeholder="Optional..." />
                       </div>
+                    </div>
+
+                    {/* Tolerance Section */}
+                    <div style={{ marginTop: 14, padding: '14px 16px', borderRadius: 8, background: 'rgba(139,105,20,0.03)', border: '1px solid rgba(139,105,20,0.12)' }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--copper-bronze)', marginBottom: 10 }}>
+                        IS 3455 Tolerance Parameters
+                      </p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 11, color: 'var(--ash)', marginBottom: 2 }}>Tolerance Type</label>
+                          <select className="input" value={line.toleranceType} onChange={(e) => updateLine(i, 'toleranceType', e.target.value)}>
+                            <option value="">None</option>
+                            <option value="PLUG">Plug Gauge</option>
+                            <option value="SNAP">Snap Gauge</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 11, color: 'var(--ash)', marginBottom: 2 }}>Higher Size (mm)</label>
+                          <input className="input font-mono" type="number" step="0.0001" value={line.higherSize}
+                            onChange={(e) => updateLine(i, 'higherSize', e.target.value)} placeholder="e.g. 25.0210" />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 11, color: 'var(--ash)', marginBottom: 2 }}>Lower Size (mm)</label>
+                          <input className="input font-mono" type="number" step="0.0001" value={line.lowerSize}
+                            onChange={(e) => updateLine(i, 'lowerSize', e.target.value)} placeholder="e.g. 25.0000" />
+                        </div>
+                      </div>
+                      
+                      <LiveTolerancePreview 
+                        nominalSize={line.nominalSize} 
+                        toleranceType={line.toleranceType} 
+                        higherSize={line.higherSize} 
+                        lowerSize={line.lowerSize} 
+                      />
                     </div>
 
                     {line.gaugeMasterId && line.nominalSize && (

@@ -69,8 +69,9 @@ public interface GaugeOperationRepository extends JpaRepository<GaugeOperation, 
            "LEFT JOIN FETCH g.gaugeMaster gm " +
            "LEFT JOIN FETCH go.operationMaster om " +
            "WHERE go.assignedTo.id = :workerId AND go.status IN :statuses " +
+           "AND (:isCalibration IS NULL OR om.isCalibration = :isCalibration OR (om.isCalibration IS NULL AND :isCalibration = false)) " +
            "ORDER BY g.serialNumber, go.sequenceOrder")
-    List<GaugeOperation> findWorkerTasksWithRelations(@Param("workerId") UUID workerId, @Param("statuses") List<OperationStatus> statuses);
+    List<GaugeOperation> findWorkerTasksWithRelations(@Param("workerId") UUID workerId, @Param("statuses") List<OperationStatus> statuses, @Param("isCalibration") Boolean isCalibration);
 
     @Query("SELECT go FROM GaugeOperation go " +
            "JOIN FETCH go.gauge g " +
@@ -82,9 +83,11 @@ public interface GaugeOperationRepository extends JpaRepository<GaugeOperation, 
            "WHERE g.factory.id = :factoryId " +
            "AND go.status IN :statuses " +
            "AND po.status IN ('CONFIRMED', 'IN_PROGRESS') " +
+           "AND (:isCalibration IS NULL OR om.isCalibration = :isCalibration OR (om.isCalibration IS NULL AND :isCalibration = false)) " +
            "ORDER BY g.serialNumber, go.sequenceOrder")
     List<GaugeOperation> findByFactoryAndStatusesForConfirmedPOs(
             @Param("factoryId") UUID factoryId,
-            @Param("statuses") List<OperationStatus> statuses);
+            @Param("statuses") List<OperationStatus> statuses,
+            @Param("isCalibration") Boolean isCalibration);
 }
 // End of Repository Interface

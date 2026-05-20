@@ -21,3 +21,8 @@ export const toggleUserPermissionApi = async (userId: string, canManage: boolean
   const res = await api.patch<ApiResponse<User>>(`/users/${userId}/permissions?canManage=${canManage}`);
   return res.data;
 };
+
+export const toggleCalibrationWorkerApi = async (userId: string, isCalibration: boolean) => {
+  const res = await api.patch<ApiResponse<User>>(`/users/${userId}/calibration-worker?isCalibration=${isCalibration}`);
+  return res.data;
+};

@@ -73,8 +73,8 @@ public class Gauge {
     @Column(name = "gauge_type_name", nullable = false)
     private String gaugeTypeName;
 
-    @Column(name = "nominal_size", nullable = false, precision = 10, scale = 4)
-    private BigDecimal nominalSize;
+    @Column(name = "nominal_size", nullable = false, length = 100)
+    private String nominalSize;
 
     @Column(name = "size_unit", length = 20)
     @Builder.Default

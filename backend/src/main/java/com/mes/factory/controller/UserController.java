@@ -59,4 +59,13 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails user) {
         return ResponseEntity.ok(ApiResponse.success(userService.toggleUserPermission(id, canManage, user)));
     }
+
+    @PatchMapping("/{id}/calibration-worker")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<ApiResponse<User>> toggleCalibrationWorker(
+            @PathVariable java.util.UUID id,
+            @RequestParam boolean isCalibration,
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return ResponseEntity.ok(ApiResponse.success(userService.toggleCalibrationWorker(id, isCalibration, user)));
+    }
 }

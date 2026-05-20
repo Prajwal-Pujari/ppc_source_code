@@ -67,6 +67,10 @@ public class OperationMaster {
     @Builder.Default
     private Boolean isOutsourced = false;
 
+    @Column(name = "is_calibration")
+    @Builder.Default
+    private Boolean isCalibration = false;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
