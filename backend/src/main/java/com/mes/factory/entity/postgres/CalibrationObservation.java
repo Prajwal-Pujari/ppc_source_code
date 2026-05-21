@@ -71,6 +71,12 @@ public class CalibrationObservation {
     @Column(name = "wear_limit", precision = 10, scale = 4)
     private BigDecimal wearLimit;
 
+    @Column(name = "higher_size", precision = 10, scale = 4)
+    private BigDecimal higherSize;
+
+    @Column(name = "lower_size", precision = 10, scale = 4)
+    private BigDecimal lowerSize;
+
     @Column(name = "observed_go", precision = 10, scale = 4)
     private BigDecimal observedGo;
 

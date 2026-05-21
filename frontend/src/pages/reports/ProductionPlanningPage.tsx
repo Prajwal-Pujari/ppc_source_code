@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useUiStore } from '@/store/uiStore';
-import { getMyTasks } from '@/api/analytics.api';
+import { getMyTasks, getCalibrationTasks } from '@/api/analytics.api';
 import type { GaugeOperation } from '@/types/domain.types';
 import { FileText, Search, Filter, AlertTriangle, CheckCircle, Clock, LayoutGrid, Table as TableIcon, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -52,9 +52,17 @@ export default function ProductionPlanningPage() {
 
   useEffect(() => { setPageTitle('Production Planning & Tracking'); }, [setPageTitle]);
 
-  // Using getMyTasks since it currently returns factory-wide operations
-  const { data, isLoading } = useQuery({ queryKey: ['factory-operations'], queryFn: getMyTasks, refetchInterval: 15000 });
-  const tasks = data?.data || [];
+  // Fetch both normal and calibration factory-wide operations
+  const { data: normalData, isLoading: isLoadingNormal } = useQuery({ queryKey: ['factory-operations'], queryFn: getMyTasks, refetchInterval: 15000 });
+  const { data: calibData, isLoading: isLoadingCalib } = useQuery({ queryKey: ['factory-calibration-operations'], queryFn: getCalibrationTasks, refetchInterval: 15000 });
+  
+  const isLoading = isLoadingNormal || isLoadingCalib;
+  
+  const tasks = useMemo(() => {
+    const normalTasks = normalData?.data || [];
+    const calibTasks = calibData?.data || [];
+    return [...normalTasks, ...calibTasks];
+  }, [normalData, calibData]);
 
   const uniqueCustomers = Array.from(
     new Set(tasks.map((t: any) => t.gauge?.purchaseOrder?.customer?.name || t.gauge?.purchaseOrder?.customerName).filter(Boolean))

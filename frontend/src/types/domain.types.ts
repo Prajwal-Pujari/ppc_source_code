@@ -166,5 +166,7 @@ export interface CalibrationObservation {
   recordedBy?: any;
   recordedAt?: string;
   createdAt?: string;
+  higherSize: number | null;
+  lowerSize: number | null;
 }
 

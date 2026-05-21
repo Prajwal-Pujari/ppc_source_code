@@ -81,6 +81,9 @@ public class CalibrationObservationService {
                 obs.setSpecifiedNogoMinus(lineItem.getNogoTolMinus());
 
                 obs.setWearLimit(lineItem.getWearLimit());
+
+                obs.setHigherSize(lineItem.getHigherSize());
+                obs.setLowerSize(lineItem.getLowerSize());
             }
 
             observations.add(obs);
@@ -93,10 +96,38 @@ public class CalibrationObservationService {
 
     /**
      * Get all observations for a calibration operation.
+     * Backfills higherSize/lowerSize from PoLineItem if they are null (for pre-existing rows).
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public List<CalibrationObservation> getObservations(UUID gaugeOperationId) {
-        return observationRepository.findByGaugeOperationIdOrderByUnitNumberAsc(gaugeOperationId);
+        List<CalibrationObservation> observations = observationRepository.findByGaugeOperationIdOrderByUnitNumberAsc(gaugeOperationId);
+        
+        boolean needsSave = false;
+        for (CalibrationObservation obs : observations) {
+            if (obs.getHigherSize() == null || obs.getLowerSize() == null) {
+                Gauge gauge = obs.getGauge();
+                if (gauge != null) {
+                    PoLineItem lineItem = gauge.getPoLineItem();
+                    if (lineItem != null) {
+                        if (obs.getHigherSize() == null && lineItem.getHigherSize() != null) {
+                            obs.setHigherSize(lineItem.getHigherSize());
+                            needsSave = true;
+                        }
+                        if (obs.getLowerSize() == null && lineItem.getLowerSize() != null) {
+                            obs.setLowerSize(lineItem.getLowerSize());
+                            needsSave = true;
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (needsSave) {
+            observations = observationRepository.saveAll(observations);
+            log.info("Backfilled higherSize/lowerSize for operation {}", gaugeOperationId);
+        }
+        
+        return observations;
     }
 
     /**

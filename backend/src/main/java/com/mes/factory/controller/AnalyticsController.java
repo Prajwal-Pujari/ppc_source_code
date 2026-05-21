@@ -31,6 +31,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/analytics")
@@ -84,14 +85,33 @@ public class AnalyticsController {
     }
 
     @GetMapping("/daily-production")
-    public ResponseEntity<ApiResponse<List<DailyProductionSummary>>> getDailyProduction(
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getDailyProduction(
             @AuthenticationPrincipal CustomUserDetails user,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.now().minusDays(30);
+        LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.now().minusDays(7);
         LocalDate end = endDate != null ? LocalDate.parse(endDate) : LocalDate.now();
-        return ResponseEntity.ok(ApiResponse.success(
-                dailyProductionSummaryRepository.findByFactoryIdAndSummaryDateBetween(user.getFactoryId(), start, end)));
+        UUID factoryId = user.getFactoryId();
+
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        LocalDate current = start;
+        while (!current.isAfter(end)) {
+            OffsetDateTime dayStart = current.atStartOfDay().atOffset(ZoneOffset.UTC);
+            OffsetDateTime dayEnd = current.plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC);
+
+            long opsCompleted = gaugeOperationRepository.sumCompletedOperationsBatchQuantityToday(factoryId, dayStart, dayEnd);
+
+            Map<String, Object> entry = new HashMap<>();
+            entry.put("summaryDate", current.toString());
+            entry.put("operationsCompleted", opsCompleted);
+            entry.put("gaugesCompleted", opsCompleted); // alias for chart compatibility
+            entry.put("gaugesRejected", 0);
+            result.add(entry);
+
+            current = current.plusDays(1);
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/worker-performance")
