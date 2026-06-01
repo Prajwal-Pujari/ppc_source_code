@@ -99,6 +99,7 @@ export default function AppLayout() {
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bone-white)' }}>
       {/* Sidebar */}
       <aside
+        className="no-print"
         style={{
           width: sidebarOpen ? 'var(--sidebar-width)' : '0px',
           minWidth: sidebarOpen ? 'var(--sidebar-width)' : '0px',
@@ -216,7 +217,7 @@ export default function AppLayout() {
       {/* Main Content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
-        <header style={{
+        <header className="no-print" style={{
           height: 'var(--header-height)', minHeight: 'var(--header-height)',
           background: 'var(--bone-white)',
           borderBottom: '1px solid rgba(212, 204, 191, 0.3)',

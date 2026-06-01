@@ -312,14 +312,11 @@ tbody tr:hover {
   background: var(--warm-gray);
 }
 
-/* ── Print Styles for Job Card ── */
+/* Print Styles */
 @media print {
   body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  /* Hide everything except the job card */
-  body > div > div > div:first-child, /* sidebar */
-  header,
-  button,
-  .btn { display: none !important; }
+  .no-print, button, .btn { display: none !important; }
+  
   #job-card-printable {
     border-radius: 0 !important;
     box-shadow: none !important;

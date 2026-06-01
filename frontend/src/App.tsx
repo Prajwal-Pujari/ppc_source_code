@@ -25,6 +25,8 @@ import NcRecordsPage from '@/pages/nc/NcRecordsPage';
 import UserManagementPage from '@/pages/settings/UserManagementPage';
 import Is3455MasterPage from '@/pages/settings/Is3455MasterPage';
 import ProductionPlanningPage from '@/pages/reports/ProductionPlanningPage';
+import BulkJobCardPrintPage from '@/pages/print/BulkJobCardPrintPage';
+import BulkCalibrationPrintPage from '@/pages/print/BulkCalibrationPrintPage';
 import './index.css';
 
 export default function App() {
@@ -37,6 +39,8 @@ export default function App() {
           <Route path="/verify/:id" element={<JobCardVerificationPage />} />
 
           <Route element={<ProtectedRoute />}>
+            <Route path="/print/po/:id/job-cards" element={<BulkJobCardPrintPage />} />
+            <Route path="/print/po/:id/calibration" element={<BulkCalibrationPrintPage />} />
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/my-tasks" element={<MyTasksPage />} />

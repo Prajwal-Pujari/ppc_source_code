@@ -6,7 +6,7 @@ import { getPurchaseOrder, getPurchaseOrderGauges, getPurchaseOrderLineItems, co
 import { getGaugeMasters } from '@/api/gauge-master.api';
 import api from '@/lib/axios';
 import type { PurchaseOrder, Gauge } from '@/types/domain.types';
-import { ArrowLeft, CheckCircle, Clock, AlertTriangle, Package, Plus, Trash2, Layers, ChevronDown, Ruler, Target, Shield } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, AlertTriangle, Package, Plus, Trash2, Layers, ChevronDown, Ruler, Target, Shield, Printer } from 'lucide-react';
 
 import PoProcessingLoader from '@/components/ui/loader/PoProcessingLoader';
 
@@ -166,6 +166,16 @@ export default function PurchaseOrderDetailPage() {
               <CheckCircle size={16} style={{ marginRight: 6 }} />
               {confirmMut.isPending ? 'Confirming…' : 'Confirm PO'}
             </button>
+          )}
+          {progress === 100 && (
+            <div style={{ display: 'flex', gap: 10 }}>
+               <button className="btn btn-secondary" onClick={() => window.open(`/print/po/${id}/job-cards`, '_blank')} style={{ minHeight: 36, fontSize: 13 }}>
+                 <Printer size={16} style={{ marginRight: 6 }} /> Print Job Cards
+               </button>
+               <button className="btn btn-primary" onClick={() => window.open(`/print/po/${id}/calibration`, '_blank')} style={{ minHeight: 36, fontSize: 13 }}>
+                 <Printer size={16} style={{ marginRight: 6 }} /> Print Calibration Reports
+               </button>
+            </div>
           )}
         </div>
 

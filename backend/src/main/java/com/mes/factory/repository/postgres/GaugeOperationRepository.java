@@ -15,7 +15,8 @@ import java.util.UUID;
 @Repository
 public interface GaugeOperationRepository extends JpaRepository<GaugeOperation, UUID> {
 
-    List<GaugeOperation> findByGaugeIdOrderBySequenceOrder(UUID gaugeId);
+    @Query("SELECT go FROM GaugeOperation go LEFT JOIN FETCH go.assignedTo WHERE go.gauge.id = :gaugeId ORDER BY go.sequenceOrder")
+    List<GaugeOperation> findByGaugeIdOrderBySequenceOrder(@Param("gaugeId") UUID gaugeId);
 
     List<GaugeOperation> findByAssignedToIdAndStatusIn(UUID workerId, List<OperationStatus> statuses);
 
