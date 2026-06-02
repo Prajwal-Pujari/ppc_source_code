@@ -56,7 +56,7 @@ export default function GaugeMasterPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [manageOpsGauge, setManageOpsGauge] = useState<any>(null);
 
-  useEffect(() => { setPageTitle('Gauge Master'); }, [setPageTitle]);
+  useEffect(() => { setPageTitle('Part / Product Master'); }, [setPageTitle]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['gauge-masters'],
@@ -100,21 +100,21 @@ export default function GaugeMasterPage() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)' }}>Gauge Types</h2>
+        <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)' }}>Part / Product Names</h2>
         <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true); }}>
-          <Plus size={16} style={{ marginRight: 6 }} /> Add Gauge Type
+          <Plus size={16} style={{ marginRight: 6 }} /> Add Part / Product Name
         </button>
       </div>
 
       {showForm && (
         <div className="card" style={{ padding: 24, marginBottom: 20 }}>
           <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, color: 'var(--charcoal)' }}>
-            {editing ? 'Edit Gauge Type' : 'New Gauge Type'}
+            {editing ? 'Edit Part / Product Name' : 'New Part / Product Name'}
           </h3>
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Gauge Type Name *</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Part / Product Name *</label>
                 <input className="input" name="gaugeTypeName" defaultValue={editing?.gaugeTypeName || ''} required placeholder="e.g. Plain Plug Gauge" />
               </div>
               <div>
@@ -151,7 +151,7 @@ export default function GaugeMasterPage() {
           <thead>
             <tr>
               <th style={{ width: 30 }}></th>
-              <th>Gauge Type</th>
+              <th>Part / Product Name</th>
               <th>Category</th>
               <th>Material Grade</th>
               <th>Unit</th>
@@ -170,7 +170,7 @@ export default function GaugeMasterPage() {
               ))
             ) : gauges.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--ash)' }}>No gauge types found</td>
+                <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--ash)' }}>No Part / Product names found</td>
               </tr>
             ) : (
               gauges.map((g: any) => (
@@ -203,7 +203,7 @@ export default function GaugeMasterPage() {
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--copper-bronze)' }}>
                           <Edit2 size={14} />
                         </button>
-                        <button onClick={() => { if (confirm('Delete this gauge type?')) deleteMut.mutate(g.id); }}
+                        <button onClick={() => { if (confirm('Delete this Part / Product name?')) deleteMut.mutate(g.id); }}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--status-rejected)' }}>
                           <Trash2 size={14} />
                         </button>

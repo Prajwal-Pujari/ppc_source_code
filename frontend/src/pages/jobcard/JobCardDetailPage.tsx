@@ -213,11 +213,11 @@ export default function JobCardDetailPage() {
           </div>
         </div>
 
-        {/* ── SECTION 2: Gauge Specifications ── */}
+        {/* ── SECTION 2: Part / Product Specifications ── */}
         <div style={{ borderBottom: '2px solid #1C1A18' }}>
-          <SectionTitle text="Gauge Specifications" />
+          <SectionTitle text="Part / Product Specifications" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
-            <Cell label="Gauge Name / Type" value={gauge.gaugeTypeName} bold borderRight />
+            <Cell label="Part / Product Name" value={gauge.gaugeTypeName} bold borderRight />
             <Cell label="Qty." value={`${gauge.batchQuantity || 1}`} mono />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>

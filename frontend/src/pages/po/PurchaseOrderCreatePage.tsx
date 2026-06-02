@@ -116,7 +116,7 @@ function GaugeOperationsPreview({ gaugeMasterId }: { gaugeMasterId: string }) {
             </div>
           ) : ops.length === 0 ? (
             <p style={{ fontSize: 12, color: 'var(--ash)', fontStyle: 'italic', textAlign: 'center', padding: '8px 0' }}>
-              No operations assigned to this gauge type yet.
+              No operations assigned to this Part / Product name yet.
             </p>
           ) : (
             <div style={{
@@ -601,9 +601,9 @@ export default function PurchaseOrderCreatePage() {
         {/* Line Items */}
         <div className="card" style={{ padding: 24, marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)' }}>Gauge Line Items</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)' }}>Part / Product Line Items</h3>
             <button type="button" className="btn btn-secondary" onClick={addLine}>
-              <Plus size={16} style={{ marginRight: 6 }} /> Add Gauge
+              <Plus size={16} style={{ marginRight: 6 }} /> Add Part / Product
             </button>
           </div>
 
@@ -616,7 +616,7 @@ export default function PurchaseOrderCreatePage() {
           {lines.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 40, color: 'var(--ash)', border: '2px dashed var(--silk)', borderRadius: 10 }}>
               <p style={{ fontSize: 14 }}>No line items added yet</p>
-              <p style={{ fontSize: 12, marginTop: 4 }}>Click "Add Gauge" to start adding gauges to this order</p>
+              <p style={{ fontSize: 12, marginTop: 4 }}>Click "Add Part / Product" to start adding parts / products to this order</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -639,9 +639,9 @@ export default function PurchaseOrderCreatePage() {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 0.6fr 0.6fr 1fr 2fr', gap: 12 }}>
                       <div>
-                        <label style={{ display: 'block', fontSize: 11, color: 'var(--ash)', marginBottom: 2 }}>Gauge Type *</label>
+                        <label style={{ display: 'block', fontSize: 11, color: 'var(--ash)', marginBottom: 2 }}>Part / Product Name *</label>
                         <select className="input" value={line.gaugeMasterId} onChange={(e) => updateLine(i, 'gaugeMasterId', e.target.value)} required>
-                          <option value="">Select gauge type...</option>
+                          <option value="">Select Part / Product name...</option>
                           {gaugeMasters.map((gm: any) => (
                             <option key={gm.id} value={gm.id}>{gm.gaugeTypeName}</option>
                           ))}
@@ -685,7 +685,7 @@ export default function PurchaseOrderCreatePage() {
                       </p>
                     )}
 
-                    {/* ── Operation Sequence ── shown as soon as gauge type is picked */}
+                    {/* ── Operation Sequence ── shown as soon as Part / Product name is picked */}
                     {line.gaugeMasterId && (
                       <GaugeOperationsPreview gaugeMasterId={line.gaugeMasterId} />
                     )}

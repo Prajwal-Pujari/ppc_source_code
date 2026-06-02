@@ -51,7 +51,7 @@ export default function PurchaseOrderListPage() {
               <th>Delivery</th>
               <th>Priority</th>
               <th>Status</th>
-              <th>Gauges</th>
+              <th>Parts / Products</th>
               <th>Progress</th>
             </tr>
           </thead>

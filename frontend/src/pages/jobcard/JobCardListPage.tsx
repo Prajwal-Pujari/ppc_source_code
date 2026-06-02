@@ -259,7 +259,7 @@ export default function JobCardListPage() {
                   {selectedCustomer.name}
                 </h2>
                 <p style={{ fontSize: 12, color: 'var(--ash)', margin: '4px 0 0' }}>
-                  {selectedCustomer.pos.length} purchase order{selectedCustomer.pos.length !== 1 ? 's' : ''} • {selectedCustomer.totalGauges} total gauges
+                  {selectedCustomer.pos.length} purchase order{selectedCustomer.pos.length !== 1 ? 's' : ''} • {selectedCustomer.totalGauges} Total Parts / Products
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
@@ -349,7 +349,7 @@ export default function JobCardListPage() {
               {!selectedPO || selectedPO.gauges.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: 60, color: 'var(--ash)' }}>
                   <Layers size={36} style={{ color: 'var(--stone)', marginBottom: 8 }} />
-                  <p style={{ fontSize: 13 }}>No gauges under this PO</p>
+                  <p style={{ fontSize: 13 }}>No part / products under this PO</p>
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>

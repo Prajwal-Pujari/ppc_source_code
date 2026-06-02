@@ -38,7 +38,7 @@ export default function NcRecordsPage() {
   });
   const gaugesList = gaugesData?.data?.content || [];
 
-  // Get selected gauge's operations
+  // Get selected part / product's operations
   const { data: gaugeOpsData } = useQuery({
     queryKey: ['nc-gauge-ops', gaugeId],
     queryFn: async () => {
@@ -94,7 +94,7 @@ export default function NcRecordsPage() {
             <form onSubmit={handleSubmit}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Job Card (Gauge) *</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Job Card (Part / Product) *</label>
                   <select className="input" value={gaugeId} onChange={e => { setGaugeId(e.target.value); setOpId(''); }} required>
                     <option value="">Select gauge...</option>
                     {gaugesList.map((g: any) => <option key={g.id} value={g.id}>{g.serialNumber} — {g.gaugeTypeName}</option>)}

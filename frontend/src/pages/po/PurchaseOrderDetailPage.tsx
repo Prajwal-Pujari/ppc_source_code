@@ -154,7 +154,7 @@ export default function PurchaseOrderDetailPage() {
 
       {/* Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
-        <StatCard icon={<Package size={18} />} label="Total Gauges" value={po.totalGauges ?? 0} color="var(--copper-bronze)" />
+        <StatCard icon={<Package size={18} />} label="Total Parts / Products" value={po.totalGauges ?? 0} color="var(--copper-bronze)" />
         <StatCard icon={<CheckCircle size={18} />} label="Completed" value={po.completedGauges ?? 0} color="var(--status-completed)" />
         <StatCard icon={<Clock size={18} />} label="In Production" value={inProgressCount} color="var(--status-in-progress)" />
         <StatCard icon={<AlertTriangle size={18} />} label="Rejected" value={po.rejectedGauges ?? 0} color="var(--status-rejected)" />
@@ -188,7 +188,7 @@ export default function PurchaseOrderDetailPage() {
         <table>
           <thead>
             <tr>
-              <th>Gauge Type</th>
+              <th>Part / Product Name</th>
               <th>Nominal Size</th>
               <th>Unit</th>
               <th>Qty</th>
@@ -205,7 +205,7 @@ export default function PurchaseOrderDetailPage() {
             ) : lineItems.length === 0 ? (
               <tr>
                 <td colSpan={isDraft ? 7 : 6} style={{ textAlign: 'center', padding: 40, color: 'var(--ash)' }}>
-                  {isDraft ? 'No line items yet. Click "Add Item" above to add gauges to this order.' : 'No line items found.'}
+                  {isDraft ? 'No line items yet. Click "Add Item" above to Add Part / Products to this order.' : 'No line items found.'}
                 </td>
               </tr>
             ) : (
@@ -243,9 +243,9 @@ export default function PurchaseOrderDetailPage() {
             <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)', marginBottom: 20 }}>Add Line Item</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Gauge Type *</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Part / Product Name *</label>
                 <select className="input" value={newItem.gaugeMasterId} onChange={e => setNewItem(p => ({ ...p, gaugeMasterId: e.target.value }))}>
-                  <option value="">Select gauge type...</option>
+                  <option value="">Select Part / Product name...</option>
                   {gaugeMasters.map((gm: any) => <option key={gm.id} value={gm.id}>{gm.gaugeTypeName} ({gm.categoryCode})</option>)}
                 </select>
               </div>
@@ -294,7 +294,7 @@ export default function PurchaseOrderDetailPage() {
           </div>
           <table>
             <thead>
-              <tr><th>Serial Number</th><th>Gauge Type</th><th>Size</th><th>Material</th><th>Status</th><th>NC Count</th></tr>
+              <tr><th>Serial Number</th><th>Part / Product Name</th><th>Size</th><th>Material</th><th>Status</th><th>NC Count</th></tr>
             </thead>
             <tbody>
               {gaugesLoading ? (

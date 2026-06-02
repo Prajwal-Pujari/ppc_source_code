@@ -251,7 +251,7 @@ export default function MyTasksPage() {
                           </div>
 
                           <Field label="Serial Number" value={task.gauge?.serialNumber || 'N/A'} mono />
-                          <Field label="Gauge Type" value={task.gauge?.gaugeTypeName || 'N/A'} />
+                          <Field label="Part / Product Name" value={task.gauge?.gaugeTypeName || 'N/A'} />
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                             <Field label="Nominal Size" value={`${task.gauge?.nominalSize ?? 'N/A'} mm`} mono />
                             <Field label="Material" value={task.gauge?.materialGrade || 'Standard'} />

@@ -142,7 +142,7 @@ export default function CompletedTasksPage() {
                               <span className="font-mono" style={{ fontSize: 13, color: '#1B1C1A', fontWeight: 500 }}>{task.gauge?.serialNumber || 'N/A'}</span>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                              <span style={{ fontSize: 10, color: '#807665', textTransform: 'uppercase', letterSpacing: '.08em' }}>Gauge Type</span>
+                              <span style={{ fontSize: 10, color: '#807665', textTransform: 'uppercase', letterSpacing: '.08em' }}>Part / Product Name</span>
                               <span style={{ fontSize: 13, color: '#1B1C1A' }}>{task.gauge?.gaugeTypeName || 'N/A'}</span>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>

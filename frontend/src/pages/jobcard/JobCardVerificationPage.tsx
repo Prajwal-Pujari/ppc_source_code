@@ -140,9 +140,9 @@ export default function JobCardVerificationPage() {
 
             {/* Specs */}
             <div style={{ borderBottom: '2px solid #1C1A18' }}>
-              <div style={{ background: '#F5F2ED', padding: '8px 24px', fontSize: 11, fontWeight: 800, color: '#1C1A18', textTransform: 'uppercase' }}>Gauge Specifications</div>
+              <div style={{ background: '#F5F2ED', padding: '8px 24px', fontSize: 11, fontWeight: 800, color: '#1C1A18', textTransform: 'uppercase' }}>Part / Product Specifications</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
-                <Cell label="Gauge Name / Type" value={gauge.gaugeTypeName} borderRight />
+                <Cell label="Part / Product Name" value={gauge.gaugeTypeName} borderRight />
                 <Cell label="Qty." value={`${gauge.batchQuantity || 1}`} mono />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>

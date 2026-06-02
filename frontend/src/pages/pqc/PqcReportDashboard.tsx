@@ -13,11 +13,11 @@ type ReportType = 'IN_PROCESS' | 'PDIR' | 'LAYOUT' | 'FAI' | 'FAR' | 'INCOMING';
 
 const reportTypes: { id: ReportType; label: string }[] = [
   { id: 'IN_PROCESS', label: 'In-Process Report' },
-  { id: 'PDIR', label: 'PDIR' },
-  { id: 'LAYOUT', label: 'Layout Inspection' },
-  { id: 'FAI', label: 'FAI (First Article)' },
-  { id: 'FAR', label: 'FAR' },
-  { id: 'INCOMING', label: 'Incoming Inspection' },
+  // { id: 'PDIR', label: 'PDIR' },
+  // { id: 'LAYOUT', label: 'Layout Inspection' },
+  // { id: 'FAI', label: 'FAI (First Article)' },
+  // { id: 'FAR', label: 'FAR' },
+  // { id: 'INCOMING', label: 'Incoming Inspection' },
 ];
 
 /* ─── Main dashboard ─── */
@@ -46,7 +46,7 @@ export default function PqcReportDashboard() {
     enabled: !!expandedPoId,
   });
 
-  // Fetch report for the selected gauge
+  // Fetch report for the selected part / product
   const { data: reportData, isLoading: reportLoading, error: reportError } = useQuery({
     queryKey: ['pqc-report', selectedGaugeId, selectedReportType],
     queryFn: async () => {
@@ -296,14 +296,14 @@ export default function PqcReportDashboard() {
                 ) : (
                   <>
                     {selectedReportType === 'IN_PROCESS' && <InProcessReportView data={reportData} />}
-                    {selectedReportType === 'PDIR' && <PdirReportView data={reportData} />}
-                    {selectedReportType === 'LAYOUT' && <LayoutReportView data={reportData} />}
-                    {selectedReportType === 'FAI' && <FaiReportView data={reportData} />}
-                    {(selectedReportType === 'FAR' || selectedReportType === 'INCOMING') && (
+                    {/* {selectedReportType === 'PDIR' && <PdirReportView data={reportData} />} */}
+                    {/* {selectedReportType === 'LAYOUT' && <LayoutReportView data={reportData} />} */}
+                    {/* {selectedReportType === 'FAI' && <FaiReportView data={reportData} />} */}
+                    {/* {(selectedReportType === 'FAR' || selectedReportType === 'INCOMING') && (
                       <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--ash)' }}>
                         This report template is under construction.
                       </div>
-                    )}
+                    )} */}
                   </>
                 )}
               </div>

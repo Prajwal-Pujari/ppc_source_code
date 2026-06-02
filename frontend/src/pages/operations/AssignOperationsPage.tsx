@@ -68,7 +68,7 @@ export default function AssignOperationsPage() {
           <thead>
             <tr>
               <th>Job Card</th>
-              <th>Gauge Type</th>
+              <th>Part / Product Name</th>
               <th>Size / Qty</th>
               <th>Op #</th>
               <th>Operation</th>
