@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useUiStore } from '@/store/uiStore';
 import { getGauge, getGaugeOperations, getGaugeNcRecords } from '@/api/gauges.api';
-import { ArrowLeft, Download, Printer, CheckCircle, Clock, PlayCircle, Pause, XCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Download, Printer, CheckCircle, Clock, PlayCircle, Pause, XCircle, AlertTriangle, FileText } from 'lucide-react';
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { QRCodeSVG } from 'qrcode.react';
@@ -123,6 +123,13 @@ export default function JobCardDetailPage() {
           <ArrowLeft size={16} /> Back
         </button>
         <div style={{ display: 'flex', gap: 10 }}>
+          <button 
+            onClick={() => navigate(`/calibration-report/${gauge.id}`)}
+            className="btn btn-secondary" 
+            style={{ gap: 6, minHeight: 36, fontSize: 12, padding: '0 14px' }}
+          >
+            <FileText size={14} /> Calibration Report
+          </button>
           <button onClick={() => window.print()} className="btn btn-secondary" style={{ gap: 6, minHeight: 36, fontSize: 12, padding: '0 14px' }}>
             <Printer size={14} /> Print
           </button>

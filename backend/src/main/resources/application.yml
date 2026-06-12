@@ -48,6 +48,7 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     ignore-missing-migrations: true
+    ignore-migration-patterns: "*:missing"
     user: mes_db_user
     password: mes_db_password
     url: jdbc:postgresql://localhost:5433/mes_factory
