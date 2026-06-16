@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, Printer, ChevronRight, ChevronDown, FileCheck, CheckCircle2, Package, Loader2 } from 'lucide-react';
+import { Search, FileText, Printer, Download, ChevronRight, ChevronDown, FileCheck, CheckCircle2, Package, Loader2, X } from 'lucide-react';
+import html2canvas from 'html2canvas-pro';
+import { jsPDF } from 'jspdf';
 import { getPurchaseOrders, getPurchaseOrderGauges } from '@/api/purchase-orders.api';
 import { reportsApi } from '@/api/reports.api';
+import toast from 'react-hot-toast';
 import type { QualityReportDto } from '@/types/domain.types';
 import InProcessReportView from './reports/InProcessReportView';
 import PdirReportView from './reports/PdirReportView';
@@ -26,6 +29,7 @@ export default function PqcReportDashboard() {
   const [expandedPoId, setExpandedPoId] = useState<string | null>(null);
   const [selectedGaugeId, setSelectedGaugeId] = useState<string | null>(null);
   const [selectedReportType, setSelectedReportType] = useState<ReportType>('IN_PROCESS');
+  const reportRef = useRef<HTMLDivElement>(null);
 
   // Fetch all POs
   const { data: pos = [], isLoading: posLoading } = useQuery({
@@ -57,15 +61,6 @@ export default function PqcReportDashboard() {
     retry: 1,
   });
 
-  // Debug logging
-  useEffect(() => {
-    if (selectedGaugeId) console.log('[Reports] gauge selected →', selectedGaugeId);
-  }, [selectedGaugeId]);
-  useEffect(() => {
-    if (reportData) console.log('[Reports] report loaded →', reportData);
-    if (reportError) console.error('[Reports] report error →', reportError);
-  }, [reportData, reportError]);
-
   const handleTogglePo = (poId: string) => {
     if (expandedPoId === poId) {
       setExpandedPoId(null);
@@ -75,15 +70,121 @@ export default function PqcReportDashboard() {
   };
 
   const handleSelectGauge = (gaugeId: string) => {
-    console.log('[Reports] handleSelectGauge called with:', gaugeId);
     setSelectedGaugeId(gaugeId);
+  };
+
+  const [isExporting, setIsExporting] = useState<false | 'view' | 'download'>(false);
+
+  const exportPdf = async (action: 'view' | 'download') => {
+    if (!reportRef.current) return;
+    setIsExporting(action);
+    const toastId = toast.loading('Generating PDF...');
+    try {
+      // Clone the report node to avoid messing up the live view
+      const clone = reportRef.current.cloneNode(true) as HTMLElement;
+
+      // Temporarily append the clone off-screen to render it
+      clone.style.position = 'absolute';
+      clone.style.top = '-9999px';
+      clone.style.left = '-9999px';
+      clone.style.width = 'max-content';
+      clone.style.maxWidth = 'none';
+      clone.style.height = 'max-content';
+
+      const signatures = clone.querySelector('.print-signatures') as HTMLElement;
+      if (signatures) signatures.style.display = 'flex';
+
+      const scrollableDivs = clone.querySelectorAll('div');
+      scrollableDivs.forEach((div) => {
+        const style = window.getComputedStyle(div);
+        if (style.overflowX === 'auto' || style.overflowX === 'scroll' || style.overflow === 'hidden' || div.style.overflowX === 'auto') {
+          div.style.overflowX = 'visible';
+          div.style.overflow = 'visible';
+        }
+      });
+
+      document.body.appendChild(clone);
+
+      // Check if the report is chunked into discrete pages
+      const pages = clone.querySelectorAll('.pdf-page');
+
+      const html2canvasFn = typeof html2canvas === 'function' ? html2canvas : (html2canvas as any).default;
+      const pdf = new jsPDF('l', 'mm', 'a4'); // landscape
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      if (pages.length > 0) {
+        for (let i = 0; i < pages.length; i++) {
+          const pageEl = pages[i] as HTMLElement;
+          // Temporarily ensure the page is visible for html2canvas
+          pageEl.style.display = 'block';
+
+          const canvas = await html2canvasFn(pageEl, { scale: 2, useCORS: true, windowWidth: 1123 }); // 1123px is A4 width at 96dpi
+          const imgData = canvas.toDataURL('image/png');
+
+          // Calculate height proportionally to fit width
+          let imgHeight = (canvas.height * pdfWidth) / canvas.width;
+          let finalWidth = pdfWidth;
+          let xOffset = 0;
+
+          // If the rendered page is taller than an A4 page, scale it down to fit the height
+          if (imgHeight > pdfHeight) {
+            finalWidth = (canvas.width * pdfHeight) / canvas.height;
+            imgHeight = pdfHeight;
+            // Center it horizontally
+            xOffset = (pdfWidth - finalWidth) / 2;
+          }
+
+          if (i > 0) pdf.addPage();
+          pdf.addImage(imgData, 'PNG', xOffset, 0, finalWidth, imgHeight);
+        }
+      } else {
+        // Fallback for reports that are not explicitly chunked
+        const canvas = await html2canvasFn(clone, { scale: 2, useCORS: true, windowWidth: clone.scrollWidth });
+        const imgData = canvas.toDataURL('image/png');
+
+        let position = 0;
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const totalImgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, totalImgHeight);
+
+        // Handle multi-page export by slicing
+        let heightLeft = totalImgHeight - pageHeight;
+        while (heightLeft > 0) {
+          position = heightLeft - totalImgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, totalImgHeight);
+          heightLeft -= pageHeight;
+        }
+      }
+
+      if (action === 'download') {
+        const filename = `Inspection_Report_${reportData?.poNumber || 'Generated'}.pdf`;
+        pdf.save(filename);
+        toast.success('PDF downloaded successfully!', { id: toastId });
+      } else {
+        const pdfBlob = pdf.output('blob');
+        const blobUrl = URL.createObjectURL(pdfBlob);
+        window.open(blobUrl, '_blank');
+        toast.success('PDF opened in a new tab!', { id: toastId });
+      }
+
+      // Clean up the clone
+      document.body.removeChild(clone);
+    } catch (e) {
+      console.error('Failed to export PDF', e);
+      toast.error('Failed to generate PDF: ' + String(e), { id: toastId });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bone-white)' }}>
 
       {/* ─── Header ─── */}
-      <div className="hide-on-print" style={{
+      <div className="hide-on-print mobile-flex-wrap mobile-p-16" style={{
         padding: '20px 28px', background: 'white', borderBottom: '1px solid var(--silk)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
@@ -97,19 +198,30 @@ export default function PqcReportDashboard() {
           </p>
         </div>
         {selectedGaugeId && (
-          <button onClick={() => window.print()} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Printer size={16} /> Print / Export PDF
-          </button>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <button onClick={() => setSelectedGaugeId(null)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 6, border: '1px solid var(--stone)', background: 'white', cursor: 'pointer' }}>
+              <X size={16} /> Close Report
+            </button>
+            <button onClick={() => exportPdf('view')} disabled={!!isExporting} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 6, border: '1px solid var(--stone)', background: 'white', cursor: isExporting ? 'not-allowed' : 'pointer', opacity: isExporting ? 0.7 : 1 }}>
+              {isExporting === 'view' ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+              View PDF
+            </button>
+            <button onClick={() => exportPdf('download')} disabled={!!isExporting} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 6, border: 'none', background: isExporting ? 'var(--ash)' : 'var(--copper-bronze)', color: 'white', cursor: isExporting ? 'not-allowed' : 'pointer' }}>
+              {isExporting === 'download' ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              Download PDF
+            </button>
+          </div>
         )}
       </div>
 
       {/* ─── Body ─── */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div className="mobile-stack" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* ─── Left panel: PO list ─── */}
-        <div className="hide-on-print" style={{
+        <div className="hide-on-print mobile-w-full" style={{
           width: 340, minWidth: 340, background: 'white', borderRight: '1px solid var(--silk)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          maxHeight: '100%', /* On mobile this will share height with main if not scrollable, but since flex: 1 is used, it should adapt */
         }}>
           {/* Search */}
           <div style={{ padding: '16px 16px 12px' }}>
@@ -238,7 +350,7 @@ export default function PqcReportDashboard() {
         </div>
 
         {/* ─── Right panel: Report area ─── */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 28 }}>
+        <div className="mobile-p-16 mobile-w-full" style={{ flex: 1, overflowY: 'auto', padding: 28, background: 'var(--bone-white)' }}>
           {!selectedGaugeId ? (
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%',
@@ -251,7 +363,7 @@ export default function PqcReportDashboard() {
               </p>
             </div>
           ) : (
-            <div style={{ maxWidth: 920, margin: '0 auto' }}>
+            <div style={{ maxWidth: 1250, margin: '0 auto' }}>
 
               {/* Report type tabs */}
               <div className="hide-on-print" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
@@ -275,10 +387,11 @@ export default function PqcReportDashboard() {
               </div>
 
               {/* Report document */}
-              <div className="print-document" style={{
+              <div ref={reportRef} className="print-document mobile-p-16" style={{
                 background: 'white', padding: 40, borderRadius: 10,
                 boxShadow: '0 6px 24px rgba(28,26,24,0.07)', border: '1px solid var(--silk)',
                 minHeight: 800,
+                overflowX: 'auto',
               }}>
                 {reportLoading ? (
                   <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--slate)' }}>
@@ -299,11 +412,6 @@ export default function PqcReportDashboard() {
                     {/* {selectedReportType === 'PDIR' && <PdirReportView data={reportData} />} */}
                     {/* {selectedReportType === 'LAYOUT' && <LayoutReportView data={reportData} />} */}
                     {/* {selectedReportType === 'FAI' && <FaiReportView data={reportData} />} */}
-                    {/* {(selectedReportType === 'FAR' || selectedReportType === 'INCOMING') && (
-                      <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--ash)' }}>
-                        This report template is under construction.
-                      </div>
-                    )} */}
                   </>
                 )}
               </div>
