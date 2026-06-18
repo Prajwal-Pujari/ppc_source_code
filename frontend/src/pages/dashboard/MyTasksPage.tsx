@@ -4,9 +4,11 @@ import { useUiStore } from '@/store/uiStore';
 import { getMyTasks, getMyTaskSummary } from '@/api/analytics.api';
 import { startOperation, completeOperation, flagIssue } from '@/api/gauge-operations.api';
 import { pqcApi } from '@/api/pqc.api';
+import { shiftsApi, type FactoryShift } from '@/api/shifts.api';
+import { machinesApi, type MachineMaster } from '@/api/machines.api';
 import type { GaugeOperation } from '@/types/domain.types';
 import { useNavigate } from 'react-router-dom';
-import { Play, CheckCircle, AlertTriangle, Clock, ListChecks, Loader, Wrench, ChevronDown, FileText } from 'lucide-react';
+import { Play, CheckCircle, AlertTriangle, Clock, ListChecks, Loader, Wrench, ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import OperationFlowLoader from '@/components/ui/loader/OperationFlowLoader';
 
 type TabKey = 'in_progress' | 'queued' | 'all';
@@ -45,7 +47,43 @@ export default function MyTasksPage() {
   const [passedQty, setPassedQty] = useState<number>(0);
   const [rejectedQty, setRejectedQty] = useState<number>(0);
 
+  const [gamifiedModalTask, setGamifiedModalTask] = useState<any>(null);
+  const [shifts, setShifts] = useState<FactoryShift[]>([]);
+  const [machines, setMachines] = useState<MachineMaster[]>([]);
+  const [selectedShiftId, setSelectedShiftId] = useState<string>('');
+  const [selectedMachineId, setSelectedMachineId] = useState<string>('');
+
   useEffect(() => { setPageTitle('My Tasks'); }, [setPageTitle]);
+
+  useEffect(() => {
+    shiftsApi.getAll().then(res => {
+      const allShifts = res.data;
+      setShifts(allShifts);
+      const now = new Date();
+      const currentHours = now.getHours();
+      const currentMinutes = now.getMinutes();
+      const currentTimeStr = `${currentHours.toString().padStart(2, '0')}:${currentMinutes.toString().padStart(2, '0')}:00`;
+      let matchedShiftId = '';
+      for (const shift of allShifts) {
+        let start = shift.startTime;
+        let end = shift.endTime;
+        
+        // Handle Spring Boot LocalTime array format: [hour, minute]
+        if (Array.isArray(start)) start = `${String(start[0]).padStart(2, '0')}:${String(start[1]).padStart(2, '0')}:00`;
+        if (Array.isArray(end)) end = `${String(end[0]).padStart(2, '0')}:${String(end[1]).padStart(2, '0')}:00`;
+
+        if (start <= end) {
+          if (currentTimeStr >= start && currentTimeStr <= end) { matchedShiftId = shift.id; break; }
+        } else {
+          if (currentTimeStr >= start || currentTimeStr <= end) { matchedShiftId = shift.id; break; }
+        }
+      }
+      if (matchedShiftId) { setSelectedShiftId(matchedShiftId); }
+      else if (allShifts.length > 0) { setSelectedShiftId(allShifts[0].id); }
+    }).catch(console.error);
+
+    machinesApi.getAll().then(res => setMachines(res.data)).catch(console.error);
+  }, []);
 
   /* ─── queries ─── */
   const { data, isLoading } = useQuery({ queryKey: ['worker-tasks'], queryFn: getMyTasks, refetchInterval: 15000 });
@@ -55,10 +93,12 @@ export default function MyTasksPage() {
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ['worker-tasks'] }); queryClient.invalidateQueries({ queryKey: ['worker-task-summary'] }); };
   const startMut = useMutation({ mutationFn: (id: string) => startOperation(id), onSuccess: invalidate });
   const logInspectionMut = useMutation({
-    mutationFn: async ({ task, passedQty, rejectedQty, remarks, answers }: any) => {
+    mutationFn: async ({ task, passedQty, rejectedQty, remarks, answers, shiftId, machineId }: any) => {
       const answersArray = Object.entries(answers).map(([qId, ans]) => ({ questionId: qId, answer: ans }));
       await pqcApi.logInspection({
         gaugeOperationId: task.id,
+        shiftId,
+        machineId,
         actualQty: passedQty + rejectedQty,
         passedQty,
         rejectedQty,
@@ -67,9 +107,8 @@ export default function MyTasksPage() {
         remarks,
         questionAnswers: answersArray
       });
-      // Backend auto-completes the operation when totalPassed >= plannedQty
     },
-    onSuccess: () => { invalidate(); setCompleteModal(null); setRemarks(''); },
+    onSuccess: () => { invalidate(); setGamifiedModalTask(null); setRemarks(''); },
     onError: (err: any) => { alert('Error logging inspection: ' + err.message); }
   });
   const completeMut = useMutation({
@@ -398,9 +437,12 @@ export default function MyTasksPage() {
                                   <button className="btn" onClick={() => { setCompleteModal(null); setReading(''); setRemarks(''); }}
                                     style={{ height: 38, padding: '0 18px', background: 'white', border: '1px solid var(--silk)', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
                                   
-                                  <button onClick={() => logInspectionMut.mutate({ task, passedQty, rejectedQty, remarks, answers: {} })} disabled={logInspectionMut.isPending}
+                                  <button onClick={() => {
+                                      setCompleteModal(null);
+                                      setGamifiedModalTask({ task, passedQty, rejectedQty, remarks, answers: {} });
+                                    }}
                                     style={{ height: 38, padding: '0 22px', background: '#228B22', color: 'white', border: 'none', borderRadius: 8, fontWeight: 500, fontSize: 13, cursor: 'pointer' }}>
-                                    {logInspectionMut.isPending ? <Loader size={14} className="spin" /> : 'Complete'}
+                                    Continue <ChevronRight size={14} style={{ display: 'inline-block', verticalAlign: 'middle' }} />
                                   </button>
                                 </div>
                               </div>
@@ -451,6 +493,56 @@ export default function MyTasksPage() {
             </span>
           </div>
           <span style={{ fontSize: 13, color: '#228B22', fontWeight: 500 }}>View Completed Work →</span>
+        </div>
+      )}
+      {/* ─── GAMIFIED SHIFT/MACHINE POPUP ─── */}
+      {gamifiedModalTask && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--bone-white)', padding: 40, borderRadius: 24, width: 500, maxWidth: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ textAlign: 'center', marginBottom: 30 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, #8B6914, #6F5100)', color: 'white', marginBottom: 16 }}>
+                <CheckCircle size={32} />
+              </div>
+              <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#1B1C1A' }}>Great job!</h2>
+              <p style={{ margin: '8px 0 0', color: '#807665', fontSize: 15 }}>Just a quick check before we log this batch.</p>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#807665', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>Which Shift?</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
+                {shifts.map(s => (
+                  <button key={s.id} onClick={() => setSelectedShiftId(s.id!)} style={{
+                    padding: '12px 8px', borderRadius: 12, border: selectedShiftId === s.id ? '2px solid #8B6914' : '2px solid transparent',
+                    background: selectedShiftId === s.id ? 'rgba(139,105,20,0.1)' : 'white', cursor: 'pointer', transition: 'all 0.2s',
+                    boxShadow: selectedShiftId === s.id ? '0 4px 12px rgba(139,105,20,0.1)' : '0 2px 6px rgba(0,0,0,0.04)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4
+                  }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: selectedShiftId === s.id ? '#6F5100' : '#4E4637' }}>{s.shiftName}</span>
+                    <span className="font-mono" style={{ fontSize: 11, color: '#807665' }}>
+                      {Array.isArray(s.startTime) ? `${String(s.startTime[0]).padStart(2, '0')}:${String(s.startTime[1]).padStart(2, '0')}` : s.startTime.substring(0,5)} - {Array.isArray(s.endTime) ? `${String(s.endTime[0]).padStart(2, '0')}:${String(s.endTime[1]).padStart(2, '0')}` : s.endTime.substring(0,5)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 30 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#807665', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>Which Machine?</label>
+              <select value={selectedMachineId} onChange={e => setSelectedMachineId(e.target.value)} className="input" style={{ width: '100%', height: 48, borderRadius: 12, fontSize: 15, border: '1px solid #D1C5B2', background: 'white', color: selectedMachineId ? '#1B1C1A' : '#807665' }}>
+                <option value="" disabled>Select the machine you used...</option>
+                {machines.map(m => (
+                  <option key={m.id} value={m.id}>{m.machineCode} - {m.machineName}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={() => { setGamifiedModalTask(null); setCompleteModal(gamifiedModalTask?.task?.id); }} style={{ flex: 1, padding: '14px 0', background: 'transparent', border: '1px solid #D1C5B2', borderRadius: 12, color: '#4E4637', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Wait, go back</button>
+              <button onClick={() => logInspectionMut.mutate({ ...gamifiedModalTask, shiftId: selectedShiftId, machineId: selectedMachineId })} disabled={logInspectionMut.isPending || !selectedShiftId || !selectedMachineId} style={{ flex: 2, padding: '14px 0', background: 'linear-gradient(135deg, #228B22, #186B18)', color: 'white', border: 'none', borderRadius: 12, fontWeight: 600, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: (!selectedShiftId || !selectedMachineId) ? 0.6 : 1 }}>
+                {logInspectionMut.isPending ? <Loader size={18} className="spin" /> : <><CheckCircle size={18} /> Confirm & Log Batch</>}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

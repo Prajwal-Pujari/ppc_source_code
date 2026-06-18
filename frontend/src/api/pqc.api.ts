@@ -4,6 +4,7 @@ import type { PqcQuestionSet, CompletionProgress } from '@/types/domain.types';
 export interface PqcInspectionLogRequest {
   gaugeOperationId: string;
   shiftId?: string;
+  machineId?: string;
   actualQty: number;
   passedQty: number;
   rejectedQty: number;

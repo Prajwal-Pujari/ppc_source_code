@@ -56,6 +56,11 @@ public class PqcInspectionLog {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private FactoryShift shift;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "machine_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private MachineMaster machine;
+
     @Column(name = "planned_qty", nullable = false)
     @Builder.Default
     private Integer plannedQty = 0;

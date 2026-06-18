@@ -105,6 +105,18 @@ public class Gauge {
     @Column(name = "history_card_path", length = 500)
     private String historyCardPath;
 
+    @Column(name = "customer_logo", columnDefinition = "TEXT")
+    private String customerLogo;
+
+    @Column(name = "doc_no", length = 100)
+    private String docNo;
+
+    @Column(name = "rev_no", length = 100)
+    private String revNo;
+
+    @Column(name = "issue_date", length = 100)
+    private String issueDate;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private OffsetDateTime createdAt;

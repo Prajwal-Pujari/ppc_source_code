@@ -313,7 +313,6 @@ tbody tr:hover {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--warm-gray);
 }
-
 /* ── Print Styles for Job Card ── */
 @media print {
   body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -329,4 +328,72 @@ tbody tr:hover {
     width: 100% !important;
     max-width: 100% !important;
   }
+}
+
+/* ========================================
+   Responsive Overhaul Utilities
+   ======================================== */
+
+/* Sidebar Overlay on Mobile */
+@media (max-width: 768px) {
+  .responsive-sidebar {
+    position: fixed !important;
+    z-index: 50;
+    height: 100vh;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.1);
+  }
+  
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(28, 26, 24, 0.4);
+    z-index: 40;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .responsive-main {
+    padding: 12px !important;
+  }
+  
+  .responsive-header {
+    padding: 0 12px !important;
+  }
+
+  .responsive-header h1 {
+    font-size: 16px !important;
+  }
+
+  /* Force stack flex layouts */
+  .mobile-stack {
+    flex-direction: column !important;
+  }
+  
+  /* Full width items on mobile */
+  .mobile-w-full {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  
+  /* Flex wrap on mobile */
+  .mobile-flex-wrap {
+    flex-wrap: wrap !important;
+    gap: 16px !important;
+  }
+  
+  .mobile-p-16 {
+    padding: 16px !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .sidebar-overlay {
+    display: none !important;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

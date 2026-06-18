@@ -15,8 +15,8 @@ export interface User {
   canManageUsers: boolean;
   department?: string;
   phone?: string;
+  signature?: string;
 }
-
 export interface PurchaseOrder {
   customerName: string;
   id: string;
@@ -202,6 +202,8 @@ export interface PqcBatchLog {
   reworkQty: number;
   scrapQty: number;
   remarks?: string;
+  shiftName?: string;
+  machineName?: string;
   measurements: PqcMeasurement[];
 }
 
@@ -210,6 +212,14 @@ export interface QualityReportOperation {
   operationName: string;
   sequenceOrder: number;
   batches: PqcBatchLog[];
+}
+
+export interface ApprovalDto {
+  shiftId: string;
+  inspectionDate: string;
+  inspectorName: string;
+  signature: string;
+  approvedAt: string;
 }
 
 export interface QualityReportDto {
@@ -222,5 +232,10 @@ export interface QualityReportDto {
   targetQuantity: number;
   reportType: string;
   generatedAt: string;
+  customerLogo?: string;
+  docNo?: string;
+  revNo?: string;
+  issueDate?: string;
+  approvals: ApprovalDto[];
   operations: QualityReportOperation[];
 }

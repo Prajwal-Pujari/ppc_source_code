@@ -7,7 +7,7 @@ import { useWebSocket } from '@/websocket/useWebSocket';
 import {
   LayoutDashboard, ClipboardList, Wrench, Package, AlertTriangle,
   BarChart3, Database, FileText, Settings, Bell, Menu, LogOut,
-  ChevronRight, Users, Shield, Gauge, CheckCircle, CheckCheck, X
+  ChevronRight, Users, Shield, Gauge, CheckCircle, CheckCheck, X, ShieldCheck
 } from 'lucide-react';
 
 const navSections = [
@@ -30,6 +30,7 @@ const navSections = [
     items: [
       { label: 'Purchase Orders', path: '/purchase-orders', icon: Package, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
       { label: 'Job Cards', path: '/job-cards', icon: Gauge, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
+      { label: 'Shift Approvals', path: '/pqc/approvals', icon: ShieldCheck, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
     ],
   },
   {
@@ -52,6 +53,7 @@ const navSections = [
       { label: 'Part / Product Master', path: '/master/gauges', icon: Database, roles: ['ADMIN'] },
       { label: 'Operations', path: '/master/operations', icon: Wrench, roles: ['ADMIN'] },
       { label: 'Customers', path: '/master/customers', icon: Users, roles: ['ADMIN'] },
+      { label: 'Machine Master', path: '/master/machines', icon: Settings, roles: ['ADMIN'] },
       { label: 'Question Sets', path: '/master/pqc-question-sets', icon: CheckCheck, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
     ],
   },
@@ -98,17 +100,27 @@ export default function AppLayout() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bone-white)' }}>
+      {/* Overlay for mobile sidebar */}
+      {sidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={toggleSidebar}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
+        className="responsive-sidebar"
         style={{
           width: sidebarOpen ? 'var(--sidebar-width)' : '0px',
           minWidth: sidebarOpen ? 'var(--sidebar-width)' : '0px',
+          transform: `translateX(${sidebarOpen ? '0' : '-100%'})`,
           background: 'var(--warm-white)',
           height: '100vh',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          transition: 'all 0.3s ease',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           borderRight: sidebarOpen ? '1px solid var(--silk)' : 'none',
         }}
       >
@@ -152,6 +164,12 @@ export default function AppLayout() {
                     <Link
                       key={item.path}
                       to={item.path}
+                      onClick={() => {
+                        // Auto-close sidebar on mobile after clicking a link
+                        if (window.innerWidth <= 768 && sidebarOpen) {
+                          toggleSidebar();
+                        }
+                      }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 10,
                         padding: '9px 10px', borderRadius: 8, fontSize: 13,
@@ -240,7 +258,9 @@ export default function AppLayout() {
       {/* Main Content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
-        <header style={{
+        <header 
+          className="responsive-header"
+          style={{
           height: 'var(--header-height)', minHeight: 'var(--header-height)',
           background: 'var(--bone-white)',
           borderBottom: '1px solid rgba(212, 204, 191, 0.3)',
@@ -365,9 +385,12 @@ export default function AppLayout() {
         </header>
 
         {/* Page Content */}
-        <main style={{
-          flex: 1, overflow: 'auto', padding: 24,
-        }}>
+        <main 
+          className="responsive-main"
+          style={{
+            flex: 1, overflow: 'auto', padding: 24,
+          }}
+        >
           <Outlet />
         </main>
       </div>

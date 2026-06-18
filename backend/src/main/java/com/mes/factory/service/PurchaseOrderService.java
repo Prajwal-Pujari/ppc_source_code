@@ -21,6 +21,8 @@ import com.mes.factory.entity.postgres.User;
 import com.mes.factory.exception.BusinessException;
 import com.mes.factory.exception.ResourceNotFoundException;
 import com.mes.factory.repository.postgres.FactoryRepository;
+import com.mes.factory.repository.postgres.ReportConfigurationRepository;
+import com.mes.factory.entity.postgres.ReportConfiguration;
 import com.mes.factory.repository.postgres.GaugeMasterRepository;
 import com.mes.factory.repository.postgres.GaugeOperationRepository;
 import com.mes.factory.repository.postgres.GaugeRepository;
@@ -64,6 +66,7 @@ public class PurchaseOrderService {
     private final GaugeMasterService gaugeMasterService;
     private final QrCodeService qrCodeService;
     private final MesEventPublisher eventPublisher;
+    private final ReportConfigurationRepository reportConfigRepo;
 
     public PurchaseOrderService(PurchaseOrderRepository purchaseOrderRepository,
                                  PoLineItemRepository poLineItemRepository,
@@ -76,6 +79,7 @@ public class PurchaseOrderService {
                                  CustomerService customerService,
                                  GaugeMasterService gaugeMasterService,
                                  QrCodeService qrCodeService,
+                                 ReportConfigurationRepository reportConfigRepo,
                                  MesEventPublisher eventPublisher) {
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.poLineItemRepository = poLineItemRepository;
@@ -88,6 +92,7 @@ public class PurchaseOrderService {
         this.customerService = customerService;
         this.gaugeMasterService = gaugeMasterService;
         this.qrCodeService = qrCodeService;
+        this.reportConfigRepo = reportConfigRepo;
         this.eventPublisher = eventPublisher;
     }
 
@@ -210,6 +215,7 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
         int totalGauges = 0;
 
         List<PoLineItem> lineItems = poLineItemRepository.findByPurchaseOrderId(poId);
+        ReportConfiguration rc = reportConfigRepo.findByFactoryId(factory.getId()).orElse(null);
 
         for (PoLineItem lineItem : lineItems) {
             GaugeMaster gm = lineItem.getGaugeMaster();
@@ -233,6 +239,10 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
                             lineItem.getMaterialGradeOverride() : gm.getDefaultMaterialGrade())
                     .batchQuantity(lineItem.getQuantity())
                     .status(GaugeStatus.PENDING)
+                    .customerLogo(rc != null ? rc.getCustomerLogo() : null)
+                    .docNo(rc != null ? rc.getDocNo() : null)
+                    .revNo(rc != null ? rc.getRevNo() : null)
+                    .issueDate(rc != null ? rc.getIssueDate() : null)
                     .build();
 
             gauge = gaugeRepository.save(gauge);

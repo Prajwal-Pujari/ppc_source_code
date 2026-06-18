@@ -15,6 +15,8 @@ public class PqcInspectionLogRequest {
 
     private UUID shiftId; // Can be auto-detected or manually passed
 
+    private UUID machineId; // Gamified machine tracking
+
     @NotNull
     private Integer actualQty;
 

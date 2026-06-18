@@ -1,0 +1,1 @@
+ALTER TABLE gauges ALTER COLUMN customer_logo TYPE TEXT;

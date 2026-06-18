@@ -25,9 +25,12 @@ public class PqcReportController {
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','QUALITY_INSPECTOR')")
     public ResponseEntity<ApiResponse<QualityReportDto>> getReportByGauge(
             @PathVariable UUID gaugeId,
-            @RequestParam(defaultValue = "IN_PROCESS") String reportType) {
+            @RequestParam(defaultValue = "IN_PROCESS") String reportType,
+            @RequestParam(required = false) UUID shiftId,
+            @RequestParam(required = false) UUID operationId,
+            @RequestParam(required = false) String filterDate) {
         
-        QualityReportDto report = pqcReportService.generateReport(gaugeId, reportType);
+        QualityReportDto report = pqcReportService.generateReport(gaugeId, reportType, shiftId, operationId, filterDate);
         return ResponseEntity.ok(ApiResponse.success(report, "Report generated successfully"));
     }
 }

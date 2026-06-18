@@ -6,11 +6,14 @@ import { jsPDF } from 'jspdf';
 import { getPurchaseOrders, getPurchaseOrderGauges } from '@/api/purchase-orders.api';
 import { reportsApi } from '@/api/reports.api';
 import toast from 'react-hot-toast';
-import type { QualityReportDto } from '@/types/domain.types';
+import type { QualityReportDto, GaugeOperation } from '@/types/domain.types';
 import InProcessReportView from './reports/InProcessReportView';
 import PdirReportView from './reports/PdirReportView';
 import LayoutReportView from './reports/LayoutReportView';
 import FaiReportView from './reports/FaiReportView';
+import { reportConfigApi, type ReportConfiguration } from '@/api/reportConfig.api';
+import { shiftsApi, type FactoryShift } from '@/api/shifts.api';
+import { getGaugeOperations } from '@/api/gauges.api';
 
 type ReportType = 'IN_PROCESS' | 'PDIR' | 'LAYOUT' | 'FAI' | 'FAR' | 'INCOMING';
 
@@ -29,7 +32,13 @@ export default function PqcReportDashboard() {
   const [expandedPoId, setExpandedPoId] = useState<string | null>(null);
   const [selectedGaugeId, setSelectedGaugeId] = useState<string | null>(null);
   const [selectedReportType, setSelectedReportType] = useState<ReportType>('IN_PROCESS');
+  const [reportConfig, setReportConfig] = useState<ReportConfiguration | null>(null);
   const reportRef = useRef<HTMLDivElement>(null);
+
+  // Fetch report config
+  useEffect(() => {
+    reportConfigApi.get().then(res => setReportConfig(res.data)).catch(console.error);
+  }, []);
 
   // Fetch all POs
   const { data: pos = [], isLoading: posLoading } = useQuery({
@@ -50,6 +59,12 @@ export default function PqcReportDashboard() {
     enabled: !!expandedPoId,
   });
 
+  const [activeSubReport, setActiveSubReport] = useState<string>('ALL');
+
+  useEffect(() => {
+    setActiveSubReport('ALL');
+  }, [selectedGaugeId]);
+
   // Fetch report for the selected part / product
   const { data: reportData, isLoading: reportLoading, error: reportError } = useQuery({
     queryKey: ['pqc-report', selectedGaugeId, selectedReportType],
@@ -60,6 +75,44 @@ export default function PqcReportDashboard() {
     enabled: !!selectedGaugeId,
     retry: 1,
   });
+
+  const subReports = React.useMemo(() => {
+    if (!reportData?.operations) return [];
+    const map = new Map<string, { date: string, shiftName: string }>();
+    reportData.operations.forEach(op => {
+      op.batches?.forEach(b => {
+        if (!b.shiftName) return;
+        const dateStr = new Date(b.logTime).toLocaleDateString();
+        const key = `${dateStr}_${b.shiftName}`;
+        if (!map.has(key)) {
+          map.set(key, { date: dateStr, shiftName: b.shiftName });
+        }
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [reportData]);
+
+  const filteredReportData = React.useMemo(() => {
+    if (!reportData || activeSubReport === 'ALL') return { data: reportData, matchedApproval: undefined };
+    const [filterDate, filterShift] = activeSubReport.split('_');
+    const dataClone = JSON.parse(JSON.stringify(reportData)) as QualityReportDto;
+
+    let matchedApproval = undefined;
+
+    if (dataClone.approvals) {
+      matchedApproval = dataClone.approvals.find((a: any) => a.inspectionDate === filterDate && a.shiftName === filterShift)
+        || dataClone.approvals.find((a: any) => a.inspectionDate === filterDate);
+    }
+
+    dataClone.operations = dataClone.operations.map(op => {
+      op.batches = (op.batches || []).filter(b => {
+        const d = new Date(b.logTime).toLocaleDateString();
+        return d === filterDate && b.shiftName === filterShift;
+      });
+      return op;
+    }).filter(op => op.batches.length > 0);
+    return { data: dataClone, matchedApproval };
+  }, [reportData, activeSubReport]);
 
   const handleTogglePo = (poId: string) => {
     if (expandedPoId === poId) {
@@ -87,7 +140,7 @@ export default function PqcReportDashboard() {
       clone.style.position = 'absolute';
       clone.style.top = '-9999px';
       clone.style.left = '-9999px';
-      clone.style.width = 'max-content';
+      clone.style.width = '1123px';
       clone.style.maxWidth = 'none';
       clone.style.height = 'max-content';
 
@@ -200,7 +253,7 @@ export default function PqcReportDashboard() {
         {selectedGaugeId && (
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <button onClick={() => setSelectedGaugeId(null)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 6, border: '1px solid var(--stone)', background: 'white', cursor: 'pointer' }}>
-              <X size={16} /> Close Report
+              <X size={16} /> Close
             </button>
             <button onClick={() => exportPdf('view')} disabled={!!isExporting} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 6, border: '1px solid var(--stone)', background: 'white', cursor: isExporting ? 'not-allowed' : 'pointer', opacity: isExporting ? 0.7 : 1 }}>
               {isExporting === 'view' ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
@@ -350,7 +403,7 @@ export default function PqcReportDashboard() {
         </div>
 
         {/* ─── Right panel: Report area ─── */}
-        <div className="mobile-p-16 mobile-w-full" style={{ flex: 1, overflowY: 'auto', padding: 28, background: 'var(--bone-white)' }}>
+        <div className="mobile-p-16 mobile-w-full" style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', padding: 28, background: 'var(--bone-white)' }}>
           {!selectedGaugeId ? (
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%',
@@ -387,33 +440,70 @@ export default function PqcReportDashboard() {
               </div>
 
               {/* Report document */}
-              <div ref={reportRef} className="print-document mobile-p-16" style={{
-                background: 'white', padding: 40, borderRadius: 10,
-                boxShadow: '0 6px 24px rgba(28,26,24,0.07)', border: '1px solid var(--silk)',
-                minHeight: 800,
-                overflowX: 'auto',
-              }}>
-                {reportLoading ? (
-                  <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--slate)' }}>
-                    <p>Generating report…</p>
+              <div style={{ background: '#f8f9fa', padding: '24px', width: '100%', overflowX: 'auto' }}>
+
+                {/* Report Tabs / Buttons */}
+                {subReports.length > 0 && (
+                  <div className="hide-on-print" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20, width: '100%', maxWidth: '210mm' }}>
+                    <button
+                      onClick={() => setActiveSubReport('ALL')}
+                      style={{
+                        padding: '8px 16px', borderRadius: 20, border: '1px solid var(--copper-bronze)',
+                        background: activeSubReport === 'ALL' ? 'var(--copper-bronze)' : 'white',
+                        color: activeSubReport === 'ALL' ? 'white' : 'var(--copper-bronze)',
+                        cursor: 'pointer', fontWeight: 600, fontSize: 13
+                      }}
+                    >
+                      Consolidated Master Report
+                    </button>
+                    {subReports.map(sub => {
+                      const key = `${sub.date}_${sub.shiftName}`;
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => setActiveSubReport(key)}
+                          style={{
+                            padding: '8px 16px', borderRadius: 20, border: '1px solid var(--copper-bronze)',
+                            background: activeSubReport === key ? 'var(--copper-bronze)' : 'white',
+                            color: activeSubReport === key ? 'white' : 'var(--copper-bronze)',
+                            cursor: 'pointer', fontWeight: 600, fontSize: 13
+                          }}
+                        >
+                          {sub.date} - {sub.shiftName}
+                        </button>
+                      );
+                    })}
                   </div>
-                ) : reportError ? (
-                  <div style={{ textAlign: 'center', padding: '80px 0', color: '#b91c1c' }}>
-                    <p style={{ fontWeight: 600 }}>Error loading report</p>
-                    <p style={{ fontSize: 13 }}>{String((reportError as any)?.message || reportError)}</p>
-                  </div>
-                ) : !reportData ? (
-                  <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--ash)' }}>
-                    No report data available.
-                  </div>
-                ) : (
-                  <>
-                    {selectedReportType === 'IN_PROCESS' && <InProcessReportView data={reportData} />}
-                    {/* {selectedReportType === 'PDIR' && <PdirReportView data={reportData} />} */}
-                    {/* {selectedReportType === 'LAYOUT' && <LayoutReportView data={reportData} />} */}
-                    {/* {selectedReportType === 'FAI' && <FaiReportView data={reportData} />} */}
-                  </>
                 )}
+
+                <div ref={reportRef} className="print-document mobile-p-16" style={{
+                  background: 'white', padding: 40, borderRadius: 10,
+                  boxShadow: '0 6px 24px rgba(28,26,24,0.07)', border: '1px solid var(--silk)',
+                  minHeight: 800, width: 'max-content', minWidth: '100%',
+                }}>
+                  {reportLoading ? (
+                    <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--slate)' }}>
+                      <Loader2 className="animate-spin" style={{ margin: '0 auto 16px' }} />
+                      <p>Generating report…</p>
+                    </div>
+                  ) : reportError ? (
+                    <div style={{ textAlign: 'center', padding: '80px 0', color: '#b91c1c' }}>
+                      <p style={{ fontWeight: 600 }}>Error loading report</p>
+                      <p style={{ fontSize: 13 }}>{String((reportError as any)?.message || reportError)}</p>
+                    </div>
+                  ) : !filteredReportData?.data ? (
+                    <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--ash)' }}>
+                      <p>No report data available.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {selectedReportType === 'IN_PROCESS' && <InProcessReportView data={filteredReportData.data} config={{ ...reportConfig, activeApproval: filteredReportData.matchedApproval }} />}
+                      {/* {selectedReportType === 'PDIR' && <PdirReportView data={filteredReportData} />} */}
+                      {/* {selectedReportType === 'LAYOUT' && <LayoutReportView data={filteredReportData} />} */}
+                      {/* {selectedReportType === 'FAI' && <FaiReportView data={filteredReportData} />} */}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}

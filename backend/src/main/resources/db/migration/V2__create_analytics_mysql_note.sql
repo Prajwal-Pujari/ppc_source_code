@@ -5,7 +5,7 @@
 -- They are NOT created here (this migration runs against PostgreSQL).
 -- This file documents the MySQL schema for reference.
 --
--- MySQL Database: mes_analytics
+-- MySQL Database: pqc_mes_analytics
 -- Tables (auto-managed by Hibernate):
 --   1. daily_production_summary
 --      - id (BIGINT AUTO_INCREMENT)

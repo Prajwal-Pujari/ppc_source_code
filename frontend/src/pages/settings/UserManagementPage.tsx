@@ -3,13 +3,15 @@ import { getUsersApi, toggleUserPermissionApi } from '@/api/users.api';
 import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import type { User } from '@/types/domain.types';
-import { Plus, Shield, User as UserIcon, Settings2, RefreshCw } from 'lucide-react';
+import { Plus, Shield, User as UserIcon, Settings2, RefreshCw, PenTool } from 'lucide-react';
 import UserCreateForm from './components/UserCreateForm';
+import SignatureModal from './components/SignatureModal';
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [signatureModalUser, setSignatureModalUser] = useState<{id: string, name: string, signature?: string} | null>(null);
   const currentUser = useAuthStore((s) => s.user);
   const addNotification = useNotificationStore((s) => s.addNotification);
 
@@ -81,6 +83,19 @@ export default function UserManagementPage() {
         </div>
       ) : null}
 
+      {signatureModalUser && (
+        <SignatureModal
+          userId={signatureModalUser.id}
+          userName={signatureModalUser.name}
+          existingSignature={signatureModalUser.signature}
+          onClose={() => setSignatureModalUser(null)}
+          onSuccess={() => {
+            setSignatureModalUser(null);
+            fetchUsers();
+          }}
+        />
+      )}
+
       <div style={{ background: 'white', borderRadius: 12, boxShadow: 'var(--shadow-card)', border: '1px solid var(--border)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -121,6 +136,15 @@ export default function UserManagementPage() {
                       <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--charcoal)' }}>
                         {user.role.replace('_', ' ')}
                       </span>
+                      {user.role === 'QUALITY_INSPECTOR' && (
+                        <button
+                          onClick={() => setSignatureModalUser({ id: user.id, name: user.fullName, signature: user.signature })}
+                          title="Manage Signature"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: user.signature ? 'var(--status-completed)' : 'var(--copper-dark)', marginLeft: 8 }}
+                        >
+                          <PenTool size={14} />
+                        </button>
+                      )}
                     </div>
                   </td>
                   <td style={{ padding: '16px 24px' }}>

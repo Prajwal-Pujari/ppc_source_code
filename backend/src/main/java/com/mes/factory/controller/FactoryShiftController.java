@@ -25,7 +25,7 @@ public class FactoryShiftController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','QUALITY_INSPECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','QUALITY_INSPECTOR','WORKER')")
     public ResponseEntity<ApiResponse<List<FactoryShift>>> getAll(@AuthenticationPrincipal CustomUserDetails user) {
         List<FactoryShift> shifts = shiftService.getAllActiveByFactory(user.getFactoryId());
         return ResponseEntity.ok(ApiResponse.success(shifts, "Shifts retrieved successfully"));

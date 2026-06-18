@@ -6,6 +6,8 @@ import { useNotificationStore } from '../../store/notificationStore';
 import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
 import { getMyTasks } from '../../api/analytics.api';
+import { shiftsApi, type FactoryShift } from '../../api/shifts.api';
+import { machinesApi, type MachineMaster } from '../../api/machines.api';
 import type { GaugeOperation, PqcQuestionSet, PqcQuestion, CompletionProgress } from '../../types/domain.types';
 import { ChevronRight, ChevronLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import './inspector-live.css';
@@ -20,8 +22,61 @@ export function InspectorLiveEntryPage() {
   const setPageTitle = useUiStore((s: any) => s.setPageTitle);
   useEffect(() => { setPageTitle('PQC Inspections'); }, [setPageTitle]);
 
-  const [selectedShift, setSelectedShift] = useState('Morning');
+  const [selectedShiftId, setSelectedShiftId] = useState<string | undefined>(undefined);
+  const [shifts, setShifts] = useState<FactoryShift[]>([]);
+  const [selectedMachineId, setSelectedMachineId] = useState<string | undefined>(undefined);
+  const [machines, setMachines] = useState<MachineMaster[]>([]);
   const [selectedOpId, setSelectedOpId] = useState<string | null>(null);
+
+  // Fetch Shifts and Auto-select
+  useEffect(() => {
+    shiftsApi.getAll().then(res => {
+      const allShifts = res.data;
+      setShifts(allShifts);
+
+      const now = new Date();
+      const currentHours = now.getHours();
+      const currentMinutes = now.getMinutes();
+      const currentTimeStr = `${currentHours.toString().padStart(2, '0')}:${currentMinutes.toString().padStart(2, '0')}:00`;
+
+      let matchedShiftId = undefined;
+
+      for (const shift of allShifts) {
+        let start = shift.startTime;
+        let end = shift.endTime;
+        
+        // Handle Spring Boot LocalTime array format: [hour, minute]
+        if (Array.isArray(start)) start = `${String(start[0]).padStart(2, '0')}:${String(start[1]).padStart(2, '0')}:00`;
+        if (Array.isArray(end)) end = `${String(end[0]).padStart(2, '0')}:${String(end[1]).padStart(2, '0')}:00`;
+
+        if (start <= end) {
+          if (currentTimeStr >= start && currentTimeStr <= end) {
+            matchedShiftId = shift.id;
+            break;
+          }
+        } else {
+          if (currentTimeStr >= start || currentTimeStr <= end) {
+            matchedShiftId = shift.id;
+            break;
+          }
+        }
+      }
+
+      if (matchedShiftId) {
+        setSelectedShiftId(matchedShiftId);
+      } else if (allShifts.length > 0) {
+        setSelectedShiftId(allShifts[0].id);
+      }
+    }).catch(console.error);
+
+    machinesApi.getAll().then(res => {
+      const allMachines = res.data;
+      setMachines(allMachines);
+      if (allMachines.length > 0) {
+        setSelectedMachineId(allMachines[0].id);
+      }
+    }).catch(console.error);
+  }, []);
 
   // Wizard state
   const [wizardStep, setWizardStep] = useState<WizardStep>('QTY');
@@ -133,7 +188,8 @@ export function InspectorLiveEntryPage() {
 
       const res = await pqcApi.logInspection({
         gaugeOperationId: selectedOp.id,
-        shiftId: undefined,
+        shiftId: selectedShiftId,
+        machineId: selectedMachineId,
         actualQty, passedQty, rejectedQty, reworkQty, scrapQty,
         rejectionReasons: selectedReasons.map(r => ({ reason: r, count: 1 })),
         questionAnswers: answersArray,
@@ -242,7 +298,51 @@ export function InspectorLiveEntryPage() {
         </div>
       </div>
 
-      {/* â”€â”€ Quantity Input Card â”€â”€ */}
+      {/* ─── Shift Selection ─── */}
+      <div className="il-input-card" style={{ marginBottom: -8 }}>
+        <div className="il-input-card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px' }}>
+          <label className="il-data-label" style={{ color: 'var(--charcoal)', textTransform: 'uppercase' }}>Production Shift</label>
+          <select 
+            value={selectedShiftId || ''} 
+            onChange={e => setSelectedShiftId(e.target.value)}
+            className="il-input il-input-sm"
+            style={{ width: 250, fontFamily: "'DM Sans', sans-serif" }}
+          >
+            <option value="" disabled>Select Shift...</option>
+            {shifts.map(shift => {
+              const startStr = Array.isArray(shift.startTime) ? `${String(shift.startTime[0]).padStart(2, '0')}:${String(shift.startTime[1]).padStart(2, '0')}` : String(shift.startTime).substring(0,5);
+              const endStr = Array.isArray(shift.endTime) ? `${String(shift.endTime[0]).padStart(2, '0')}:${String(shift.endTime[1]).padStart(2, '0')}` : String(shift.endTime).substring(0,5);
+              return (
+                <option key={shift.id} value={shift.id}>
+                  {shift.shiftName} ({startStr} - {endStr})
+                </option>
+              );
+            })}
+          </select>
+        </div>
+      </div>
+
+      {/* ─── Machine Selection ─── */}
+      <div className="il-input-card" style={{ marginBottom: -8 }}>
+        <div className="il-input-card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px' }}>
+          <label className="il-data-label" style={{ color: 'var(--charcoal)', textTransform: 'uppercase' }}>Machine Used</label>
+          <select 
+            value={selectedMachineId || ''} 
+            onChange={e => setSelectedMachineId(e.target.value)}
+            className="il-input il-input-sm"
+            style={{ width: 250, fontFamily: "'DM Sans', sans-serif" }}
+          >
+            <option value="" disabled>Select Machine...</option>
+            {machines.map(machine => (
+              <option key={machine.id} value={machine.id}>
+                {machine.machineName} ({machine.machineCode})
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* ─── Quantity Input Card ─── */}
       <div className="il-input-card">
         <div className="il-input-card-header">
           <h3 className="il-body-lg" style={{ margin: 0, fontWeight: 700, color: 'var(--charcoal)' }}>Batch Quantities</h3>

@@ -1,7 +1,7 @@
 import React from 'react';
 import type { QualityReportDto, PqcMeasurement } from '@/types/domain.types';
 
-export default function InProcessReportView({ data }: { data: QualityReportDto }) {
+export default function InProcessReportView({ data, config }: { data: QualityReportDto, config?: any }) {
   // Helper to format specification
   const getSpecString = (m: PqcMeasurement) => {
     if (m.minValue !== undefined && m.minValue !== null && m.maxValue !== undefined && m.maxValue !== null) {
@@ -33,14 +33,31 @@ export default function InProcessReportView({ data }: { data: QualityReportDto }
     return displayVal;
   };
 
-  // Determine Operator from the first batch of the first operation, if any
-  let operatorName = '';
-  if (data.operations && data.operations.length > 0) {
-    const firstOpWithBatches = data.operations.find(op => op.batches && op.batches.length > 0);
-    if (firstOpWithBatches) {
-      operatorName = firstOpWithBatches.batches[0].inspectorName;
-    }
-  }
+  // Gather unique dates, operators, shifts, and machines
+  const uniqueDates = new Set<string>();
+  const uniqueOperators = new Set<string>();
+  const uniqueShifts = new Set<string>();
+  const uniqueMachines = new Set<string>();
+
+  data.operations?.forEach(op => {
+    op.batches?.forEach(b => {
+      uniqueDates.add(new Date(b.logTime).toLocaleDateString());
+      if (b.inspectorName) uniqueOperators.add(b.inspectorName);
+      if (b.shiftName) uniqueShifts.add(b.shiftName);
+      if (b.machineName) uniqueMachines.add(b.machineName);
+    });
+  });
+
+  const datesArray = Array.from(uniqueDates).sort();
+  const dateDisplay = datesArray.length === 0
+    ? new Date(data.generatedAt).toLocaleDateString()
+    : datesArray.length === 1
+      ? datesArray[0]
+      : `${datesArray[0]} to ${datesArray[datesArray.length - 1]}`;
+
+  const operatorDisplay = Array.from(uniqueOperators).join(', ') || '-';
+  const shiftDisplay = Array.from(uniqueShifts).join(', ') || '-';
+  const machineDisplay = Array.from(uniqueMachines).join(', ') || '-';
 
   // --- 1. Flatten all rows ---
   type RowDef =
@@ -199,15 +216,19 @@ export default function InProcessReportView({ data }: { data: QualityReportDto }
             <tbody>
               <tr>
                 <td rowSpan={2} style={{ width: '10%' }}>
-                  <div style={{ height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#666' }}>
-                    LOGO
+                  <div style={{ height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                    {(data.customerLogo || config?.customerLogo) ? (
+                      <img src={(data.customerLogo || config?.customerLogo) as string} alt="Logo" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                    ) : (
+                      <span style={{ fontWeight: 'bold', color: '#666' }}>LOGO</span>
+                    )}
                   </div>
                 </td>
                 <td rowSpan={2} colSpan={3} style={{ width: '65%', fontSize: '18px', fontWeight: 'bold' }}>IN-PROCESS INSPECTION REPORT</td>
                 <td colSpan={2} className="left-align" style={{ width: '25%', fontSize: '10px', verticalAlign: 'top', padding: '4px' }}>
-                  <div><strong>Doc. No:-</strong></div>
-                  <div><strong>Rev.No./Date:-</strong></div>
-                  <div><strong>Issue Date:-</strong></div>
+                  <div><strong>Doc. No:-</strong> {data.docNo || config?.docNo || ''}</div>
+                  <div><strong>Rev.No./Date:-</strong> {data.revNo || config?.revNo || ''}</div>
+                  <div><strong>Issue Date:-</strong> {data.issueDate || config?.issueDate || ''}</div>
                 </td>
               </tr>
               <tr>
@@ -215,14 +236,14 @@ export default function InProcessReportView({ data }: { data: QualityReportDto }
               </tr>
               <tr>
                 <td colSpan={2} className="left-align" style={{ width: '40%' }}><strong>Part No./Name:</strong> {data.partName}</td>
-                <td colSpan={2} className="left-align" style={{ width: '30%' }}><strong>Operator Name:</strong> {operatorName}</td>
-                <td className="left-align" style={{ width: '20%' }}><strong>Inspection Date:</strong> {new Date(data.generatedAt).toLocaleDateString()}</td>
-                <td className="left-align" style={{ width: '10%' }}><strong>Shift:</strong> </td>
+                <td colSpan={2} className="left-align" style={{ width: '30%' }}><strong>Operator Name:</strong> {operatorDisplay}</td>
+                <td className="left-align" style={{ width: '20%' }}><strong>Inspection Date(s):</strong> {dateDisplay}</td>
+                <td className="left-align" style={{ width: '10%' }}><strong>Shift:</strong> {shiftDisplay}</td>
               </tr>
               <tr>
                 <td colSpan={2} className="left-align"><strong>Drg. Reference/Model:</strong> {data.serialNumber || data.gaugeId}</td>
                 <td colSpan={2} className="left-align"><strong>Setup/Opr. No.:</strong> Continuous</td>
-                <td colSpan={2} className="left-align"><strong>M/C Name/No.:</strong> </td>
+                <td colSpan={2} className="left-align"><strong>M/C Name/No.:</strong> {machineDisplay}</td>
               </tr>
             </tbody>
           </table>
@@ -232,27 +253,27 @@ export default function InProcessReportView({ data }: { data: QualityReportDto }
             borderTop: 'none',
             borderBottom: page.isLast ? 'none' : '1px solid #000'
           }}>
+            <tbody>
             {page.rows.length > 0 && (
-              <thead>
-                <tr>
-                  <th rowSpan={2} style={{ width: '4%' }}>Sl. No</th>
+              <>
+                <tr style={{ backgroundColor: '#e9e7dfff' }}>
+                  <th rowSpan={2} style={{ width: '4%', whiteSpace: 'nowrap' }}>Sl. No</th>
                   <th rowSpan={2} style={{ width: '20%' }}>Parameter</th>
                   <th rowSpan={2} style={{ width: '10%' }}>Specification</th>
                   <th rowSpan={2} style={{ width: '10%' }}>Tolerance</th>
-                  <th rowSpan={2} style={{ width: '12%' }}>Measuring Instrument/Gauge</th>
+                  <th rowSpan={2} style={{ width: '12%', whiteSpace: 'nowrap' }}>Measuring Instrument/Gauge</th>
                   <th rowSpan={2} style={{ width: '4%' }}>Time</th>
                   <th colSpan={8}>Observations</th>
                 </tr>
-                <tr>
+                <tr style={{ backgroundColor: '#e9e7dfff' }}>
                   {[...Array(8)].map((_, i) => <th key={i} style={{ width: '5%', height: '20px' }}></th>)}
                 </tr>
-              </thead>
+              </>
             )}
-            <tbody>
               {page.rows.map((row, rIdx) => {
                 if (row.type === 'opHeader') {
                   return (
-                    <tr key={`op-${rIdx}`} style={{ backgroundColor: '#f9fafb' }}>
+                    <tr key={`op-${rIdx}`} style={{ backgroundColor: '#f5f2edff' }}>
                       <td colSpan={14} className="left-align bold">Operation: {row.op.sequenceOrder} - {row.op.operationName} {row.isContinued ? '(Continued)' : ''}</td>
                     </tr>
                   );
@@ -332,13 +353,32 @@ export default function InProcessReportView({ data }: { data: QualityReportDto }
                   </td>
                 </tr>
                 <tr>
-                  <td colSpan={8} className="left-align" style={{ height: '40px', verticalAlign: 'top' }}>
+                  <td colSpan={8} className="left-align" style={{ height: '60px', verticalAlign: 'top', padding: '8px' }}>
                     <strong>Operator Sign</strong>
                   </td>
                 </tr>
                 <tr>
-                  <td colSpan={8} className="left-align" style={{ height: '40px', verticalAlign: 'top' }}>
-                    <strong>Inspector Sign</strong>
+                  <td colSpan={8} className="left-align" style={{ height: '60px', verticalAlign: 'top', padding: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
+                      <div style={{ width: 120 }}>
+                        <strong>Inspector Sign</strong>
+                      </div>
+                      {config?.activeApproval?.signature && (
+                        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                          <img 
+                            src={config.activeApproval.signature} 
+                            alt="Signature" 
+                            style={{ maxHeight: '44px', maxWidth: '150px', objectFit: 'contain' }} 
+                          />
+                        </div>
+                      )}
+                      {config?.activeApproval && (
+                        <div style={{ fontSize: 10, color: 'var(--slate)', textAlign: 'right', minWidth: 150 }}>
+                          <div style={{ fontWeight: 600, color: 'var(--charcoal)' }}>{config.activeApproval.inspectorName}</div>
+                          <div>{new Date(config.activeApproval.approvedAt).toLocaleDateString()} {new Date(config.activeApproval.approvedAt).toLocaleTimeString()}</div>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
                 <tr>

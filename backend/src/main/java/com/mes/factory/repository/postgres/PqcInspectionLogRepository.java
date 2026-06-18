@@ -14,6 +14,7 @@ import java.util.UUID;
 @Repository
 public interface PqcInspectionLogRepository extends JpaRepository<PqcInspectionLog, UUID> {
     List<PqcInspectionLog> findByGaugeOperationIdOrderByLogTimeDesc(UUID gaugeOperationId);
+    List<PqcInspectionLog> findByGaugeOperationIdOrderByLogTimeAsc(UUID gaugeOperationId);
 
     @Query("SELECT COALESCE(SUM(l.passedQty), 0) FROM PqcInspectionLog l WHERE l.gaugeOperation.id = :operationId")
     int sumPassedQtyByOperationId(UUID operationId);

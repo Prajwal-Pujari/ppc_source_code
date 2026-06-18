@@ -19,8 +19,8 @@ if [ ! -f "postgres_backup.dump" ]; then
     echo "ERROR: postgres_backup.dump not found! Skipping PostgreSQL restore."
 else
     echo "Restoring PostgreSQL..."
-    sudo docker cp ./postgres_backup.dump mes-postgres:/tmp/postgres_backup.dump
-    sudo docker exec mes-postgres pg_restore -U mes_db_user -d mes_factory -c --if-exists /tmp/postgres_backup.dump
+    sudo docker cp ./postgres_backup.dump pqc-mes-postgres:/tmp/postgres_backup.dump
+    sudo docker exec pqc-mes-postgres pg_restore -U pqc_mes_user -d pqc_mes -c --if-exists /tmp/postgres_backup.dump
 fi
 
 echo ""
@@ -28,8 +28,8 @@ if [ ! -f "mysql_backup.sql" ]; then
     echo "ERROR: mysql_backup.sql not found! Skipping MySQL restore."
 else
     echo "Restoring MySQL..."
-    sudo docker cp ./mysql_backup.sql mes-mysql:/tmp/mysql_backup.sql
-    sudo docker exec mes-mysql mysql -u root -proot mes_analytics -e "source /tmp/mysql_backup.sql"
+    sudo docker cp ./mysql_backup.sql pqc-mes-mysql:/tmp/mysql_backup.sql
+    sudo docker exec pqc-mes-mysql mysql -u root -proot pqc_mes_analytics -e "source /tmp/mysql_backup.sql"
 fi
 
 echo ""

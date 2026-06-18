@@ -6,9 +6,9 @@ services:
     image: postgres:15
     container_name: ppc-postgres
     environment:
-      POSTGRES_DB: mes_factory
-      POSTGRES_USER: mes_db_user
-      POSTGRES_PASSWORD: mes_db_password
+      POSTGRES_DB: pqc_mes
+      POSTGRES_USER: pqc_mes_user
+      POSTGRES_PASSWORD: pqc_mes_password
     volumes:
       - ppc-postgres-data:/var/lib/postgresql/data
     restart: always
@@ -18,7 +18,7 @@ services:
     image: mysql:8
     container_name: ppc-mysql
     environment:
-      MYSQL_DATABASE: mes_analytics
+      MYSQL_DATABASE: pqc_mes_analytics
       MYSQL_ROOT_PASSWORD: root
     volumes:
       - ppc-mysql-data:/var/lib/mysql
@@ -38,8 +38,8 @@ services:
     container_name: ppc-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: mes_minio
-      MINIO_ROOT_PASSWORD: mes_minio_secret
+      MINIO_ROOT_USER: pqc_mes_minio
+      MINIO_ROOT_PASSWORD: pqc_mes_minio_secret
     volumes:
       - ppc-minio-data:/data
     restart: always
@@ -55,21 +55,21 @@ services:
       - minio
     environment:
       # Override application.yml for Docker networking
-      SPRING_DATASOURCE_PRIMARY_URL: jdbc:postgresql://postgres:5432/mes_factory
-      SPRING_DATASOURCE_PRIMARY_USERNAME: mes_db_user
-      SPRING_DATASOURCE_PRIMARY_PASSWORD: mes_db_password
-      SPRING_DATASOURCE_SECONDARY_URL: jdbc:mysql://mysql:3306/mes_analytics?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_PRIMARY_URL: jdbc:postgresql://postgres:5432/pqc_mes
+      SPRING_DATASOURCE_PRIMARY_USERNAME: pqc_mes_user
+      SPRING_DATASOURCE_PRIMARY_PASSWORD: pqc_mes_password
+      SPRING_DATASOURCE_SECONDARY_URL: jdbc:mysql://mysql:3306/pqc_mes_analytics?useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_SECONDARY_USERNAME: root
       SPRING_DATASOURCE_SECONDARY_PASSWORD: root
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-      SPRING_FLYWAY_URL: jdbc:postgresql://postgres:5432/mes_factory
-      SPRING_FLYWAY_USER: mes_db_user
-      SPRING_FLYWAY_PASSWORD: mes_db_password
+      SPRING_FLYWAY_URL: jdbc:postgresql://postgres:5432/pqc_mes
+      SPRING_FLYWAY_USER: pqc_mes_user
+      SPRING_FLYWAY_PASSWORD: pqc_mes_password
       MINIO_ENDPOINT: http://minio:9000
-      MINIO_ACCESS_KEY: mes_minio
-      MINIO_SECRET_KEY: mes_minio_secret
-      MES_WEBSOCKET_ALLOWED_ORIGINS: "*"
+      MINIO_ACCESS_KEY: pqc_mes_minio
+      MINIO_SECRET_KEY: pqc_mes_minio_secret
+      PQC_MES_WEBSOCKET_ALLOWED_ORIGINS: "*"
     restart: always
 
   # ─── React Frontend (Nginx) ───

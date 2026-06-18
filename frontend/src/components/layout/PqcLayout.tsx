@@ -13,9 +13,11 @@ const pqcNavItems = [
   { label: 'Dashboard', path: '/pqc/dashboard', icon: 'dashboard' },
   { label: 'Inspections', path: '/pqc/inspect', icon: 'content_paste_search' },
   { label: 'Reports', path: '/pqc/reports', icon: 'description' },
+  { label: 'Shift Approvals', path: '/pqc/approvals', icon: 'verified_user' },
   { label: 'Question Sets', path: '/pqc/question-sets', icon: 'checklist' },
   { label: 'Part / Product Master', path: '/pqc/gauges', icon: 'straighten' },
   { label: 'Operations', path: '/pqc/operations', icon: 'build' },
+  { label: 'Machine Master', path: '/pqc/machines', icon: 'precision_manufacturing' },
   { label: 'Batch Records', path: '/pqc/batch-records', icon: 'layers' },
   { label: 'Personnel', path: '/pqc/personnel', icon: 'badge' },
   { label: 'Analytics', path: '/pqc/analytics', icon: 'bar_chart' },
@@ -56,17 +58,27 @@ export default function PqcLayout() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#FFF8F2' }}>
+      {/* Overlay for mobile sidebar */}
+      {sidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={toggleSidebar}
+        />
+      )}
+
       {/* ── PQC Sidebar ── */}
       <aside
+        className="responsive-sidebar"
         style={{
           width: sidebarOpen ? '240px' : '0px',
           minWidth: sidebarOpen ? '240px' : '0px',
+          transform: `translateX(${sidebarOpen ? '0' : '-100%'})`,
           background: '#FAF8F5',
           height: '100vh',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          transition: 'all 0.3s ease',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           borderRight: sidebarOpen ? '1px solid var(--silk)' : 'none',
         }}
       >
@@ -98,6 +110,11 @@ export default function PqcLayout() {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={() => {
+                  if (window.innerWidth <= 768 && sidebarOpen) {
+                    toggleSidebar();
+                  }
+                }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '10px 12px', borderRadius: 6, fontSize: 13,
@@ -182,7 +199,9 @@ export default function PqcLayout() {
       {/* ── Main Content ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
-        <header style={{
+        <header 
+          className="responsive-header"
+          style={{
           height: 'var(--header-height)', minHeight: 'var(--header-height)',
           background: 'rgba(250,248,245,0.85)',
           backdropFilter: 'blur(12px)',
@@ -301,7 +320,7 @@ export default function PqcLayout() {
         </header>
 
         {/* Page Content */}
-        <main style={{ flex: 1, overflow: 'auto', padding: 0 }}>
+        <main className="responsive-main" style={{ flex: 1, overflow: 'auto', padding: 0 }}>
           <Outlet />
         </main>
       </div>

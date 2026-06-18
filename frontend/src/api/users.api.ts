@@ -21,3 +21,8 @@ export const toggleUserPermissionApi = async (userId: string, canManage: boolean
   const res = await api.patch<ApiResponse<User>>(`/users/${userId}/permissions?canManage=${canManage}`);
   return res.data;
 };
+
+export const updateUserSignatureApi = async (userId: string, signature: string) => {
+  const res = await api.patch<ApiResponse<User>>(`/users/${userId}/signature`, { signature });
+  return res.data;
+};

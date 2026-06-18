@@ -60,6 +60,9 @@ public class User {
     @Column(length = 255)
     private String email;
 
+    @Column(columnDefinition = "TEXT")
+    private String signature;
+
     @Column(length = 20)
     private String phone;
 

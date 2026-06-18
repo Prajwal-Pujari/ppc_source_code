@@ -17,8 +17,8 @@ if not exist "postgres_backup.dump" (
     echo ERROR: postgres_backup.dump not found! Skipping PostgreSQL restore.
 ) else (
     echo Restoring PostgreSQL...
-    docker cp ./postgres_backup.dump mes-postgres:/tmp/postgres_backup.dump
-    docker exec mes-postgres pg_restore -U mes_db_user -d mes_factory -c --if-exists /tmp/postgres_backup.dump
+    docker cp ./postgres_backup.dump pqc-mes-postgres:/tmp/postgres_backup.dump
+    docker exec pqc-mes-postgres pg_restore -U pqc_mes_user -d pqc_mes -c --if-exists /tmp/postgres_backup.dump
 )
 
 echo.
@@ -26,8 +26,8 @@ if not exist "mysql_backup.sql" (
     echo ERROR: mysql_backup.sql not found! Skipping MySQL restore.
 ) else (
     echo Restoring MySQL...
-    docker cp ./mysql_backup.sql mes-mysql:/tmp/mysql_backup.sql
-    docker exec mes-mysql mysql -u root -proot mes_analytics -e "source /tmp/mysql_backup.sql"
+    docker cp ./mysql_backup.sql pqc-mes-mysql:/tmp/mysql_backup.sql
+    docker exec pqc-mes-mysql mysql -u root -proot pqc_mes_analytics -e "source /tmp/mysql_backup.sql"
 )
 
 echo.

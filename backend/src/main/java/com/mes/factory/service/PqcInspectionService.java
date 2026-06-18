@@ -27,6 +27,7 @@ public class PqcInspectionService {
     private final PqcInspectionPlanRepository inspectionPlanRepository;
     private final GaugeOperationRepository gaugeOperationRepository;
     private final FactoryShiftRepository factoryShiftRepository;
+    private final MachineMasterRepository machineMasterRepository;
     private final UserRepository userRepository;
     private final MesEventPublisher eventPublisher;
 
@@ -34,12 +35,14 @@ public class PqcInspectionService {
                                 PqcInspectionPlanRepository inspectionPlanRepository,
                                 GaugeOperationRepository gaugeOperationRepository,
                                 FactoryShiftRepository factoryShiftRepository,
+                                MachineMasterRepository machineMasterRepository,
                                 UserRepository userRepository,
                                 MesEventPublisher eventPublisher) {
         this.inspectionLogRepository = inspectionLogRepository;
         this.inspectionPlanRepository = inspectionPlanRepository;
         this.gaugeOperationRepository = gaugeOperationRepository;
         this.factoryShiftRepository = factoryShiftRepository;
+        this.machineMasterRepository = machineMasterRepository;
         this.userRepository = userRepository;
         this.eventPublisher = eventPublisher;
     }
@@ -94,6 +97,12 @@ public class PqcInspectionService {
             shift = getCurrentShift(inspector.getFactory().getId(), LocalTime.now());
         }
 
+        // Determine machine
+        MachineMaster machine = null;
+        if (request.getMachineId() != null) {
+            machine = machineMasterRepository.findById(request.getMachineId()).orElse(null);
+        }
+
         // Find Plan
         PqcInspectionPlan plan = null;
         try {
@@ -111,6 +120,7 @@ public class PqcInspectionService {
                 .inspectionPlan(plan)
                 .inspector(inspector)
                 .shift(shift)
+                .machine(machine)
                 .plannedQty(operation.getGauge().getBatchQuantity()) 
                 .actualQty(request.getActualQty())
                 .passedQty(request.getPassedQty())

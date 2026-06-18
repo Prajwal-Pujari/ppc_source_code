@@ -22,7 +22,24 @@ public class QualityReportDto {
     private String reportType; // IN_PROCESS, PDIR, NCR, LAYOUT
     private OffsetDateTime generatedAt;
 
+    private String customerLogo;
+    private String docNo;
+    private String revNo;
+    private String issueDate;
+
+    private List<ApprovalDto> approvals;
     private List<OperationLogDto> operations;
+
+    @Data
+    @Builder
+    public static class ApprovalDto {
+        private UUID shiftId;
+        private String shiftName;
+        private String inspectionDate;
+        private String inspectorName;
+        private String signature;
+        private OffsetDateTime approvedAt;
+    }
 
     @Data
     @Builder
@@ -45,6 +62,8 @@ public class QualityReportDto {
         private Integer reworkQty;
         private Integer scrapQty;
         private String remarks;
+        private String shiftName;
+        private String machineName;
         private List<MeasurementDto> measurements;
     }
 

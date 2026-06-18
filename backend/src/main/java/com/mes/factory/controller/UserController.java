@@ -59,4 +59,14 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails user) {
         return ResponseEntity.ok(ApiResponse.success(userService.toggleUserPermission(id, canManage, user)));
     }
+
+    @PatchMapping("/{id}/signature")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<ApiResponse<User>> updateSignature(
+            @PathVariable java.util.UUID id,
+            @RequestBody java.util.Map<String, String> payload,
+            @AuthenticationPrincipal CustomUserDetails user) {
+        String signature = payload.get("signature");
+        return ResponseEntity.ok(ApiResponse.success(userService.updateSignature(id, signature, user)));
+    }
 }

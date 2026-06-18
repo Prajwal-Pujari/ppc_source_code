@@ -21,7 +21,8 @@ public class UserService {
     private final FactoryRepository factoryRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, FactoryRepository factoryRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, FactoryRepository factoryRepository,
+            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.factoryRepository = factoryRepository;
         this.passwordEncoder = passwordEncoder;
@@ -29,7 +30,8 @@ public class UserService {
 
     @Transactional
     public User createUser(UserCreateRequest request, CustomUserDetails currentUser) {
-        // Validate if current user has permission (Admin is allowed via Controller PreAuthorize, but Supervisors need the flag)
+        // Validate if current user has permission (Admin is allowed via Controller
+        // PreAuthorize, but Supervisors need the flag)
         if (UserRole.SUPERVISOR.name().equals(currentUser.getRole())) {
             User currentEntity = userRepository.findById(currentUser.getUserId())
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -73,6 +75,13 @@ public class UserService {
         }
 
         user.setCanManageUsers(canManage);
+        return userRepository.save(user);
+    }
+
+    public User updateSignature(UUID userId, String signature, CustomUserDetails currentUser) {
+        User user = userRepository.findByIdAndFactoryId(userId, currentUser.getFactoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        user.setSignature(signature);
         return userRepository.save(user);
     }
 }
