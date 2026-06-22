@@ -64,6 +64,7 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
     | { type: 'opHeader'; op: any; isContinued?: boolean }
     | { type: 'timeHeader'; op: any; isContinued?: boolean }
     | { type: 'param'; op: any; param: PqcMeasurement }
+    | { type: 'qtyRow'; op: any; label: string; field: 'inspectedQty' | 'reworkQty' | 'rejectedQty' | 'scrapQty' }
     | { type: 'empty' };
 
   const allRows: RowDef[] = [];
@@ -84,6 +85,11 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
       uniqueParams.forEach(p => {
         allRows.push({ type: 'param', op, param: p });
       });
+      // Append the quantity rows at the end of the operation's parameters
+      allRows.push({ type: 'qtyRow', op, label: 'Produced Actual', field: 'inspectedQty' });
+      allRows.push({ type: 'qtyRow', op, label: 'Rework', field: 'reworkQty' });
+      allRows.push({ type: 'qtyRow', op, label: 'Reject', field: 'rejectedQty' });
+      allRows.push({ type: 'qtyRow', op, label: 'Scrap', field: 'scrapQty' });
     }
   });
 
@@ -96,7 +102,7 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
     // If the next row is a param, it means we are continuing an operation from the previous page.
     // Prepend the operation headers so the user knows what operation these parameters belong to.
     if (!isFirst && rowsRemaining.length > 0) {
-      if (rowsRemaining[0].type === 'param') {
+      if (rowsRemaining[0].type === 'param' || rowsRemaining[0].type === 'qtyRow') {
         const activeOp = rowsRemaining[0].op;
         rowsRemaining.unshift(
           { type: 'opHeader', op: activeOp, isContinued: true },
@@ -258,12 +264,13 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
               <>
                 <tr style={{ backgroundColor: '#e9e7dfff' }}>
                   <th rowSpan={2} style={{ width: '4%', whiteSpace: 'nowrap' }}>Sl. No</th>
-                  <th rowSpan={2} style={{ width: '20%' }}>Parameter</th>
+                  <th rowSpan={2} style={{ width: '18%' }}>Parameter</th>
                   <th rowSpan={2} style={{ width: '10%' }}>Specification</th>
                   <th rowSpan={2} style={{ width: '10%' }}>Tolerance</th>
-                  <th rowSpan={2} style={{ width: '12%', whiteSpace: 'nowrap' }}>Measuring Instrument/Gauge</th>
+                  <th rowSpan={2} style={{ width: '10%', whiteSpace: 'nowrap' }}>Measuring Instrument/Gauge</th>
                   <th rowSpan={2} style={{ width: '4%' }}>Time</th>
                   <th colSpan={8}>Observations</th>
+                  <th rowSpan={2} style={{ width: '4%' }}>Total</th>
                 </tr>
                 <tr style={{ backgroundColor: '#e9e7dfff' }}>
                   {[...Array(8)].map((_, i) => <th key={i} style={{ width: '5%', height: '20px' }}></th>)}
@@ -274,7 +281,7 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                 if (row.type === 'opHeader') {
                   return (
                     <tr key={`op-${rIdx}`} style={{ backgroundColor: '#f5f2edff' }}>
-                      <td colSpan={14} className="left-align bold">Operation: {row.op.sequenceOrder} - {row.op.operationName} {row.isContinued ? '(Continued)' : ''}</td>
+                      <td colSpan={15} className="left-align bold">Operation: {row.op.sequenceOrder} - {row.op.operationName} {row.isContinued ? '(Continued)' : ''}</td>
                     </tr>
                   );
                 }
@@ -288,6 +295,7 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                           {row.op.batches[i] ? new Date(row.op.batches[i].logTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                         </td>
                       ))}
+                      <td></td>
                     </tr>
                   );
                 }
@@ -313,6 +321,33 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                         }
                         return <td key={bIndex}>{val}</td>;
                       })}
+                      <td></td>
+                    </tr>
+                  );
+                }
+                if (row.type === 'qtyRow') {
+                  const total = row.op.batches.reduce((sum: number, b: any) => sum + (b[row.field] || 0), 0);
+                  return (
+                    <tr key={`qty-${rIdx}-${row.label}`} style={{ backgroundColor: '#faf9f6' }}>
+                      <td colSpan={6} className="left-align bold" style={{ textAlign: 'right', paddingRight: '16px' }}>
+                        {row.label}
+                      </td>
+                      {[...Array(8)].map((_, bIndex) => {
+                        const batch = row.op.batches[bIndex];
+                        let val = '';
+                        if (batch && batch[row.field] != null) {
+                          val = batch[row.field].toString();
+                        }
+                        const isBad = (row.field === 'rejectedQty' || row.field === 'scrapQty') && val !== '' && val !== '0';
+                        return (
+                          <td key={`qty-obs-${bIndex}`} className="bold" style={{ color: isBad ? '#ef4444' : 'inherit' }}>
+                            {val}
+                          </td>
+                        );
+                      })}
+                      <td className="bold" style={{ textAlign: 'center', color: 'var(--copper-bronze)' }}>
+                        {total > 0 ? total : ''}
+                      </td>
                     </tr>
                   );
                 }
@@ -326,6 +361,7 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                       <td></td>
                       <td></td>
                       {[...Array(8)].map((_, j) => <td key={`empty-obs-${rIdx}-${j}`} style={{ height: '24px' }}></td>)}
+                      <td></td>
                     </tr>
                   );
                 }

@@ -33,7 +33,7 @@ export default function PqcApprovalsDashboard() {
   const { data: shifts = [] } = useQuery({
     queryKey: ['shifts'],
     queryFn: async () => {
-      const res = await shiftsApi.get();
+      const res = await shiftsApi.getAll();
       return res.data ?? [];
     }
   });
@@ -75,7 +75,7 @@ export default function PqcApprovalsDashboard() {
   const handleApprove = async (date: string, shiftName: string) => {
     try {
       // Find shift ID from shift name
-      const shift = shifts.find(s => s.name === shiftName);
+      const shift = shifts.find(s => s.shiftName === shiftName);
       if (!shift) {
         toast.error("Shift not found in system.");
         return;
