@@ -42,6 +42,12 @@ public class PoStatusSnapshot {
     @Column(name = "customer_name")
     private String customerName;
 
+    @Column(name = "customer_sr_number")
+    private String customerSrNumber;
+
+    @Column(name = "manufacture_number")
+    private String manufactureNumber;
+
     @Column(name = "total_gauges")
     @Builder.Default
     private Integer totalGauges = 0;

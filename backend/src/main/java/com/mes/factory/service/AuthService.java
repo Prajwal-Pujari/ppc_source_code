@@ -57,11 +57,11 @@ public class AuthService {
             );
             String refreshToken = tokenProvider.generateRefreshToken(userDetails.getUserId());
 
-            // Update last login
-            userRepository.findById(userDetails.getUserId()).ifPresent(user -> {
-                user.setLastLoginAt(OffsetDateTime.now());
-                userRepository.save(user);
-            });
+            User dbUser = userRepository.findById(userDetails.getUserId()).orElse(null);
+            if (dbUser != null) {
+                dbUser.setLastLoginAt(OffsetDateTime.now());
+                userRepository.save(dbUser);
+            }
 
             return AuthResponse.builder()
                     .accessToken(accessToken)
@@ -75,6 +75,7 @@ public class AuthService {
                             .employeeCode(userDetails.getEmployeeCode())
                             .factoryId(userDetails.getFactoryId())
                             .isCalibrationWorker(userDetails.isCalibrationWorker())
+                            .signatureUrl(dbUser != null ? dbUser.getSignatureUrl() : null)
                             .build())
                     .build();
 
@@ -115,6 +116,7 @@ public class AuthService {
                         .employeeCode(user.getEmployeeCode())
                         .factoryId(user.getFactory() != null ? user.getFactory().getId() : null)
                         .isCalibrationWorker(Boolean.TRUE.equals(user.getIsCalibrationWorker()))
+                        .signatureUrl(user.getSignatureUrl())
                         .build())
                 .build();
     }

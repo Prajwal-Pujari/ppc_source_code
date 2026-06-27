@@ -20,11 +20,14 @@ import GaugeMasterPage from '@/pages/master/GaugeMasterPage';
 import OperationMasterPage from '@/pages/master/OperationMasterPage';
 import CustomerMasterPage from '@/pages/master/CustomerMasterPage';
 import AnalyticsPage from '@/pages/analytics/AnalyticsPage';
+import OperationsAnalyticsPage from '@/pages/analytics/OperationsAnalyticsPage';
 import AssignOperationsPage from '@/pages/operations/AssignOperationsPage';
 import NcRecordsPage from '@/pages/nc/NcRecordsPage';
 import UserManagementPage from '@/pages/settings/UserManagementPage';
 import Is3455MasterPage from '@/pages/settings/Is3455MasterPage';
+import SettingsPage from '@/pages/settings/SettingsPage';
 import ProductionPlanningPage from '@/pages/reports/ProductionPlanningPage';
+import CalibrationApprovalPage from '@/pages/reports/CalibrationApprovalPage';
 import BulkJobCardPrintPage from '@/pages/print/BulkJobCardPrintPage';
 import BulkCalibrationPrintPage from '@/pages/print/BulkCalibrationPrintPage';
 import './index.css';
@@ -53,14 +56,17 @@ export default function App() {
               <Route path="/job-cards/:id" element={<JobCardDetailPage />} />
               <Route path="/calibration-report/:id" element={<CalibrationReportPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/operations-tracking" element={<OperationsAnalyticsPage />} />
               <Route path="/assign-operations" element={<AssignOperationsPage />} />
               <Route path="/nc-records" element={<NcRecordsPage />} />
+              <Route path="/approvals" element={<CalibrationApprovalPage />} />
               <Route path="/reports" element={<ProductionPlanningPage />} />
               <Route path="/master/gauges" element={<GaugeMasterPage />} />
               <Route path="/master/operations" element={<OperationMasterPage />} />
               <Route path="/master/customers" element={<CustomerMasterPage />} />
               <Route path="/settings/users" element={<UserManagementPage />} />
               <Route path="/settings/is3455" element={<Is3455MasterPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>
 

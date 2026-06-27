@@ -7,6 +7,7 @@ import com.mes.factory.entity.postgres.PoLineItem;
 import com.mes.factory.entity.postgres.User;
 import com.mes.factory.exception.BusinessException;
 import com.mes.factory.exception.ResourceNotFoundException;
+import com.mes.factory.repository.postgres.GaugeRepository;
 import com.mes.factory.repository.postgres.CalibrationObservationRepository;
 import com.mes.factory.repository.postgres.GaugeOperationRepository;
 import com.mes.factory.repository.postgres.UserRepository;
@@ -30,13 +31,16 @@ public class CalibrationObservationService {
     private final CalibrationObservationRepository observationRepository;
     private final GaugeOperationRepository gaugeOperationRepository;
     private final UserRepository userRepository;
+    private final GaugeRepository gaugeRepository;
 
     public CalibrationObservationService(CalibrationObservationRepository observationRepository,
                                           GaugeOperationRepository gaugeOperationRepository,
-                                          UserRepository userRepository) {
+                                          UserRepository userRepository,
+                                          GaugeRepository gaugeRepository) {
         this.observationRepository = observationRepository;
         this.gaugeOperationRepository = gaugeOperationRepository;
         this.userRepository = userRepository;
+        this.gaugeRepository = gaugeRepository;
     }
 
     /**
@@ -180,7 +184,18 @@ public class CalibrationObservationService {
             obs.setResult(calculateResult(obs));
         }
 
-        return observationRepository.saveAll(existing);
+        List<CalibrationObservation> saved = observationRepository.saveAll(existing);
+
+        gaugeOperationRepository.findById(gaugeOperationId).ifPresent(op -> {
+            Gauge g = op.getGauge();
+            if (g != null) {
+                g.setCalibratorName(worker.getFullName());
+                g.setCalibratorSign(worker.getSignatureUrl() != null ? worker.getSignatureUrl() : worker.getFullName());
+                gaugeRepository.save(g);
+            }
+        });
+
+        return saved;
     }
 
     /**

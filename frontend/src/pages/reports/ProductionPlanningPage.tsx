@@ -316,7 +316,7 @@ export default function ProductionPlanningPage() {
           <table className="report-table">
             <thead>
               <tr>
-                <th>PO Number</th>
+                <th>WO Number</th>
                 <th>Customer</th>
                 <th>Delivery Date</th>
                 <th>Progress</th>

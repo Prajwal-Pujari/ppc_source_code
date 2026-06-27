@@ -16,12 +16,16 @@ export interface User {
   isCalibrationWorker?: boolean;
   department?: string;
   phone?: string;
+  signatureUrl?: string;
 }
 
 export interface PurchaseOrder {
   customerName: string;
   id: string;
   poNumber: string;
+  customerPoNumber?: string;
+  customerSrNumber?: string;
+  manufactureNumber?: string;
   customer: { id: string; name: string };
   orderDate: string;
   expectedDeliveryDate: string;
@@ -59,12 +63,19 @@ export interface Gauge {
   gaugeTypeName: string;
   nominalSize: number;
   sizeUnit: string;
+  customerSrNumber?: string;
+  manufactureNumber?: string;
   materialGrade?: string;
   batchQuantity: number;
   status: GaugeStatus;
   rejectionCount: number;
   qrCodePath?: string;
   historyCardPath?: string;
+  isCalibrationApproved?: boolean;
+  approvedByAdminName?: string;
+  approvedByAdminSign?: string;
+  calibratorName?: string;
+  calibratorSign?: string;
   purchaseOrder?: Partial<PurchaseOrder>;
   createdAt: string;
 }

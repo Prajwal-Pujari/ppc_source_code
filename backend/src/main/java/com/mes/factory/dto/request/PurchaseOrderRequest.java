@@ -23,6 +23,10 @@ public class PurchaseOrderRequest {
     @NotBlank(message = "Customer name is required")
     private String customerName;
 
+    private String customerPoNumber;
+    private String customerSrNumber;
+    private String manufactureNumber;
+
     @NotNull(message = "Order date is required")
     private LocalDate orderDate;
 
@@ -54,6 +58,8 @@ public class PurchaseOrderRequest {
         private String toleranceType;
         private BigDecimal higherSize;
         private BigDecimal lowerSize;
+        private String customerSrNumber;
+        private String manufactureNumber;
 
         private List<OperationOverride> operations;
     }

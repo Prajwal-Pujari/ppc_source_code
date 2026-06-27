@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { useUiStore } from '@/store/uiStore';
 import { getWorkers } from '@/api/users.api';
 import { assignOperation } from '@/api/gauge-operations.api';
 import api from '@/lib/axios';
-import { Users, UserPlus, CheckCircle, Clock, Play } from 'lucide-react';
+import { Users, UserPlus, CheckCircle, Clock, Play, Search, BarChart3 } from 'lucide-react';
 
 export default function AssignOperationsPage() {
   const setPageTitle = useUiStore((s: any) => s.setPageTitle);
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState('PENDING,QUEUED');
+  const [searchQuery, setSearchQuery] = useState('');
   const [assignModalOp, setAssignModalOp] = useState<any>(null);
   const [selectedWorker, setSelectedWorker] = useState('');
 
@@ -28,8 +30,18 @@ export default function AssignOperationsPage() {
     queryFn: getWorkers,
   });
 
-  const ops = opsData?.data || [];
+  const rawOps = opsData?.data || [];
   const workers = workersData?.data || [];
+
+  const ops = rawOps.filter((op: any) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const sr = op.gauge?.serialNumber?.toLowerCase() || '';
+    const type = op.gauge?.gaugeTypeName?.toLowerCase() || '';
+    const name = op.operationName?.toLowerCase() || '';
+    const worker = op.assignedTo?.fullName?.toLowerCase() || '';
+    return sr.includes(q) || type.includes(q) || name.includes(q) || worker.includes(q);
+  });
 
   const assignMut = useMutation({
     mutationFn: ({ opId, workerId }: { opId: string; workerId: string }) => assignOperation(opId, workerId),
@@ -56,8 +68,29 @@ export default function AssignOperationsPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)' }}>Operations Queue</h2>
+      {/* Top Navigation / Switcher Banner */}
+      <div style={{ background: 'linear-gradient(135deg, var(--bone-white) 0%, var(--warm-white) 100%)', border: '1px solid var(--border)', padding: '16px 20px', borderRadius: 12, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--charcoal)' }}>Operations Allocation & Dispatch</h3>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--slate)' }}>Assign shop-floor operators to specific job card operation sequences.</p>
+        </div>
+        <Link to="/operations-tracking" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, background: 'white' }}>
+          <BarChart3 size={16} color="var(--copper-dark)" /> Switch to Multi-Layer Operations Analytics Hub
+        </Link>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 16 }}>
+        <div style={{ position: 'relative', width: 320 }}>
+          <Search size={16} color="var(--slate)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+          <input
+            type="text"
+            className="input"
+            style={{ paddingLeft: 38, height: 40, width: '100%', fontSize: 13 }}
+            placeholder="Search by Gauge Sr #, Type, Worker..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {filters.map((f) => (
             <button key={f.value} onClick={() => setStatusFilter(f.value)}

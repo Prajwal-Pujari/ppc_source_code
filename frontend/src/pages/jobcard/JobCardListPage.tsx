@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useUiStore } from '@/store/uiStore';
@@ -25,6 +25,7 @@ export default function JobCardListPage() {
   const setPageTitle = useUiStore((s) => s.setPageTitle);
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [activeCustomer, setActiveCustomer] = useState<string | null>(null);
   const [activePO, setActivePO] = useState<string | null>(null);
   const [monthFilter, setMonthFilter] = useState<string>('ALL');
@@ -32,11 +33,26 @@ export default function JobCardListPage() {
   useEffect(() => { setPageTitle('Job Cards'); }, []);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['job-cards', search],
-    queryFn: () => getJobCards({ search }),
+    queryKey: ['job-cards'],
+    queryFn: () => getJobCards({}),
   });
 
-  const gauges: any[] = data?.data || [];
+  const rawGauges: any[] = data?.data || [];
+
+  const gauges = useMemo(() => {
+    if (!search.trim()) return rawGauges;
+    const q = search.toLowerCase().trim();
+    return rawGauges.filter((g: any) => {
+      const cust = g.purchaseOrder?.customer?.name || g.purchaseOrder?.customerName || '';
+      const po = g.purchaseOrder?.poNumber || '';
+      const sr = g.serialNumber || '';
+      const type = g.gaugeTypeName || '';
+      return cust.toLowerCase().includes(q) ||
+             po.toLowerCase().includes(q) ||
+             sr.toLowerCase().includes(q) ||
+             type.toLowerCase().includes(q);
+    });
+  }, [rawGauges, search]);
 
   /* ── Build customer → PO → gauges tree ── */
   const tree = useMemo(() => {
@@ -64,9 +80,9 @@ export default function JobCardListPage() {
       .sort((a, b) => b.active - a.active || b.totalGauges - a.totalGauges);
   }, [gauges]);
 
-  // Auto-select first customer
+  // Auto-select first customer if none selected or if activeCustomer filtered out
   useEffect(() => {
-    if (tree.length > 0 && !activeCustomer) {
+    if (tree.length > 0 && (!activeCustomer || !tree.find(c => c.name === activeCustomer))) {
       setActiveCustomer(tree[0].name);
       if (tree[0].pos.length > 0) setActivePO(tree[0].pos[0].poNum);
     }
@@ -135,12 +151,12 @@ export default function JobCardListPage() {
   );
 
   return (
-    <div style={{ display: 'flex', gap: 0, height: 'calc(100vh - var(--header-height) - 60px)', overflow: 'hidden' }}>
+    <div className="responsive-flex jobcard-split" style={{ display: 'flex', gap: 0, height: 'calc(100vh - var(--header-height) - 60px)', overflow: 'hidden' }}>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
        *  LEFT: Customer Directory
        * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <div style={{
+      <div className="split-left" style={{
         width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column',
         borderRight: '1px solid var(--silk)', background: 'white',
         borderRadius: '12px 0 0 12px', overflow: 'hidden',
@@ -150,11 +166,16 @@ export default function JobCardListPage() {
           <div style={{ position: 'relative' }}>
             <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--stone)' }} />
             <input
+              ref={searchInputRef}
+              autoFocus
               className="input"
               style={{ paddingLeft: 34, height: 38, fontSize: 12, borderRadius: 8, background: 'var(--bone-white)', border: '1px solid var(--silk)' }}
               placeholder="Search gauges..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setTimeout(() => searchInputRef.current?.focus(), 0);
+              }}
             />
           </div>
         </div>
@@ -238,7 +259,7 @@ export default function JobCardListPage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
        *  RIGHT: Customer Detail Panel
        * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="split-right" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {!selectedCustomer ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ash)' }}>
             <div style={{ textAlign: 'center' }}>

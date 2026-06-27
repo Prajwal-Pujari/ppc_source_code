@@ -94,4 +94,12 @@ public class UserService {
         user.setIsCalibrationWorker(isCalibration);
         return userRepository.save(user);
     }
+
+    @Transactional
+    public User updateSignature(UUID userId, String signatureUrl, CustomUserDetails currentUser) {
+        User user = userRepository.findByIdAndFactoryId(userId, currentUser.getFactoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        user.setSignatureUrl(signatureUrl);
+        return userRepository.save(user);
+    }
 }

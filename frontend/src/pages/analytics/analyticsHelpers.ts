@@ -93,7 +93,7 @@ export function exportToExcel(customerStats: CustomerStats[], dailyData: any[], 
   }
   // Sheet 3: All Operations
   const opRows = tasks.map((t: any) => ({
-    'PO Number': t.gauge?.purchaseOrder?.poNumber || '', 'Customer': t.gauge?.purchaseOrder?.customer?.name || '',
+    'WO Number': t.gauge?.purchaseOrder?.poNumber || '', 'Customer': t.gauge?.purchaseOrder?.customer?.name || '',
     'Gauge': t.gauge?.serialNumber || '', 'Op Code': t.operationMaster?.operationCode || '',
     'Operation': t.operationName || '', 'Status': t.status || '', 'Worker': t.assignedTo?.fullName || ''
   }));

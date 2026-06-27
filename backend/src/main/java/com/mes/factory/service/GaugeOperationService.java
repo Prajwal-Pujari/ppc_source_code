@@ -149,6 +149,16 @@ public class GaugeOperationService {
         operation.setQualityParams(qualityParams);
         operation = gaugeOperationRepository.save(operation);
 
+        if ((operation.getOperationMaster() != null && Boolean.TRUE.equals(operation.getOperationMaster().getIsCalibration())) || (operation.getOperationName() != null && operation.getOperationName().toLowerCase().contains("calibrat"))) {
+            Gauge g = operation.getGauge();
+            User worker = userRepository.findById(workerId).orElse(null);
+            if (g != null && worker != null) {
+                g.setCalibratorName(worker.getFullName());
+                g.setCalibratorSign(worker.getSignatureUrl() != null ? worker.getSignatureUrl() : worker.getFullName());
+                gaugeRepository.save(g);
+            }
+        }
+
         // Check and queue next operation
         checkAndQueueNextOperation(operation.getGauge().getId(), operation.getSequenceOrder());
 
@@ -264,11 +274,20 @@ public Map<String, Long> getWorkerTaskSummary(UUID workerId, boolean isCalibrati
 
     @Transactional(readOnly = true)
     public List<GaugeOperation> getFactoryOperationsByStatus(UUID factoryId, String statusesCsv) {
+        if (statusesCsv == null || statusesCsv.isBlank() || statusesCsv.toUpperCase().contains("ALL")) {
+            return gaugeOperationRepository.findAnalyticsOperations(factoryId, List.of(OperationStatus.values()));
+        }
         List<OperationStatus> statuses = java.util.Arrays.stream(statusesCsv.split(","))
                 .map(String::trim)
-                .map(OperationStatus::valueOf)
+                .map(s -> {
+                    try { return OperationStatus.valueOf(s); } catch (Exception e) { return null; }
+                })
+                .filter(java.util.Objects::nonNull)
                 .toList();
-        return gaugeOperationRepository.findByFactoryAndStatuses(factoryId, statuses);
+        if (statuses.isEmpty()) {
+            return gaugeOperationRepository.findAnalyticsOperations(factoryId, List.of(OperationStatus.values()));
+        }
+        return gaugeOperationRepository.findAnalyticsOperations(factoryId, statuses);
     }
 
     private GaugeOperation findOperation(UUID operationId) {

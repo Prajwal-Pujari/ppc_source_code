@@ -238,7 +238,9 @@ export default function CalibrationObservationForm({ gaugeOperationId, gauge, on
       <div className="calib-details-section">
         <div className="calib-details-grid">
           <DetailField label="Customer" value={po?.customer?.name || po?.customerName || '—'} />
-          <DetailField label="PO Number" value={po?.poNumber || '—'} mono />
+          <DetailField label="WO Number" value={po?.poNumber || '—'} mono />
+          <DetailField label="Cust. Sr. No." value={gauge?.customerSrNumber || po?.customerSrNumber || '—'} mono />
+          <DetailField label="Mfg. No." value={gauge?.manufactureNumber || po?.manufactureNumber || '—'} mono />
           <DetailField label="Gauge Type" value={gauge?.gaugeTypeName || '—'} />
           <DetailField label="Nominal Size" value={`${gauge?.nominalSize || '—'} ${gauge?.sizeUnit || 'mm'}`} mono />
         </div>

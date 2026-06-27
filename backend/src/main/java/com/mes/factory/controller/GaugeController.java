@@ -12,11 +12,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -50,6 +53,11 @@ public class GaugeController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<Gauge>> getGauge(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(gaugeService.getGauge(id)));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<Gauge>> updateGauge(@PathVariable UUID id, @RequestBody Map<String, Object> updates) {
+        return ResponseEntity.ok(ApiResponse.success(gaugeService.updateGauge(id, updates)));
     }
 
     @GetMapping("/{id}/operations")

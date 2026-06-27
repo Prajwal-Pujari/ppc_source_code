@@ -70,6 +70,9 @@ public class User {
     @Column(length = 100)
     private String department;
 
+    @Column(name = "signature_url", columnDefinition = "TEXT")
+    private String signatureUrl;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;

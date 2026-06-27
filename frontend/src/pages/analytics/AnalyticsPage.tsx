@@ -115,7 +115,7 @@ export default function AnalyticsPage() {
       {/* ── Row 2: Customer Comparison + Radar ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
         <div style={cardStyle}>
-          <h3 style={headingStyle}>Customer PO Comparison</h3>
+          <h3 style={headingStyle}>Customer WO Comparison</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={custBarData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--silk)" />

@@ -25,7 +25,7 @@ export function useWebSocket() {
         // Subscribe to factory-wide topics
         client.subscribe(`/topic/factory/${user.factoryId}/po-updates`, (msg) => {
           const data = JSON.parse(msg.body);
-          addNotification('PO Update', data.message || `Event: ${data.eventType}`, data.type || 'info');
+          addNotification('WO Update', data.message || `Event: ${data.eventType}`, data.type || 'info');
         });
 
         client.subscribe(`/topic/factory/${user.factoryId}/gauge-updates`, (msg) => {

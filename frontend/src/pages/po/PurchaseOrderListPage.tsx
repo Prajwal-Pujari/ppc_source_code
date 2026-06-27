@@ -23,7 +23,7 @@ export default function PurchaseOrderListPage() {
   const setPageTitle = useUiStore((s) => s.setPageTitle);
   const navigate = useNavigate();
 
-  useEffect(() => { setPageTitle('Purchase Orders'); }, [setPageTitle]);
+  useEffect(() => { setPageTitle('Work Orders'); }, [setPageTitle]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['purchase-orders'],
@@ -35,9 +35,9 @@ export default function PurchaseOrderListPage() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)' }}>All Orders</h2>
+        <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)' }}>All Work Orders</h2>
         <button className="btn btn-primary" onClick={() => navigate('/purchase-orders/new')}>
-          <Plus size={16} style={{ marginRight: 6 }} /> New PO
+          <Plus size={16} style={{ marginRight: 6 }} /> New WO
         </button>
       </div>
 
@@ -45,8 +45,10 @@ export default function PurchaseOrderListPage() {
         <table>
           <thead>
             <tr>
-              <th>PO Number</th>
+              <th>WO Number</th>
               <th>Customer</th>
+              <th>Cust Sr.</th>
+              <th>Mfg No.</th>
               <th>Order Date</th>
               <th>Delivery</th>
               <th>Priority</th>
@@ -66,7 +68,7 @@ export default function PurchaseOrderListPage() {
               ))
             ) : orders.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: 40, color: 'var(--ash)' }}>
+                <td colSpan={10} style={{ textAlign: 'center', padding: 40, color: 'var(--ash)' }}>
                   No purchase orders found
                 </td>
               </tr>
@@ -81,6 +83,8 @@ export default function PurchaseOrderListPage() {
                     {po.poNumber}
                   </td>
                   <td>{po.customerName || '—'}</td>
+                  <td className="font-mono" style={{ fontSize: 12 }}>{po.customerSrNumber || '—'}</td>
+                  <td className="font-mono" style={{ fontSize: 12 }}>{po.manufactureNumber || '—'}</td>
                   <td className="font-mono" style={{ fontSize: 13 }}>{po.orderDate}</td>
                   <td className="font-mono" style={{ fontSize: 13 }}>{po.expectedDeliveryDate || '—'}</td>
                   <td>

@@ -77,7 +77,7 @@ export default function PurchaseOrderDetailPage() {
   const lineItems: any[] = lineItemsData?.data ?? [];
   const gaugeMasters = gaugeMastersData?.data?.content || [];
 
-  useEffect(() => { if (po?.poNumber) setPageTitle(`PO: ${po.poNumber}`); }, [po, setPageTitle]);
+  useEffect(() => { if (po?.poNumber) setPageTitle(`WO: ${po.poNumber}`); }, [po, setPageTitle]);
 
   const confirmMut = useMutation({
     mutationFn: () => confirmPurchaseOrder(id!),
@@ -179,7 +179,9 @@ export default function PurchaseOrderDetailPage() {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24, marginTop: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginTop: 24 }}>
+          <InfoBlock label="Work Order No." value={po.poNumber || '—'} mono />
+          <InfoBlock label="Purchase Order No. (Customer)" value={(po as any).customerPoNumber || '—'} mono />
           <InfoBlock label="Order Date" value={po.orderDate} mono />
           <InfoBlock label="Delivery Date" value={po.expectedDeliveryDate || '—'} mono />
           <InfoBlock label="Priority" value={po.priority}
@@ -218,7 +220,7 @@ export default function PurchaseOrderDetailPage() {
           background: 'rgba(139,105,20,0.06)', border: '1px solid rgba(139,105,20,0.2)', marginBottom: 16, fontSize: 13, color: 'var(--copper-bronze)',
         }}>
           <AlertTriangle size={15} />
-          This PO is a <strong>Draft</strong>. Add line items below, then click <strong>Confirm PO</strong> to generate job cards.
+          This WO is a <strong>Draft</strong>. Add line items below, then click <strong>Confirm Order</strong> to generate job cards.
         </div>
       )}
 
@@ -437,7 +439,7 @@ export default function PurchaseOrderDetailPage() {
                         </>
                       ) : (
                         <div style={{ padding: 20, textAlign: 'center', color: 'var(--ash)', background: 'var(--bone-white)', borderRadius: 8, border: '1px dashed var(--silk)' }}>
-                          No IS 3455 calculations available. Enter tolerance type, higher and lower sizes during PO creation.
+                          No IS 3455 calculations available. Enter tolerance type, higher and lower sizes during WO creation.
                         </div>
                       )}
 

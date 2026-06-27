@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useUiStore } from '@/store/uiStore';
-import { createPurchaseOrder } from '@/api/purchase-orders.api';
+import { createPurchaseOrder, getPurchaseOrders } from '@/api/purchase-orders.api';
 import { calculateIs3455 } from '@/api/is3455.api';
 import { getGaugeMasters, getGaugeMasterOperations } from '@/api/gauge-master.api';
 import { getCustomers, createCustomer } from '@/api/customers.api';
@@ -23,6 +23,8 @@ interface LineItem {
   toleranceType: string;
   higherSize: string;
   lowerSize: string;
+  customerSrNumber?: string;
+  manufactureNumber?: string;
 }
 
 // ─── Operation Sequence Preview ───────────────────────────────────────────────
@@ -580,7 +582,7 @@ function CustomerCombobox({ value, onChange, hasError }: CustomerComboboxProps) 
 export default function PurchaseOrderCreatePage() {
   const navigate = useNavigate();
   const setPageTitle = useUiStore((s: any) => s.setPageTitle);
-  useEffect(() => { setPageTitle('New Purchase Order'); }, [setPageTitle]);
+  useEffect(() => { setPageTitle('New Work Order'); }, [setPageTitle]);
 
   const { data: gmData } = useQuery({
     queryKey: ['gauge-masters-list'],
@@ -588,10 +590,35 @@ export default function PurchaseOrderCreatePage() {
   });
   const gaugeMasters = gmData?.data?.content || [];
 
-  const [poNumber, setPoNumber] = useState(
-    () => `PO-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`
-  );
+  const { data: poListData } = useQuery({
+    queryKey: ['purchase-orders-list-all'],
+    queryFn: () => getPurchaseOrders({ size: 1000 }),
+  });
+
+  const [poNumber, setPoNumber] = useState(() => `WO-${new Date().getFullYear()}-01`);
+  const [isEdited, setIsEdited] = useState(false);
+
+  useEffect(() => {
+    if (poListData && !isEdited) {
+      const orders = poListData?.data?.content || poListData?.data || [];
+      const year = new Date().getFullYear();
+      const prefix = `WO-${year}-`;
+      let maxSeq = 0;
+      for (const order of orders) {
+        const numStr = order.poNumber || '';
+        if (numStr.startsWith(prefix)) {
+          const suffix = parseInt(numStr.slice(prefix.length), 10);
+          if (!isNaN(suffix) && suffix > maxSeq) {
+            maxSeq = suffix;
+          }
+        }
+      }
+      const nextSeq = String(maxSeq + 1).padStart(2, '0');
+      setPoNumber(`${prefix}${nextSeq}`);
+    }
+  }, [poListData, isEdited]);
   const [customerName, setCustomerName] = useState('');
+  const [customerPoNumber, setCustomerPoNumber] = useState('');
   const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
   const [deliveryDate, setDeliveryDate] = useState('');
   const [priority, setPriority] = useState('NORMAL');
@@ -604,6 +631,7 @@ export default function PurchaseOrderCreatePage() {
       gaugeMasterId: '', gaugeTypeName: '', nominalSize: '',
       sizeUnit: 'mm', quantity: '1', materialGradeOverride: '', lineNotes: '',
       toleranceType: '', higherSize: '', lowerSize: '',
+      customerSrNumber: '', manufactureNumber: '',
     }]);
 
   const removeLine = (i: number) => setLines(lines.filter((_, idx) => idx !== i));
@@ -654,6 +682,7 @@ export default function PurchaseOrderCreatePage() {
     }
     createMut.mutate({
       poNumber,
+      customerPoNumber: customerPoNumber.trim() || null,
       customerName: customerName.trim(),
       orderDate,
       expectedDeliveryDate: deliveryDate || null,
@@ -666,6 +695,8 @@ export default function PurchaseOrderCreatePage() {
         quantity: parseInt(l.quantity, 10),
         materialGradeOverride: l.materialGradeOverride || null,
         lineNotes: l.lineNotes || null,
+        customerSrNumber: l.customerSrNumber?.trim() || null,
+        manufactureNumber: l.manufactureNumber?.trim() || null,
         toleranceType: l.toleranceType || null,
         higherSize: l.higherSize ? parseFloat(l.higherSize) : null,
         lowerSize: l.lowerSize ? parseFloat(l.lowerSize) : null,
@@ -679,7 +710,7 @@ export default function PurchaseOrderCreatePage() {
         onClick={() => navigate('/purchase-orders')}
         style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--copper-bronze)', fontSize: 13, fontWeight: 500, marginBottom: 20 }}
       >
-        <ArrowLeft size={16} /> Back to Orders
+        <ArrowLeft size={16} /> Back to Work Orders
       </button>
 
       <form onSubmit={handleSubmit}>
@@ -688,11 +719,15 @@ export default function PurchaseOrderCreatePage() {
           <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)', marginBottom: 20 }}>Order Details</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>PO Number *</label>
-              <input className="input font-mono" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} required />
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Work Order No. *</label>
+              <input className="input font-mono" value={poNumber} onChange={(e) => { setPoNumber(e.target.value); setIsEdited(true); }} placeholder="e.g. WO-2026-02" required />
               {getFieldError('poNumber') && (
                 <p style={{ fontSize: 11, color: 'var(--status-rejected)', marginTop: 3 }}>{getFieldError('poNumber')}</p>
               )}
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Purchase Order No. (Customer)</label>
+              <input className="input font-mono" value={customerPoNumber} onChange={(e) => setCustomerPoNumber(e.target.value)} placeholder="e.g. PO-998877" />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Customer *</label>
@@ -765,7 +800,7 @@ export default function PurchaseOrderCreatePage() {
                       </div>
                     )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 0.6fr 0.6fr 1fr 2fr', gap: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
                       <div>
                         <label style={{ display: 'block', fontSize: 11, color: 'var(--ash)', marginBottom: 2 }}>Gauge Type *</label>
                         <select className="input" value={line.gaugeMasterId} onChange={(e) => updateLine(i, 'gaugeMasterId', e.target.value)} required>
@@ -792,6 +827,16 @@ export default function PurchaseOrderCreatePage() {
                         <label style={{ display: 'block', fontSize: 11, color: 'var(--ash)', marginBottom: 2 }}>Qty *</label>
                         <input className="input font-mono" type="number" min="1" value={line.quantity}
                           onChange={(e) => updateLine(i, 'quantity', e.target.value)} required />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11, color: 'var(--copper-bronze)', fontWeight: 600, marginBottom: 2 }}>Cust. Sr. No. (Gauge Unique)</label>
+                        <input className="input font-mono" value={line.customerSrNumber || ''}
+                          onChange={(e) => updateLine(i, 'customerSrNumber', e.target.value)} placeholder="e.g. CSR-001" />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11, color: 'var(--copper-bronze)', fontWeight: 600, marginBottom: 2 }}>Mfg. No. (Gauge Unique)</label>
+                        <input className="input font-mono" value={line.manufactureNumber || ''}
+                          onChange={(e) => updateLine(i, 'manufactureNumber', e.target.value)} placeholder="e.g. MFG-001" />
                       </div>
                       <div>
                         <label style={{ display: 'block', fontSize: 11, color: 'var(--ash)', marginBottom: 2 }}>Material Override</label>

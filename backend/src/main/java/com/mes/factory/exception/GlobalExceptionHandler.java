@@ -65,6 +65,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleGeneral(Exception ex) {
+        String exName = ex.getClass().getName();
+        if (exName.contains("AsyncRequestNotUsableException") || exName.contains("ClientAbortException")) {
+            log.debug("Client aborted TCP connection: {}", ex.getMessage());
+            return null;
+        }
         log.error("Unexpected error: ", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("An unexpected error occurred", "INTERNAL_ERROR"));

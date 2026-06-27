@@ -20,6 +20,8 @@ public class PoLineItemResponse {
     private Integer quantity;
     private String materialGradeOverride;
     private String lineNotes;
+    private String customerSrNumber;
+    private String manufactureNumber;
     
     private String toleranceType;
     private BigDecimal higherSize;

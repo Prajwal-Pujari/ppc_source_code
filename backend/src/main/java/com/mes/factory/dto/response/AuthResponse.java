@@ -30,5 +30,6 @@ public class AuthResponse {
         private String employeeCode;
         private UUID factoryId;
         private boolean isCalibrationWorker;
+        private String signatureUrl;
     }
 }

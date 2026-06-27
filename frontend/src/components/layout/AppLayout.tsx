@@ -27,9 +27,9 @@ const navSections = [
     ],
   },
   {
-    title: 'Orders',
+    title: 'Work Orders',
     items: [
-      { label: 'Purchase Orders', path: '/purchase-orders', icon: Package, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
+      { label: 'Work Orders', path: '/purchase-orders', icon: Package, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
       { label: 'Job Cards', path: '/job-cards', icon: Gauge, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
     ],
   },
@@ -37,12 +37,14 @@ const navSections = [
     title: 'Quality',
     items: [
       { label: 'NC Records', path: '/nc-records', icon: AlertTriangle, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
+      { label: 'Report Approvals', path: '/approvals', icon: CheckCheck, roles: ['ADMIN'] },
     ],
   },
   {
     title: 'Intelligence',
     items: [
       { label: 'Analytics', path: '/analytics', icon: BarChart3, roles: ['ADMIN', 'SUPERVISOR'] },
+      { label: 'Operations Tracking', path: '/operations-tracking', icon: Wrench, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
       { label: 'Reports', path: '/reports', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
     ],
   },
@@ -59,6 +61,7 @@ const navSections = [
     items: [
       { label: 'Users', path: '/settings/users', icon: Settings, roles: ['ADMIN'] },
       { label: 'IS 3455 Tables', path: '/settings/is3455', icon: Database, roles: ['ADMIN'] },
+      { label: 'Settings', path: '/settings', icon: Settings, roles: ['ADMIN'] },
     ],
   },
 ];
@@ -97,9 +100,15 @@ export default function AppLayout() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bone-white)' }}>
+      {/* Mobile Backdrop Overlay */}
+      <div 
+        className={`sidebar-backdrop no-print ${sidebarOpen ? 'active' : ''}`} 
+        onClick={toggleSidebar} 
+      />
+
       {/* Sidebar */}
       <aside
-        className="no-print"
+        className={`app-sidebar no-print ${sidebarOpen ? 'open' : 'closed'}`}
         style={{
           width: sidebarOpen ? 'var(--sidebar-width)' : '0px',
           minWidth: sidebarOpen ? 'var(--sidebar-width)' : '0px',
@@ -156,6 +165,9 @@ export default function AppLayout() {
                     <Link
                       key={item.path}
                       to={item.path}
+                      onClick={() => {
+                        if (window.innerWidth <= 768 && sidebarOpen) toggleSidebar();
+                      }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 10,
                         padding: '9px 10px', borderRadius: 8, fontSize: 13,

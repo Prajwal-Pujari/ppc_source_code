@@ -55,6 +55,12 @@ public class Gauge {
     @Column(name = "serial_number", unique = true, nullable = false, length = 150)
     private String serialNumber;
 
+    @Column(name = "customer_sr_number", length = 150)
+    private String customerSrNumber;
+
+    @Column(name = "manufacture_number", length = 150)
+    private String manufactureNumber;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "purchase_order_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "lineItems", "gauges", "comments", "factory"})
@@ -98,6 +104,22 @@ public class Gauge {
     @Column(name = "rejection_count")
     @Builder.Default
     private Integer rejectionCount = 0;
+
+    @Column(name = "is_calibration_approved")
+    @Builder.Default
+    private Boolean isCalibrationApproved = false;
+
+    @Column(name = "approved_by_admin_name")
+    private String approvedByAdminName;
+
+    @Column(name = "approved_by_admin_sign", columnDefinition = "TEXT")
+    private String approvedByAdminSign;
+
+    @Column(name = "calibrator_name")
+    private String calibratorName;
+
+    @Column(name = "calibrator_sign", columnDefinition = "TEXT")
+    private String calibratorSign;
 
     @Column(name = "qr_code_path", length = 500)
     private String qrCodePath;

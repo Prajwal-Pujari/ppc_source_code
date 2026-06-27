@@ -53,10 +53,19 @@ public class PurchaseOrder {
     @Column(name = "po_number", nullable = false, length = 100)
     private String poNumber;
 
+    @Column(name = "customer_po_number", length = 100)
+    private String customerPoNumber;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Customer customer;
+
+    @Column(name = "customer_sr_number", length = 150)
+    private String customerSrNumber;
+
+    @Column(name = "manufacture_number", length = 150)
+    private String manufactureNumber;
 
     @Column(name = "order_date", nullable = false)
     private LocalDate orderDate;

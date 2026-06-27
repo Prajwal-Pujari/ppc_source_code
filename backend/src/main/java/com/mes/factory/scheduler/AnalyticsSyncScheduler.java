@@ -120,6 +120,8 @@ public class AnalyticsSyncScheduler {
 
                     snapshot.setPoNumber(po.getPoNumber());
                     snapshot.setCustomerName(po.getCustomer() != null ? po.getCustomer().getName() : "N/A");
+                    snapshot.setCustomerSrNumber(po.getCustomerSrNumber());
+                    snapshot.setManufactureNumber(po.getManufactureNumber());
                     snapshot.setTotalGauges(po.getTotalGauges());
                     snapshot.setCompletedGauges(po.getCompletedGauges());
                     snapshot.setRejectedGauges(po.getRejectedGauges());

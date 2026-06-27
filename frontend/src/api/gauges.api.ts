@@ -26,3 +26,8 @@ export const getGaugeNcRecords = async (id: string) => {
   const res = await api.get<ApiResponse<NcRecord[]>>(`/gauges/${id}/nc-records`);
   return res.data;
 };
+
+export const updateGauge = async (id: string, updates: Record<string, any>) => {
+  const res = await api.put<ApiResponse<Gauge>>(`/gauges/${id}`, updates);
+  return res.data;
+};

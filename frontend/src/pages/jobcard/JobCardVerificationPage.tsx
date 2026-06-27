@@ -6,6 +6,7 @@ import { CheckCircle, Clock, PlayCircle, ShieldCheck, Download } from 'lucide-re
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { QRCodeSVG } from 'qrcode.react';
+import { useDynamicBaseUrl } from '@/utils/urlUtils';
 
 /* ────── Status config ────── */
 const statusConfig: Record<string, { color: string; bg: string; icon: any; label: string }> = {
@@ -16,6 +17,7 @@ const statusConfig: Record<string, { color: string; bg: string; icon: any; label
 
 export default function JobCardVerificationPage() {
   const { id } = useParams<{ id: string }>();
+  const baseUrl = useDynamicBaseUrl();
   const cardRef = useRef<HTMLDivElement>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
@@ -106,11 +108,11 @@ export default function JobCardVerificationPage() {
           <div style={{ background: 'linear-gradient(135deg, #1C1A18 0%, #2D2926 50%, #3A3530 100%)', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <h1 style={{ fontSize: 22, fontWeight: 700, color: '#E8C668', letterSpacing: '-0.02em', margin: 0 }}>JOB CARD</h1>
-              <p style={{ fontSize: 10, color: 'rgba(232,198,104,0.6)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '4px 0 0' }}>Precision Gauge Manufacturing</p>
+              <p style={{ fontSize: 10, color: 'rgba(232,198,104,0.6)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '4px 0 0' }}>Aarush Quality Services</p>
             </div>
             <div style={{ textAlign: 'right', display: 'flex', gap: 20, alignItems: 'center' }}>
               <div style={{ background: 'white', padding: '6px 6px 4px', borderRadius: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <QRCodeSVG value={`${window.location.origin}/verify/${gauge.id}`} size={54} />
+                <QRCodeSVG value={`${baseUrl}/verify/${gauge.id}`} size={54} />
                 <span style={{ fontSize: 7, fontWeight: 700, marginTop: 4, color: '#1C1A18' }}>VERIFY</span>
               </div>
               <div style={{ textAlign: 'right' }}>
@@ -130,6 +132,10 @@ export default function JobCardVerificationPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
                 <Cell label="Date" value={new Date(gauge.createdAt).toLocaleDateString()} borderRight />
                 <Cell label="Customer" value={po?.customer?.name || po?.customerName || '—'} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
+                <Cell label="Cust. Sr. No." value={(gauge as any).customerSrNumber || po?.customerSrNumber || '—'} mono borderRight />
+                <Cell label="Mfg. No." value={(gauge as any).manufactureNumber || po?.manufactureNumber || '—'} mono />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
                 <Cell label="W.O. No." value={po?.poNumber || '—'} mono borderRight />

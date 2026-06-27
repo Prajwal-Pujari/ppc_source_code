@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -68,5 +69,33 @@ public class GaugeService {
     @Transactional(readOnly = true)
     public List<NcRecord> getGaugeNcRecords(UUID gaugeId) {
         return ncRecordRepository.findByGaugeIdOrderByCreatedAtDesc(gaugeId);
+    }
+
+    @Transactional
+    public Gauge updateGauge(UUID gaugeId, Map<String, Object> updates) {
+        Gauge gauge = gaugeRepository.findById(gaugeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Gauge", "id", gaugeId));
+        if (updates.containsKey("customerSrNumber")) {
+            gauge.setCustomerSrNumber(updates.get("customerSrNumber") != null ? String.valueOf(updates.get("customerSrNumber")) : null);
+        }
+        if (updates.containsKey("manufactureNumber")) {
+            gauge.setManufactureNumber(updates.get("manufactureNumber") != null ? String.valueOf(updates.get("manufactureNumber")) : null);
+        }
+        if (updates.containsKey("isCalibrationApproved")) {
+            gauge.setIsCalibrationApproved(Boolean.parseBoolean(String.valueOf(updates.get("isCalibrationApproved"))));
+        }
+        if (updates.containsKey("approvedByAdminName")) {
+            gauge.setApprovedByAdminName(updates.get("approvedByAdminName") != null ? String.valueOf(updates.get("approvedByAdminName")) : null);
+        }
+        if (updates.containsKey("approvedByAdminSign")) {
+            gauge.setApprovedByAdminSign(updates.get("approvedByAdminSign") != null ? String.valueOf(updates.get("approvedByAdminSign")) : null);
+        }
+        if (updates.containsKey("calibratorName")) {
+            gauge.setCalibratorName(updates.get("calibratorName") != null ? String.valueOf(updates.get("calibratorName")) : null);
+        }
+        if (updates.containsKey("calibratorSign")) {
+            gauge.setCalibratorSign(updates.get("calibratorSign") != null ? String.valueOf(updates.get("calibratorSign")) : null);
+        }
+        return gaugeRepository.save(gauge);
     }
 }

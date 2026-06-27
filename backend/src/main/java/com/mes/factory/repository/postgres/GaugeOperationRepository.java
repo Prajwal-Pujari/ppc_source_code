@@ -90,5 +90,20 @@ public interface GaugeOperationRepository extends JpaRepository<GaugeOperation, 
             @Param("factoryId") UUID factoryId,
             @Param("statuses") List<OperationStatus> statuses,
             @Param("isCalibration") Boolean isCalibration);
+
+    @Query("SELECT DISTINCT go FROM GaugeOperation go " +
+           "JOIN FETCH go.gauge g " +
+           "LEFT JOIN FETCH g.purchaseOrder po " +
+           "LEFT JOIN FETCH po.customer c " +
+           "LEFT JOIN FETCH g.poLineItem li " +
+           "LEFT JOIN FETCH g.gaugeMaster gm " +
+           "LEFT JOIN FETCH go.operationMaster om " +
+           "LEFT JOIN FETCH go.assignedTo w " +
+           "WHERE g.factory.id = :factoryId " +
+           "AND go.status IN :statuses " +
+           "ORDER BY g.serialNumber, go.sequenceOrder")
+    List<GaugeOperation> findAnalyticsOperations(
+            @Param("factoryId") UUID factoryId,
+            @Param("statuses") List<OperationStatus> statuses);
 }
 // End of Repository Interface

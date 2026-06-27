@@ -26,3 +26,8 @@ export const toggleCalibrationWorkerApi = async (userId: string, isCalibration: 
   const res = await api.patch<ApiResponse<User>>(`/users/${userId}/calibration-worker?isCalibration=${isCalibration}`);
   return res.data;
 };
+
+export const updateUserSignatureApi = async (userId: string, signatureUrl: string) => {
+  const res = await api.patch<ApiResponse<User>>(`/users/${userId}/signature`, { signatureUrl });
+  return res.data;
+};

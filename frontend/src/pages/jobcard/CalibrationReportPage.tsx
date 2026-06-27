@@ -8,6 +8,9 @@ import { ArrowLeft, Download, Printer, CheckCircle, AlertTriangle } from 'lucide
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { QRCodeSVG } from 'qrcode.react';
+import { CompanyReportHeader } from '@/components/shared/CompanyReportHeader';
+import { reportConfigApi, getEffectiveReportConfig } from '@/api/reportConfig.api';
+import { useDynamicBaseUrl } from '@/utils/urlUtils';
 
 const fmtDate = (d: string | undefined) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
@@ -15,9 +18,14 @@ export default function CalibrationReportPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const setPageTitle = useUiStore((s: any) => s.setPageTitle);
+  const baseUrl = useDynamicBaseUrl();
   const jobCardRef = useRef<HTMLDivElement>(null);
   const calibrationRefs = useRef<HTMLDivElement[]>([]);
+  const [pageSize, setPageSize] = useState<'a1' | 'a2' | 'a3' | 'a4' | 'a5'>('a4');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const { data: configRes } = useQuery({ queryKey: ['report-config'], queryFn: () => reportConfigApi.get() });
+  const reportConfig = getEffectiveReportConfig(configRes?.data || { customerLogo: '', docNo: 'QMS/F/01', revNo: '00 / 01.01.2024', issueDate: '01.01.2024' });
 
   const { data: gaugeData, isLoading } = useQuery({ queryKey: ['gauge', id], queryFn: () => getGauge(id!) });
   const { data: opsData } = useQuery({ queryKey: ['gauge-ops', id], queryFn: () => getGaugeOperations(id!), enabled: !!gaugeData?.data });
@@ -41,32 +49,17 @@ export default function CalibrationReportPage() {
     setIsGeneratingPdf(true);
 
     try {
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: pageSize });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
 
-      // Page 1: Job Card
-      if (jobCardRef.current) {
-        const canvas = await html2canvas(jobCardRef.current, { scale: 2, useCORS: true, backgroundColor: '#FFFFFF', logging: false });
-        const imgData = canvas.toDataURL('image/png');
-        let pdfW = pageW;
-        let pdfH = (canvas.height * pdfW) / canvas.width;
-        let xOffset = 0;
-        if (pdfH > pageH) {
-          const ratio = pageH / pdfH;
-          pdfH = pageH;
-          const newW = pdfW * ratio;
-          xOffset = (pdfW - newW) / 2;
-          pdfW = newW;
-        }
-        pdf.addImage(imgData, 'PNG', xOffset, 0, pdfW, pdfH);
-      }
-
-      // Page 2+: Calibration observations
+      // Calibration observations pages
       for (let i = 0; i < calibrationRefs.current.length; i++) {
         const el = calibrationRefs.current[i];
         if (!el) continue;
-        pdf.addPage();
+        if (i > 0) {
+          pdf.addPage();
+        }
         const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#FFFFFF', logging: false });
         const imgData = canvas.toDataURL('image/png');
         let pdfW = pageW;
@@ -101,16 +94,25 @@ export default function CalibrationReportPage() {
 
   const po = gauge.purchaseOrder;
   const completedOps = ops.filter((o: any) => o.status === 'COMPLETED').length;
-  const baseUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
       {/* ── Top Actions Bar ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div className="no-print responsive-flex" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <button onClick={() => navigate(-1)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--copper-bronze)', fontSize: 13, fontWeight: 500 }}>
           <ArrowLeft size={16} /> Back
         </button>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'white', padding: '0 10px', minHeight: 36, borderRadius: 6, border: '1px solid var(--silk)' }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--charcoal)' }}>Page Size:</label>
+            <select value={pageSize} onChange={(e) => setPageSize(e.target.value as any)} style={{ border: 'none', background: 'transparent', fontSize: 12, fontWeight: 600, outline: 'none', cursor: 'pointer', color: 'var(--copper-bronze)' }}>
+              <option value="a1">A1</option>
+              <option value="a2">A2</option>
+              <option value="a3">A3</option>
+              <option value="a4">A4</option>
+              <option value="a5">A5</option>
+            </select>
+          </div>
           <button onClick={() => window.print()} className="btn btn-secondary" style={{ gap: 6, minHeight: 36, fontSize: 12, padding: '0 14px' }}>
             <Printer size={14} /> Print
           </button>
@@ -121,96 +123,9 @@ export default function CalibrationReportPage() {
         </div>
       </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } } @media print { @page { size: ${pageSize} portrait; margin: 10mm; } }`}</style>
 
-      {/* ━━━ PAGE 1: JOB CARD ━━━ */}
-      <div ref={jobCardRef} style={{ background: '#FFFFFF', border: '2px solid #1C1A18', borderRadius: 2, overflow: 'hidden', fontFamily: "'Inter', sans-serif", marginBottom: 30 }}>
-        {/* Header */}
-        <div style={{ background: 'linear-gradient(135deg, #1C1A18 0%, #2D2926 50%, #3A3530 100%)', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: '#E8C668', letterSpacing: '-0.02em', margin: 0 }}>JOB CARD</h1>
-            <p style={{ fontSize: 10, color: 'rgba(232,198,104,0.6)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '4px 0 0' }}>Precision Gauge Manufacturing</p>
-          </div>
-          <div style={{ textAlign: 'right', display: 'flex', gap: 20, alignItems: 'center' }}>
-            <div style={{ background: 'white', padding: '6px 6px 4px', borderRadius: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-              <QRCodeSVG value={`${baseUrl}/verify/${gauge.id}`} size={54} />
-              <span style={{ fontSize: 7, fontWeight: 700, marginTop: 4, color: 'var(--charcoal)', letterSpacing: '0.05em' }}>VERIFY</span>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 16, fontWeight: 700, color: '#FFFFFF', margin: 0 }}>{gauge.serialNumber}</p>
-              <span style={{ display: 'inline-block', marginTop: 6, padding: '3px 12px', borderRadius: 4, fontSize: 10, fontWeight: 700, background: '#EBF4EE', color: '#3A6B4A', letterSpacing: '0.05em' }}>
-                {gauge.status?.replace('_', ' ')}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Order Information */}
-        <div style={{ borderBottom: '2px solid #1C1A18' }}>
-          <SectionTitle text="Order Information" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
-            <Cell label="Customer" value={po?.customer?.name || po?.customerName || '—'} borderRight />
-            <Cell label="PO Number" value={po?.poNumber || '—'} mono />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
-            <Cell label="Order Date" value={fmtDate(po?.orderDate)} borderRight />
-            <Cell label="Due Date" value={fmtDate(po?.expectedDeliveryDate)} borderRight />
-            <Cell label="Priority" value={po?.priority || 'NORMAL'} />
-          </div>
-        </div>
-
-        {/* Gauge Specifications */}
-        <div style={{ borderBottom: '2px solid #1C1A18' }}>
-          <SectionTitle text="Gauge Specifications" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
-            <Cell label="Gauge Type" value={gauge.gaugeTypeName} bold borderRight />
-            <Cell label="Batch Qty" value={`${gauge.batchQuantity || 1}`} mono />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
-            <Cell label="Nominal Size" value={`${gauge.nominalSize} ${gauge.sizeUnit}`} mono borderRight />
-            <Cell label="Material Grade" value={gauge.materialGrade || '—'} />
-          </div>
-        </div>
-
-        {/* Operations Log */}
-        <div style={{ borderBottom: '2px solid #1C1A18' }}>
-          <SectionTitle text="Operations Log" />
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-            <thead>
-              <tr style={{ background: '#F5F2ED', borderTop: '1px solid #D4CCBF', borderBottom: '1px solid #D4CCBF' }}>
-                <th style={thStyle}>#</th>
-                <th style={{ ...thStyle, textAlign: 'left' }}>Operation</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Assigned To</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ops.map((op: any, idx: number) => (
-                <tr key={op.id} style={{ borderBottom: '1px solid #E8E2D9', background: idx % 2 === 0 ? '#FFFFFF' : '#FAFAF8' }}>
-                  <td style={{ ...tdStyle, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, color: '#8C857D', width: 40 }}>{op.sequenceOrder}</td>
-                  <td style={{ ...tdStyle, fontWeight: 600 }}>{op.operationName}</td>
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>
-                    <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700, background: op.status === 'COMPLETED' ? '#EBF4EE' : '#FBF4E8', color: op.status === 'COMPLETED' ? '#3A6B4A' : '#C68B2F' }}>
-                      {op.status}
-                    </span>
-                  </td>
-                  <td style={{ ...tdStyle, textAlign: 'center', fontSize: 11 }}>{op.assignedTo?.fullName || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Progress */}
-        <div style={{ padding: '12px 16px', background: '#F5F2ED', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 10, color: '#8C857D', fontFamily: "'JetBrains Mono', monospace" }}>
-            Progress: {completedOps}/{ops.length} operations completed
-          </span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#1C1A18', fontFamily: "'JetBrains Mono', monospace" }}>
-            Card No: {gauge.serialNumber}
-          </span>
-        </div>
-      </div>
+      {/* ━━━ CALIBRATION OBSERVATIONS REPORT ━━━ */}
 
       {/* ━━━ PAGE 2+: CALIBRATION OBSERVATIONS ━━━ */}
       {observationPages.map((pageObs, pageIdx) => (
@@ -219,105 +134,166 @@ export default function CalibrationReportPage() {
           ref={el => { if (el) calibrationRefs.current[pageIdx] = el; }}
           style={{ background: '#FFFFFF', border: '2px solid #1C1A18', borderRadius: 2, overflow: 'hidden', fontFamily: "'Inter', sans-serif", marginBottom: 30 }}
         >
-          {/* Calibration Header */}
-          <div style={{ background: 'linear-gradient(135deg, #1E3A8A 0%, #1E40AF 100%)', padding: '20px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#FFFFFF', margin: 0 }}>CALIBRATION RESULTS</h2>
-              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '4px 0 0' }}>
-                Page {pageIdx + 2} of {observationPages.length + 1} • Units {pageObs[0]?.unitNumber}–{pageObs[pageObs.length - 1]?.unitNumber} of {observations.length}
-              </p>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700, color: '#FFFFFF', margin: 0 }}>{gauge.serialNumber}</p>
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', margin: '2px 0 0' }}>{gauge.gaugeTypeName}</p>
-            </div>
-          </div>
+          <CompanyReportHeader 
+            config={reportConfig}
+            reportTitle="Calibration Certificate"
+            pageInfo={`Page ${pageIdx + 2} of ${observationPages.length + 1} • Units ${pageObs[0]?.unitNumber}–${pageObs[pageObs.length - 1]?.unitNumber}`}
+            serialNumber={gauge.serialNumber}
+            themeColor="#1E3A8A"
+          />
 
           {/* Gauge Details Banner */}
-          <div style={{ padding: '12px 28px', background: '#F5F2ED', borderBottom: '1px solid #D4CCBF', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16 }}>
+          <div style={{ padding: '12px 28px', background: '#F5F2ED', borderBottom: '1px solid #D4CCBF', display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 16 }}>
             <MiniField label="Customer" value={po?.customer?.name || po?.customerName || '—'} />
-            <MiniField label="PO Number" value={po?.poNumber || '—'} />
+            <MiniField label="WO Number" value={po?.poNumber || '—'} />
+            <MiniField label="Cust. Sr. No." value={(gauge as any).customerSrNumber || po?.customerSrNumber || '—'} />
+            <MiniField label="Mfg. No." value={(gauge as any).manufactureNumber || po?.manufactureNumber || '—'} />
             <MiniField label="Nominal Size" value={`${gauge.nominalSize} ${gauge.sizeUnit}`} />
             <MiniField label="Material" value={gauge.materialGrade || 'Standard'} />
           </div>
 
           {/* Observation Tables */}
           <div style={{ padding: '20px 28px' }}>
-            {pageObs.map((obs: any) => {
+            {pageObs.map((obs: any, idx: number) => {
               const goOOB = obs.observedGo != null && ((obs.specifiedGoPlus != null && obs.observedGo > obs.specifiedGoPlus) || (obs.specifiedGoMinus != null && obs.observedGo < obs.specifiedGoMinus));
               const nogoOOB = obs.observedNogo != null && ((obs.specifiedNogoPlus != null && obs.observedNogo > obs.specifiedNogoPlus) || (obs.specifiedNogoMinus != null && obs.observedNogo < obs.specifiedNogoMinus));
               const pass = obs.observedGo != null && obs.observedNogo != null && !goOOB && !nogoOOB;
+              const isLast = idx === pageObs.length - 1;
 
               return (
-                <div key={obs.id} style={{ marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#1E3A8A', fontFamily: "'JetBrains Mono', monospace" }}>
-                      Unit {obs.unitNumber} / {observations.length}
-                    </span>
-                    {obs.observedGo != null && obs.observedNogo != null && (
-                      pass ? (
-                        <span style={{ fontSize: 10, fontWeight: 700, color: '#228B22', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <CheckCircle size={12} /> PASS
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 10, fontWeight: 700, color: '#BA1A1A', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <AlertTriangle size={12} /> FAIL
-                        </span>
-                      )
-                    )}
-                  </div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, border: '1px solid #D4CCBF' }}>
+                <div key={obs.id || idx} style={{ marginBottom: isLast ? 0 : 24, overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, border: '1.5px solid #1C1A18' }}>
                     <thead>
-                      <tr style={{ background: '#F5F2ED' }}>
-                        <th style={rthStyle}></th>
-                        <th style={{ ...rthStyle, textAlign: 'center' }}>GO</th>
-                        <th style={{ ...rthStyle, textAlign: 'center' }}>NOGO</th>
+                      <tr style={{ background: '#F5F2ED', borderBottom: '1.5px solid #1C1A18' }}>
+                        <th colSpan={7} style={{ padding: '10px', textAlign: 'center', fontWeight: 800, fontSize: 13, color: '#1C1A18', letterSpacing: 0.5 }}>
+                          Calibration Results in ({gauge.sizeUnit || 'mm'}) {pageObs.length > 1 ? `— Unit #${obs.unitNumber}` : ''}
+                        </th>
+                      </tr>
+                      <tr style={{ background: '#FAFAF8', color: '#1C1A18', fontWeight: 700, fontSize: 10 }}>
+                        <th rowSpan={2} style={{ padding: '6px', borderRight: '1px solid #1C1A18', borderBottom: '1.5px solid #1C1A18', textAlign: 'center', width: '16%', verticalAlign: 'middle' }}>
+                          No / Make
+                        </th>
+                        <th colSpan={2} style={{ padding: '6px', borderRight: '1px solid #1C1A18', borderBottom: '1px solid #1C1A18', textAlign: 'center', width: '28%' }}>
+                          Nominal Size
+                        </th>
+                        <th colSpan={2} style={{ padding: '6px', borderRight: '1px solid #1C1A18', borderBottom: '1px solid #1C1A18', textAlign: 'center', width: '28%' }}>
+                          Specified Size
+                        </th>
+                        <th colSpan={2} style={{ padding: '6px', borderBottom: '1px solid #1C1A18', textAlign: 'center', width: '28%' }}>
+                          Observed Size
+                        </th>
+                      </tr>
+                      <tr style={{ background: '#FAFAF8', color: '#1C1A18', fontWeight: 700, fontSize: 10 }}>
+                        <th style={{ padding: '6px 4px', borderRight: '1px solid #1C1A18', borderBottom: '1.5px solid #1C1A18', textAlign: 'center' }}>GO</th>
+                        <th style={{ padding: '6px 4px', borderRight: '1px solid #1C1A18', borderBottom: '1.5px solid #1C1A18', textAlign: 'center' }}>NOGO</th>
+                        <th style={{ padding: '6px 4px', borderRight: '1px solid #1C1A18', borderBottom: '1.5px solid #1C1A18', textAlign: 'center' }}>GO</th>
+                        <th style={{ padding: '6px 4px', borderRight: '1px solid #1C1A18', borderBottom: '1.5px solid #1C1A18', textAlign: 'center' }}>NOGO</th>
+                        <th style={{ padding: '6px 4px', borderRight: '1px solid #1C1A18', borderBottom: '1.5px solid #1C1A18', textAlign: 'center' }}>GO</th>
+                        <th style={{ padding: '6px 4px', borderBottom: '1.5px solid #1C1A18', textAlign: 'center' }}>NOGO</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr style={{ borderBottom: '1px solid #E8E2D9' }}>
-                        <td style={{ ...rtdStyle, fontWeight: 700, color: '#8C857D', fontSize: 9, textTransform: 'uppercase' }}>Nominal Size</td>
-                        <td style={{ ...rtdStyle, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{obs.nominalGo ?? '—'}</td>
-                        <td style={{ ...rtdStyle, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{obs.nominalNogo ?? '—'}</td>
+                      <tr style={{ background: pass ? '#FFFFFF' : (goOOB || nogoOOB ? '#FFFBFB' : '#FFFFFF') }}>
+                        <td style={{ padding: '6px', borderRight: '1px solid #1C1A18', borderBottom: '1px dashed #D4CCBF', textAlign: 'center', fontWeight: 700, fontSize: 11, verticalAlign: 'middle' }}>
+                          Unit #{obs.unitNumber}
+                        </td>
+                        <td style={{ padding: '6px', borderRight: '1px solid #1C1A18', borderBottom: '1px dashed #D4CCBF', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, verticalAlign: 'middle' }}>
+                          {obs.nominalGo ?? '—'}
+                        </td>
+                        <td style={{ padding: '6px', borderRight: '1px solid #1C1A18', borderBottom: '1px dashed #D4CCBF', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, verticalAlign: 'middle' }}>
+                          {obs.nominalNogo ?? '—'}
+                        </td>
+                        <td style={{ padding: '4px 6px', borderRight: '1px solid #1C1A18', borderBottom: '1px dashed #D4CCBF', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: 10, verticalAlign: 'middle' }}>
+                          {obs.specifiedGoPlus != null ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, lineHeight: 1.3, fontWeight: 700, color: '#1C1A18' }}>
+                              <div>{String(obs.specifiedGoPlus).startsWith('+') || String(obs.specifiedGoPlus).startsWith('-') ? obs.specifiedGoPlus : `+${obs.specifiedGoPlus}`}</div>
+                              <div>{obs.specifiedGoMinus != null ? (Number(obs.specifiedGoMinus) >= 0 && !String(obs.specifiedGoMinus).startsWith('+') ? `+${obs.specifiedGoMinus}` : obs.specifiedGoMinus) : '—'}</div>
+                            </div>
+                          ) : '—'}
+                        </td>
+                        <td style={{ padding: '4px 6px', borderRight: '1px solid #1C1A18', borderBottom: '1px dashed #D4CCBF', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: 10, verticalAlign: 'middle' }}>
+                          {obs.specifiedNogoPlus != null ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, lineHeight: 1.3, fontWeight: 700, color: '#1C1A18' }}>
+                              <div>{String(obs.specifiedNogoPlus).startsWith('+') || String(obs.specifiedNogoPlus).startsWith('-') ? obs.specifiedNogoPlus : `+${obs.specifiedNogoPlus}`}</div>
+                              <div>{obs.specifiedNogoMinus != null ? (Number(obs.specifiedNogoMinus) >= 0 && !String(obs.specifiedNogoMinus).startsWith('+') ? `+${obs.specifiedNogoMinus}` : obs.specifiedNogoMinus) : '—'}</div>
+                            </div>
+                          ) : '—'}
+                        </td>
+                        <td style={{ padding: '6px', borderRight: '1px solid #1C1A18', borderBottom: '1px dashed #D4CCBF', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: goOOB ? '#BA1A1A' : '#1C1A18', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                            {obs.observedGo ?? '—'} {goOOB && <AlertTriangle size={12} color="#BA1A1A" />}
+                          </div>
+                        </td>
+                        <td style={{ padding: '6px', borderBottom: '1px dashed #D4CCBF', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: nogoOOB ? '#BA1A1A' : '#1C1A18', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                            {obs.observedNogo ?? '—'} {nogoOOB && <AlertTriangle size={12} color="#BA1A1A" />}
+                          </div>
+                        </td>
                       </tr>
-                      <tr style={{ borderBottom: '1px solid #E8E2D9' }}>
-                        <td style={{ ...rtdStyle, fontWeight: 700, color: '#8C857D', fontSize: 9, textTransform: 'uppercase' }}>Specified Size</td>
-                        <td style={{ ...rtdStyle, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }}>
-                          {obs.specifiedGoPlus != null ? <>{obs.specifiedGoPlus} / {obs.specifiedGoMinus}</> : '—'}
+                      <tr style={{ background: pass ? '#FAFAF8' : (goOOB || nogoOOB ? '#FFF5F5' : '#FAFAF8'), borderBottom: '1.5px solid #1C1A18' }}>
+                        <td style={{ padding: '6px', borderRight: '1px solid #1C1A18', textAlign: 'center', color: '#665E53', fontSize: 10, fontWeight: 600 }}>
+                          {gauge.gaugeTypeName || gauge.materialGrade || 'Standard'}
                         </td>
-                        <td style={{ ...rtdStyle, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }}>
-                          {obs.specifiedNogoPlus != null ? <>{obs.specifiedNogoPlus} / {obs.specifiedNogoMinus}</> : '—'}
+                        <td colSpan={2} style={{ padding: '6px', borderRight: '1px solid #1C1A18', textAlign: 'center', fontSize: 10, color: '#807665', fontStyle: 'italic' }}>
+                          {obs.remarks ? `Note: ${obs.remarks}` : ''}
                         </td>
-                      </tr>
-                      {obs.wearLimit != null && (
-                        <tr style={{ borderBottom: '1px solid #E8E2D9' }}>
-                          <td style={{ ...rtdStyle, fontWeight: 700, color: '#8C857D', fontSize: 9, textTransform: 'uppercase' }}>Wear Limit</td>
-                          <td colSpan={2} style={{ ...rtdStyle, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace" }}>{obs.wearLimit}</td>
-                        </tr>
-                      )}
-                      <tr style={{ background: goOOB || nogoOOB ? '#FFF5F5' : '#EBF4EE' }}>
-                        <td style={{ ...rtdStyle, fontWeight: 700, color: goOOB || nogoOOB ? '#BA1A1A' : '#228B22', fontSize: 9, textTransform: 'uppercase' }}>Observed Size</td>
-                        <td style={{
-                          ...rtdStyle, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
-                          color: goOOB ? '#BA1A1A' : '#228B22',
-                        }}>
-                          {obs.observedGo ?? '—'} {goOOB && '⚠'}
+                        <td colSpan={2} style={{ padding: '6px', borderRight: '1px solid #1C1A18', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, fontSize: 10, color: '#1C1A18' }}>
+                          {obs.wearLimit != null ? `W/L : ${obs.wearLimit}` : 'W/L : —'}
                         </td>
-                        <td style={{
-                          ...rtdStyle, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
-                          color: nogoOOB ? '#BA1A1A' : '#228B22',
-                        }}>
-                          {obs.observedNogo ?? '—'} {nogoOOB && '⚠'}
+                        <td colSpan={2} style={{ padding: '6px', textAlign: 'center' }}>
+                          {obs.observedGo != null && obs.observedNogo != null ? (
+                            pass ? (
+                              <span style={{ fontSize: 10, fontWeight: 700, color: '#228B22', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <CheckCircle size={12} /> PASS
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: 10, fontWeight: 700, color: '#BA1A1A', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <AlertTriangle size={12} /> FAIL
+                              </span>
+                            )
+                          ) : (
+                            <span style={{ fontSize: 10, color: '#8C857D' }}>Pending</span>
+                          )}
                         </td>
                       </tr>
                     </tbody>
                   </table>
-                  {obs.remarks && (
-                    <div style={{ fontSize: 10, color: '#807665', marginTop: 4, fontStyle: 'italic' }}>Note: {obs.remarks}</div>
-                  )}
                 </div>
               );
             })}
+          </div>
+
+          {/* Signatures */}
+          <div style={{ padding: '16px 28px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #D4CCBF', background: '#FAFAF8' }}>
+            <div style={{ textAlign: 'center', minWidth: 200 }}>
+              <div style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {(gauge as any).calibratorSign ? (
+                  (gauge as any).calibratorSign.startsWith('data:image') ? (
+                    <img src={(gauge as any).calibratorSign} alt="Sign" style={{ maxHeight: 56, maxWidth: 200, objectFit: 'contain' }} />
+                  ) : (
+                    <span style={{ fontFamily: 'cursive', fontSize: 16, fontWeight: 600, color: '#1C1A18' }}>{(gauge as any).calibratorSign}</span>
+                  )
+                ) : <span style={{ color: '#8C857D', fontSize: 11, fontStyle: 'italic' }}>Pending Calibrator Sign</span>}
+              </div>
+              <div style={{ borderTop: '1px solid #1C1A18', paddingTop: 4, fontSize: 10, fontWeight: 700, color: '#1C1A18', textTransform: 'uppercase' }}>
+                Calibrated By: {(gauge as any).calibratorName || 'Quality Inspector'}
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'center', minWidth: 200 }}>
+              <div style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {(gauge as any).approvedByAdminSign ? (
+                  (gauge as any).approvedByAdminSign.startsWith('data:image') ? (
+                    <img src={(gauge as any).approvedByAdminSign} alt="Sign" style={{ maxHeight: 56, maxWidth: 200, objectFit: 'contain' }} />
+                  ) : (
+                    <span style={{ fontFamily: 'cursive', fontSize: 16, fontWeight: 600, color: '#3A6B4A' }}>{(gauge as any).approvedByAdminSign}</span>
+                  )
+                ) : <span style={{ color: '#8C857D', fontSize: 11, fontStyle: 'italic' }}>Pending Admin Approval</span>}
+              </div>
+              <div style={{ borderTop: '1px solid #1C1A18', paddingTop: 4, fontSize: 10, fontWeight: 700, color: '#1C1A18', textTransform: 'uppercase' }}>
+                Approved By: {(gauge as any).approvedByAdminName || 'Admin Manager'}
+              </div>
+            </div>
           </div>
 
           {/* Footer */}

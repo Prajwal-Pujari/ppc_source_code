@@ -270,7 +270,7 @@ export default function DashboardPage() {
       {/* ─── PO Tracker ─── */}
       <div className="card" style={{ padding: 24, marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--charcoal)', margin: 0 }}>Purchase Order Tracker</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--charcoal)', margin: 0 }}>Work Order Tracker</h3>
           <button className="btn btn-secondary" onClick={() => navigate('/purchase-orders')} style={{ fontSize: 12, minHeight: 32, padding: '0 12px' }}>
             View All <ArrowRight size={12} style={{ marginLeft: 4 }} />
           </button>
@@ -279,7 +279,7 @@ export default function DashboardPage() {
           <table>
             <thead>
               <tr>
-                <th>PO Number</th>
+                <th>WO Number</th>
                 <th>Customer</th>
                 <th>Status</th>
                 <th>Due Date</th>
@@ -333,7 +333,7 @@ export default function DashboardPage() {
       <div className="card" style={{ padding: 24 }}>
         <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--charcoal)', marginBottom: 16 }}>Quick Actions</h3>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <button className="btn btn-primary" onClick={() => navigate('/purchase-orders/new')}>New Purchase Order</button>
+          <button className="btn btn-primary" onClick={() => navigate('/purchase-orders/new')}>New Work Order</button>
           <button className="btn btn-secondary" onClick={() => navigate('/job-cards')}>View Job Cards</button>
           <button className="btn btn-secondary" onClick={() => navigate('/master/gauges')}>Gauge Master</button>
           <button className="btn btn-secondary" onClick={() => navigate('/master/operations')}>Operations</button>

@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useUiStore } from '@/store/uiStore';
-import { getGauge, getGaugeOperations, getGaugeNcRecords } from '@/api/gauges.api';
-import { ArrowLeft, Download, Printer, CheckCircle, Clock, PlayCircle, Pause, XCircle, AlertTriangle, FileText } from 'lucide-react';
+import { getGauge, getGaugeOperations, getGaugeNcRecords, updateGauge } from '@/api/gauges.api';
+import { ArrowLeft, Download, Printer, CheckCircle, Clock, PlayCircle, Pause, XCircle, AlertTriangle, FileText, Edit2 } from 'lucide-react';
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { QRCodeSVG } from 'qrcode.react';
+import { useDynamicBaseUrl } from '@/utils/urlUtils';
+import { CompanyReportHeader } from '@/components/shared/CompanyReportHeader';
+import { reportConfigApi, getEffectiveReportConfig } from '@/api/reportConfig.api';
 
 /* ────── Status visual config ────── */
 const statusConfig: Record<string, { color: string; bg: string; icon: any; label: string }> = {
@@ -37,8 +40,13 @@ export default function JobCardDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const setPageTitle = useUiStore((s: any) => s.setPageTitle);
+  const baseUrl = useDynamicBaseUrl();
   const cardRef = useRef<HTMLDivElement>(null);
+  const [pageSize, setPageSize] = useState<'a1' | 'a2' | 'a3' | 'a4' | 'a5'>('a4');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const { data: configRes } = useQuery({ queryKey: ['report-config'], queryFn: () => reportConfigApi.get() });
+  const reportConfig = getEffectiveReportConfig(configRes?.data || { customerLogo: '', docNo: 'QMS/F/01', revNo: '00 / 01.01.2024', issueDate: '01.01.2024' });
 
   const { data: gaugeData, isLoading } = useQuery({ queryKey: ['gauge', id], queryFn: () => getGauge(id!) });
   const { data: opsData } = useQuery({ queryKey: ['gauge-ops', id], queryFn: () => getGaugeOperations(id!), enabled: !!gaugeData?.data });
@@ -48,7 +56,26 @@ export default function JobCardDetailPage() {
   const ops = opsData?.data || [];
   const ncRecords = ncData?.data || [];
 
-  useEffect(() => { if (gauge) setPageTitle(`Job Card: ${gauge.serialNumber}`); }, [gauge, setPageTitle]);
+  const queryClient = useQueryClient();
+  const [isEditingSrNo, setIsEditingSrNo] = useState(false);
+  const [custSrInput, setCustSrInput] = useState('');
+  const [mfgNoInput, setMfgNoInput] = useState('');
+
+  useEffect(() => {
+    if (gauge) {
+      setPageTitle(`Job Card: ${gauge.serialNumber}`);
+      setCustSrInput((gauge as any).customerSrNumber || gauge.purchaseOrder?.customerSrNumber || '');
+      setMfgNoInput((gauge as any).manufactureNumber || gauge.purchaseOrder?.manufactureNumber || '');
+    }
+  }, [gauge, setPageTitle]);
+
+  const updateSrMut = useMutation({
+    mutationFn: () => updateGauge(id!, { customerSrNumber: custSrInput, manufactureNumber: mfgNoInput }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gauge', id] });
+      setIsEditingSrNo(false);
+    }
+  });
 
   /* ── PDF Download ── */
   const handleDownloadPDF = async () => {
@@ -69,7 +96,7 @@ export default function JobCardDetailPage() {
       });
       
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: pageSize });
       
       const pageH = pdf.internal.pageSize.getHeight();
       let pdfW = pdf.internal.pageSize.getWidth();
@@ -112,17 +139,25 @@ export default function JobCardDetailPage() {
   const po = gauge.purchaseOrder;
   const badge = gaugeBadgeMap[gauge.status] || gaugeBadgeMap.PENDING;
 
-  const baseUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
-
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
 
       {/* ── Top Actions Bar ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div className="no-print responsive-flex" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <button onClick={() => navigate(-1)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--copper-bronze)', fontSize: 13, fontWeight: 500 }}>
           <ArrowLeft size={16} /> Back
         </button>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'white', padding: '0 10px', minHeight: 36, borderRadius: 6, border: '1px solid var(--silk)' }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--charcoal)' }}>Page Size:</label>
+            <select value={pageSize} onChange={(e) => setPageSize(e.target.value as any)} style={{ border: 'none', background: 'transparent', fontSize: 12, fontWeight: 600, outline: 'none', cursor: 'pointer', color: 'var(--copper-bronze)' }}>
+              <option value="a1">A1</option>
+              <option value="a2">A2</option>
+              <option value="a3">A3</option>
+              <option value="a4">A4</option>
+              <option value="a5">A5</option>
+            </select>
+          </div>
           <button 
             onClick={() => navigate(`/calibration-report/${gauge.id}`)}
             className="btn btn-secondary" 
@@ -153,6 +188,9 @@ export default function JobCardDetailPage() {
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
+        @media print {
+          @page { size: ${pageSize} portrait; margin: 10mm; }
+        }
       `}</style>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -163,44 +201,23 @@ export default function JobCardDetailPage() {
         border: '2px solid #1C1A18',
         borderRadius: 2,
         overflow: 'hidden',
+        overflowX: 'auto',
         fontFamily: "'Inter', sans-serif",
       }}>
 
         {/* ── HEADER / Letterhead ── */}
-        <div style={{
-          background: 'linear-gradient(135deg, #1C1A18 0%, #2D2926 50%, #3A3530 100%)',
-          padding: '24px 28px',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: '#E8C668', letterSpacing: '-0.02em', margin: 0 }}>
-              JOB CARD
-            </h1>
-            <p style={{ fontSize: 10, color: 'rgba(232,198,104,0.6)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '4px 0 0' }}>
-              Precision Gauge Manufacturing
-            </p>
-          </div>
-          <div style={{ textAlign: 'right', display: 'flex', gap: 20, alignItems: 'center' }}>
-            {/* Verification URL QR Code */}
-            <div style={{ background: 'white', padding: '6px 6px 4px', borderRadius: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-              <QRCodeSVG value={`${baseUrl}/verify/${gauge.id}`} size={54} />
-              <span style={{ fontSize: 7, fontWeight: 700, marginTop: 4, color: 'var(--charcoal)', letterSpacing: '0.05em' }}>VERIFY</span>
+        <CompanyReportHeader 
+          config={reportConfig}
+          reportTitle="Job Card"
+          serialNumber={gauge.serialNumber}
+          statusBadge={gauge.status}
+          qrCode={
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <QRCodeSVG value={`${baseUrl}/verify/${gauge.id}`} size={46} />
+              <span style={{ fontSize: 6, fontWeight: 800, marginTop: 2, color: '#1C1A18' }}>VERIFY</span>
             </div>
-            
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 16, fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
-                {gauge.serialNumber}
-              </p>
-              <span style={{
-                display: 'inline-block', marginTop: 6,
-                padding: '3px 12px', borderRadius: 4, fontSize: 10, fontWeight: 700,
-                background: badge.bg, color: badge.color, letterSpacing: '0.05em',
-              }}>
-                {gauge.status?.replace('_', ' ')}
-              </span>
-            </div>
-          </div>
-        </div>
+          }
+        />
 
         {/* ── SECTION 1: Order Information ── */}
         <div style={{ borderBottom: '2px solid #1C1A18' }}>
@@ -211,11 +228,44 @@ export default function JobCardDetailPage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
             <Cell label="Customer Name" value={po?.customer?.name || po?.customerName || '—'} borderRight />
-            <Cell label="W.O. No." value={po?.poNumber || '—'} mono />
+            <Cell label="Work Order No." value={po?.poNumber || '—'} mono />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF', background: isEditingSrNo ? '#FDF8E2' : undefined }}>
+            {isEditingSrNo ? (
+              <>
+                <div style={{ padding: '6px 10px', borderRight: '1px solid #D4CCBF' }}>
+                  <div style={{ fontSize: 9, color: '#8B6F4E', textTransform: 'uppercase', fontWeight: 700 }}>Cust. Sr. No.</div>
+                  <input className="input font-mono" style={{ padding: '2px 6px', height: 26, fontSize: 12, marginTop: 2 }} value={custSrInput} onChange={(e) => setCustSrInput(e.target.value)} placeholder="Cust Sr No" />
+                </div>
+                <div style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 9, color: '#8B6F4E', textTransform: 'uppercase', fontWeight: 700 }}>Mfg. No.</div>
+                    <input className="input font-mono" style={{ padding: '2px 6px', height: 26, fontSize: 12, marginTop: 2 }} value={mfgNoInput} onChange={(e) => setMfgNoInput(e.target.value)} placeholder="Mfg No" />
+                  </div>
+                  <button className="btn btn-primary" style={{ padding: '4px 10px', fontSize: 11, height: 28 }} onClick={() => updateSrMut.mutate()} disabled={updateSrMut.isPending}>Save</button>
+                  <button className="btn btn-outline" style={{ padding: '4px 8px', fontSize: 11, height: 28 }} onClick={() => setIsEditingSrNo(false)}>Cancel</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ position: 'relative' }} className="group">
+                  <Cell label="Cust. Sr. No." value={(gauge as any).customerSrNumber || po?.customerSrNumber || '—'} mono borderRight />
+                  <button onClick={() => setIsEditingSrNo(true)} title="Edit Unique Gauge Numbers" style={{ position: 'absolute', top: 6, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: '#8B6F4E' }}>
+                    <Edit2 size={13} />
+                  </button>
+                </div>
+                <div style={{ position: 'relative' }} className="group">
+                  <Cell label="Mfg. No." value={(gauge as any).manufactureNumber || po?.manufactureNumber || '—'} mono />
+                  <button onClick={() => setIsEditingSrNo(true)} title="Edit Unique Gauge Numbers" style={{ position: 'absolute', top: 6, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: '#8B6F4E' }}>
+                    <Edit2 size={13} />
+                  </button>
+                </div>
+              </>
+            )}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
-            <Cell label="P.O. No." value={po?.poNumber || '—'} mono borderRight />
-            <Cell label="PO Date" value={fmtDate(po?.orderDate)} borderRight />
+            <Cell label="Purchase Order No." value={(po as any)?.customerPoNumber || '—'} mono borderRight />
+            <Cell label="Order Date" value={fmtDate(po?.orderDate)} borderRight />
             <Cell label="Priority" value={po?.priority || 'NORMAL'} highlight={po?.priority === 'URGENT' ? '#8B3A3A' : po?.priority === 'HIGH' ? '#C68B2F' : undefined} />
           </div>
         </div>
@@ -225,7 +275,7 @@ export default function JobCardDetailPage() {
           <SectionTitle text="Gauge Specifications" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
             <Cell label="Gauge Name / Type" value={gauge.gaugeTypeName} bold borderRight />
-            <Cell label="Qty." value={`${gauge.poLineItem?.quantity || gauge.batchQuantity || 1}`} mono />
+            <Cell label="Qty." value={`${(gauge as any).poLineItem?.quantity || gauge.batchQuantity || 1}`} mono />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
             <Cell label="Nominal Size" value={`${gauge.nominalSize} ${gauge.sizeUnit}`} mono borderRight />

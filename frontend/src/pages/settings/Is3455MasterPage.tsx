@@ -50,7 +50,7 @@ export default function Is3455MasterPage() {
           IS 3455 Tolerance Tables
         </h1>
         <p style={{ margin: 0, color: 'var(--slate)', fontSize: 13 }}>
-          Standard gauge tolerance values as per IS 3455 (1971). Values are auto-applied when creating Purchase Orders.
+          Standard gauge tolerance values as per IS 3455 (1971). Values are auto-applied when creating Work Orders.
         </p>
       </div>
 

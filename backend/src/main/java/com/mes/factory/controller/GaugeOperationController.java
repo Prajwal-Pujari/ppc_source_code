@@ -33,7 +33,7 @@ public class GaugeOperationController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','QUALITY_INSPECTOR')")
     public ResponseEntity<ApiResponse<List<GaugeOperation>>> getOperations(
             @AuthenticationPrincipal CustomUserDetails user,
             @RequestParam(required = false, defaultValue = "PENDING,QUEUED,IN_PROGRESS") String statuses) {

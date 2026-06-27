@@ -312,6 +312,93 @@ tbody tr:hover {
   background: var(--warm-gray);
 }
 
+/* ========================================
+   Responsive Media Queries & Layouts
+   ======================================== */
+.sidebar-backdrop {
+  display: none;
+}
+
+/* Tablet & Smaller Laptops (max-width: 1024px) */
+@media (max-width: 1024px) {
+  :root {
+    --header-height: 52px;
+  }
+  .grid-2-cols-tablet {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Mobile & Small Tablets (max-width: 768px) */
+@media (max-width: 768px) {
+  :root {
+    --header-height: 50px;
+  }
+
+  /* Sidebar Overlay on Mobile */
+  .app-sidebar.open {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    height: 100vh !important;
+    z-index: 1000 !important;
+    box-shadow: 0 0 30px rgba(28, 26, 24, 0.25) !important;
+  }
+  
+  .sidebar-backdrop.active {
+    display: block !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(28, 26, 24, 0.45);
+    z-index: 999;
+    backdrop-filter: blur(2px);
+  }
+
+  /* Tables horizontal scrolling */
+  table {
+    width: 100%;
+  }
+  div[style*="overflow: auto"], div[style*="overflow-x: auto"] {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Flex containers wrap naturally */
+  .responsive-flex {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  /* Modals take up more screen on mobile */
+  div[style*="max-width: 500px"], div[style*="maxWidth: 500"] {
+    max-width: 95% !important;
+  }
+
+  /* Font tweaks */
+  h1 {
+    font-size: 16px !important;
+  }
+
+  /* Job card split layout mobile stacking */
+  .jobcard-split {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .split-left {
+    width: 100% !important;
+    max-height: 280px !important;
+    border-right: none !important;
+    border-bottom: 2px solid var(--silk) !important;
+    border-radius: 12px 12px 0 0 !important;
+  }
+  .split-right {
+    width: 100% !important;
+    overflow: visible !important;
+  }
+}
+
 /* Print Styles */
 @media print {
   body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }

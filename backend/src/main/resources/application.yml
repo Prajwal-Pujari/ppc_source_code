@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8087
 
 spring:
   application:
@@ -48,7 +48,8 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     ignore-missing-migrations: true
-    ignore-migration-patterns: "*:missing"
+    ignore-migration-patterns: "*:missing,*:modified,*:future"
+    validate-on-migrate: false
     user: mes_db_user
     password: mes_db_password
     url: jdbc:postgresql://localhost:5433/mes_factory

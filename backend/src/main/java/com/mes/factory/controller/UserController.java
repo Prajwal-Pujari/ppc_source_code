@@ -68,4 +68,13 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails user) {
         return ResponseEntity.ok(ApiResponse.success(userService.toggleCalibrationWorker(id, isCalibration, user)));
     }
+
+    @PatchMapping("/{id}/signature")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<ApiResponse<User>> updateSignature(
+            @PathVariable java.util.UUID id,
+            @RequestBody java.util.Map<String, String> body,
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return ResponseEntity.ok(ApiResponse.success(userService.updateSignature(id, body.get("signatureUrl"), user)));
+    }
 }

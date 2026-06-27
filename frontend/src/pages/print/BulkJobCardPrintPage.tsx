@@ -7,6 +7,9 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Printer, Download, ArrowLeft } from 'lucide-react';
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
+import { useDynamicBaseUrl } from '@/utils/urlUtils';
+import { CompanyReportHeader } from '@/components/shared/CompanyReportHeader';
+import { reportConfigApi, getEffectiveReportConfig } from '@/api/reportConfig.api';
 
 // Status config
 const statusConfig: Record<string, { color: string; bg: string; label: string }> = {
@@ -31,8 +34,12 @@ const fmtDateTime = (d: string | undefined) => d ? new Date(d).toLocaleDateStrin
 
 export default function BulkJobCardPrintPage() {
   const { id } = useParams<{ id: string }>();
-  const [pageSize, setPageSize] = useState<'a4' | 'a5' | 'letter'>('a4');
+  const baseUrl = useDynamicBaseUrl();
+  const [pageSize, setPageSize] = useState<'a1' | 'a2' | 'a3' | 'a4' | 'a5'>('a4');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const { data: configRes } = useQuery({ queryKey: ['report-config'], queryFn: () => reportConfigApi.get() });
+  const reportConfig = getEffectiveReportConfig(configRes?.data || { customerLogo: '', docNo: 'QMS/F/01', revNo: '00 / 01.01.2024', issueDate: '01.01.2024' });
 
   const { data: gaugesData, isLoading: gaugesLoading } = useQuery({
     queryKey: ['po-gauges', id],
@@ -62,9 +69,11 @@ export default function BulkJobCardPrintPage() {
 
   const getPageDimensions = () => {
     switch (pageSize) {
+      case 'a1': return { w: 594, h: 841 };
+      case 'a2': return { w: 420, h: 594 };
+      case 'a3': return { w: 297, h: 420 };
       case 'a4': return { w: 210, h: 297 };
       case 'a5': return { w: 148, h: 210 };
-      case 'letter': return { w: 215.9, h: 279.4 };
       default: return { w: 210, h: 297 };
     }
   };
@@ -122,7 +131,6 @@ export default function BulkJobCardPrintPage() {
     return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Inter' }}>No gauges found for this PO.</div>;
   }
 
-  const baseUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
   const dims = getPageDimensions();
 
   return (
@@ -136,9 +144,11 @@ export default function BulkJobCardPrintPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--charcoal)' }}>Page Size:</label>
             <select value={pageSize} onChange={(e) => setPageSize(e.target.value as any)} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--silk)', fontSize: 13, outline: 'none' }}>
+              <option value="a1">A1 (594 x 841 mm)</option>
+              <option value="a2">A2 (420 x 594 mm)</option>
+              <option value="a3">A3 (297 x 420 mm)</option>
               <option value="a4">A4 (210 x 297 mm)</option>
               <option value="a5">A5 (148 x 210 mm)</option>
-              <option value="letter">Letter (8.5 x 11 in)</option>
             </select>
           </div>
           <button onClick={() => window.print()} className="btn btn-secondary" style={{ minHeight: 36, padding: '0 16px', gap: 6 }}>
@@ -183,23 +193,18 @@ export default function BulkJobCardPrintPage() {
             fontFamily: "'Inter', sans-serif"
           }}>
             {/* Header */}
-            <div style={{ background: 'linear-gradient(135deg, #1C1A18 0%, #2D2926 50%, #3A3530 100%)', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h1 style={{ fontSize: 20, fontWeight: 700, color: '#E8C668', margin: 0 }}>JOB CARD</h1>
-                <p style={{ fontSize: 9, color: 'rgba(232,198,104,0.6)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '4px 0 0' }}>Precision Gauge Manufacturing</p>
-              </div>
-              <div style={{ textAlign: 'right', display: 'flex', gap: 16, alignItems: 'center' }}>
-                <div style={{ background: 'white', padding: '4px', borderRadius: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <QRCodeSVG value={`${baseUrl}/verify/${gauge.id}`} size={48} />
+            <CompanyReportHeader 
+              config={reportConfig}
+              reportTitle="Job Card"
+              serialNumber={gauge.serialNumber}
+              statusBadge={gauge.status}
+              qrCode={
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <QRCodeSVG value={`${baseUrl}/verify/${gauge.id}`} size={46} />
+                  <span style={{ fontSize: 6, fontWeight: 800, marginTop: 2, color: '#1C1A18' }}>VERIFY</span>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700, color: '#FFFFFF', margin: 0 }}>{gauge.serialNumber}</p>
-                  <span style={{ display: 'inline-block', marginTop: 4, padding: '2px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700, background: badge.bg, color: badge.color }}>
-                    {gauge.status?.replace('_', ' ')}
-                  </span>
-                </div>
-              </div>
-            </div>
+              }
+            />
 
             {/* Order Info */}
             <div style={{ borderBottom: '2px solid #1C1A18' }}>
@@ -212,9 +217,13 @@ export default function BulkJobCardPrintPage() {
                 <Cell label="Customer Name" value={po?.customer?.name || po?.customerName || '—'} borderRight />
                 <Cell label="W.O. No." value={po?.poNumber || '—'} mono />
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
+                <Cell label="Cust. Sr. No." value={(gauge as any).customerSrNumber || po?.customerSrNumber || '—'} mono borderRight />
+                <Cell label="Mfg. No." value={(gauge as any).manufactureNumber || po?.manufactureNumber || '—'} mono />
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
-                <Cell label="P.O. No." value={po?.poNumber || '—'} mono borderRight />
-                <Cell label="PO Date" value={fmtDate(po?.orderDate)} borderRight />
+                <Cell label="W.O. Ref." value={po?.poNumber || '—'} mono borderRight />
+                <Cell label="WO Date" value={fmtDate(po?.orderDate)} borderRight />
                 <Cell label="Priority" value={po?.priority || 'NORMAL'} />
               </div>
             </div>
@@ -224,7 +233,7 @@ export default function BulkJobCardPrintPage() {
               <SectionTitle text="Gauge Specifications" />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
                 <Cell label="Gauge Name / Type" value={gauge.gaugeTypeName} bold borderRight />
-                <Cell label="Qty." value={`${gauge.poLineItem?.quantity || gauge.batchQuantity || 1}`} mono />
+                <Cell label="Qty." value={`${(gauge as any).poLineItem?.quantity || gauge.batchQuantity || 1}`} mono />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
                 <Cell label="Nominal Size" value={`${gauge.nominalSize} ${gauge.sizeUnit}`} mono borderRight />

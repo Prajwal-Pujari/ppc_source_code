@@ -69,6 +69,12 @@ public class PoLineItem {
     @Column(name = "line_notes", columnDefinition = "TEXT")
     private String lineNotes;
 
+    @Column(name = "customer_sr_number", length = 150)
+    private String customerSrNumber;
+
+    @Column(name = "manufacture_number", length = 150)
+    private String manufactureNumber;
+
     @Column(name = "tolerance_type", length = 20)
     private String toleranceType;
 
