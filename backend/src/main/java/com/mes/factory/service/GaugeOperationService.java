@@ -87,6 +87,8 @@ public class GaugeOperationService {
                 .type("info")
                 .build());
 
+        publishGaugeUpdate(gauge, "OPERATION_ASSIGNED", operation);
+
         log.info("Assigned operation {} to worker {}", operationId, workerId);
         return operation;
     }

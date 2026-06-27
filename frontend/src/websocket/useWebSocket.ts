@@ -3,6 +3,7 @@ import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
+import { queryClient } from '@/lib/queryClient';
 
 export function useWebSocket() {
   const clientRef = useRef<Client | null>(null);
@@ -26,17 +27,20 @@ export function useWebSocket() {
         client.subscribe(`/topic/factory/${user.factoryId}/po-updates`, (msg) => {
           const data = JSON.parse(msg.body);
           addNotification('WO Update', data.message || `Event: ${data.eventType}`, data.type || 'info');
+          queryClient.invalidateQueries();
         });
 
         client.subscribe(`/topic/factory/${user.factoryId}/gauge-updates`, (msg) => {
           const data = JSON.parse(msg.body);
           addNotification('Gauge Update', data.message || `Event: ${data.eventType}`, data.type || 'info');
+          queryClient.invalidateQueries();
         });
 
         // Subscribe to personal notifications
         client.subscribe(`/queue/user/${user.id}/notifications`, (msg) => {
           const data = JSON.parse(msg.body);
           addNotification(data.title || 'New Assignment', data.message || 'You have a new notification', data.type || 'info');
+          queryClient.invalidateQueries();
         });
       },
       onDisconnect: () => setConnected(false),

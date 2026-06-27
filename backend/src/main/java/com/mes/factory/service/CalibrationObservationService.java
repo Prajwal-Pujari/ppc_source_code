@@ -11,6 +11,8 @@ import com.mes.factory.repository.postgres.GaugeRepository;
 import com.mes.factory.repository.postgres.CalibrationObservationRepository;
 import com.mes.factory.repository.postgres.GaugeOperationRepository;
 import com.mes.factory.repository.postgres.UserRepository;
+import com.mes.factory.websocket.MesEventPublisher;
+import com.mes.factory.websocket.WebSocketEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -32,15 +34,18 @@ public class CalibrationObservationService {
     private final GaugeOperationRepository gaugeOperationRepository;
     private final UserRepository userRepository;
     private final GaugeRepository gaugeRepository;
+    private final MesEventPublisher eventPublisher;
 
     public CalibrationObservationService(CalibrationObservationRepository observationRepository,
                                           GaugeOperationRepository gaugeOperationRepository,
                                           UserRepository userRepository,
-                                          GaugeRepository gaugeRepository) {
+                                          GaugeRepository gaugeRepository,
+                                          MesEventPublisher eventPublisher) {
         this.observationRepository = observationRepository;
         this.gaugeOperationRepository = gaugeOperationRepository;
         this.userRepository = userRepository;
         this.gaugeRepository = gaugeRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -192,6 +197,15 @@ public class CalibrationObservationService {
                 g.setCalibratorName(worker.getFullName());
                 g.setCalibratorSign(worker.getSignatureUrl() != null ? worker.getSignatureUrl() : worker.getFullName());
                 gaugeRepository.save(g);
+
+                eventPublisher.publishGaugeUpdate(g.getFactory().getId(), WebSocketEvent.builder()
+                        .eventType("OBSERVATIONS_UPDATED")
+                        .entityId(g.getId())
+                        .entityType("GAUGE")
+                        .title("Observations Updated")
+                        .message("Calibration readings saved for Gauge " + g.getSerialNumber())
+                        .type("info")
+                        .build());
             }
         });
 
