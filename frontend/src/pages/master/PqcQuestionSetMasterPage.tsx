@@ -217,8 +217,12 @@ function ManageQuestionSetsModal({
     }).catch(() => {});
 
     getGaugeMasters({ size: 1000 }).then(res => {
-      setLocalGaugeMasters(res.data?.content || res.data || []);
-    }).catch(() => {});
+      const parts = res.data?.content || res.data || [];
+      console.log('[ManageQuestionSetsModal] Loaded parts list:', parts);
+      setLocalGaugeMasters(parts);
+    }).catch((err) => {
+      console.error('[ManageQuestionSetsModal] Error loading parts list:', err);
+    });
   }, []);
 
   // Build a library of all unique questions from ALL sets
@@ -390,6 +394,7 @@ function ManageQuestionSetsModal({
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Applies To Part (Optional)</label>
                   <select
                     className="input"
+                    onClick={() => console.log('[Part Dropdown Clicked] Current available parts:', localGaugeMasters)}
                     value={editingSet.gaugeMaster?.id || ''}
                     onChange={(e) => {
                       const gaugeId = e.target.value;
