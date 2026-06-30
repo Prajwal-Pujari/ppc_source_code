@@ -27,7 +27,7 @@ export default function PqcQuestionSetMasterPage() {
       const [qsRes, opsRes, gmRes] = await Promise.all([
         pqcApi.getAllQuestionSets(),
         getOperationMasters({ size: 1000, isActive: true }),
-        getGaugeMasters({ size: 1000, isActive: true })
+        getGaugeMasters({ size: 1000 })
       ]);
       setQuestionSets(qsRes.data || []);
       setOperations(opsRes.data?.content || opsRes.data || []);
@@ -208,11 +208,16 @@ function ManageQuestionSetsModal({
   const [showLibrary, setShowLibrary] = useState(false);
   const [libSearch, setLibSearch] = useState('');
   const [libraryData, setLibraryData] = useState<PqcQuestionSet[]>([]);
+  const [localGaugeMasters, setLocalGaugeMasters] = useState<GaugeMaster[]>(gaugeMasters);
 
-  // Fetch ALL question sets fresh from API for the library (ensures questions are loaded)
+  // Fetch ALL question sets and parts fresh from API for the library/dropdowns
   useEffect(() => {
     pqcApi.getAllQuestionSets().then(res => {
       setLibraryData(res.data || []);
+    }).catch(() => {});
+
+    getGaugeMasters({ size: 1000 }).then(res => {
+      setLocalGaugeMasters(res.data?.content || res.data || []);
     }).catch(() => {});
   }, []);
 
@@ -391,13 +396,13 @@ function ManageQuestionSetsModal({
                       if (!gaugeId) {
                         setEditingSet({ ...editingSet, gaugeMaster: undefined });
                       } else {
-                        const gauge = gaugeMasters.find(g => g.id === gaugeId);
+                        const gauge = localGaugeMasters.find(g => g.id === gaugeId);
                         if (gauge) setEditingSet({ ...editingSet, gaugeMaster: gauge });
                       }
                     }}
                   >
                     <option value="">Global / All Parts</option>
-                    {gaugeMasters.map(g => (
+                    {localGaugeMasters.map(g => (
                       <option key={g.id} value={g.id}>{g.gaugeTypeName}</option>
                     ))}
                   </select>
