@@ -3,7 +3,8 @@ import type { ApiResponse } from '@/types/api.types';
 import type { GaugeMaster, OperationMaster } from '@/types/domain.types';
 
 export const getGaugeMasters = async (params?: Record<string, any>) => {
-  const res = await api.get<ApiResponse<any>>('/gauge-masters', { params });
+  const merged = { size: 1000, ...params };
+  const res = await api.get<ApiResponse<any>>('/gauge-masters', { params: merged });
   return res.data;
 };
 

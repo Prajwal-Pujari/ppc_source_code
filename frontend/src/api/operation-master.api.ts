@@ -3,7 +3,8 @@ import type { ApiResponse } from '@/types/api.types';
 import type { OperationMaster } from '@/types/domain.types';
 
 export const getOperationMasters = async (params?: Record<string, any>) => {
-  const res = await api.get<ApiResponse<any>>('/operation-masters', { params });
+  const merged = { size: 1000, ...params };
+  const res = await api.get<ApiResponse<any>>('/operation-masters', { params: merged });
   return res.data;
 };
 
