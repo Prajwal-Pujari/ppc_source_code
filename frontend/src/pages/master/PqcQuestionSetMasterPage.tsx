@@ -202,6 +202,7 @@ function ManageQuestionSetsModal({
   gaugeMasters: GaugeMaster[];
   onClose: () => void;
 }) {
+  console.log('[ManageQuestionSetsModal OPENED] Prop gaugeMasters count:', gaugeMasters?.length, gaugeMasters);
   const [sets, setSets] = useState<PqcQuestionSet[]>(questionSets);
   const [editingSet, setEditingSet] = useState<Partial<PqcQuestionSet> | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
@@ -256,6 +257,7 @@ function ManageQuestionSetsModal({
   };
 
   const handleCreateNew = () => {
+    console.log('[Add New Set CLICKED] localGaugeMasters count:', localGaugeMasters.length, localGaugeMasters);
     setEditingSet({
       name: '',
       inspectionFrequency: '1/Hr',
@@ -394,7 +396,8 @@ function ManageQuestionSetsModal({
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Applies To Part (Optional)</label>
                   <select
                     className="input"
-                    onClick={() => console.log('[Part Dropdown Clicked] Current available parts:', localGaugeMasters)}
+                    onFocus={() => console.log('[Part Dropdown FOCUSED] available parts:', localGaugeMasters)}
+                    onClick={() => console.log('[Part Dropdown CLICKED] available parts:', localGaugeMasters)}
                     value={editingSet.gaugeMaster?.id || ''}
                     onChange={(e) => {
                       const gaugeId = e.target.value;
