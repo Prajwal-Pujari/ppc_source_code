@@ -8,6 +8,7 @@ import { getOperationMasters } from '../../api/operation-master.api';
 import { getGaugeMasters } from '../../api/gauge-master.api';
 import type { PqcQuestionSet, OperationMaster, PqcQuestion, QuestionType, GaugeMaster } from '../../types/domain.types';
 import toast from 'react-hot-toast';
+import { useQuery } from '@tanstack/react-query';
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -18,6 +19,12 @@ export default function PqcQuestionSetMasterPage() {
   const [loading, setLoading] = useState(true);
   const [expandedOpId, setExpandedOpId] = useState<string | null>(null);
   const [manageOp, setManageOp] = useState<OperationMaster | null>(null);
+
+  const { data: gmData } = useQuery({
+    queryKey: ['gauge-masters-list'],
+    queryFn: () => getGaugeMasters({ size: 1000, isActive: true }),
+  });
+  const gaugeMastersList = gmData?.data?.content || gaugeMasters || [];
 
   useEffect(() => { fetchData(); }, []);
 
@@ -179,7 +186,7 @@ export default function PqcQuestionSetMasterPage() {
           questionSets={qsByOp[manageOp.id] || []}
           allQuestionSets={questionSets}
           allOperations={operations}
-          gaugeMasters={gaugeMasters}
+          gaugeMasters={gaugeMastersList}
           onClose={() => {
             setManageOp(null);
             fetchData();
@@ -209,21 +216,18 @@ function ManageQuestionSetsModal({
   const [showLibrary, setShowLibrary] = useState(false);
   const [libSearch, setLibSearch] = useState('');
   const [libraryData, setLibraryData] = useState<PqcQuestionSet[]>([]);
-  const [localGaugeMasters, setLocalGaugeMasters] = useState<GaugeMaster[]>(gaugeMasters);
 
-  // Fetch ALL question sets and parts fresh from API for the library/dropdowns
+  const { data: gmModalData } = useQuery({
+    queryKey: ['gauge-masters-list'],
+    queryFn: () => getGaugeMasters({ size: 1000, isActive: true }),
+  });
+  const partsList = gmModalData?.data?.content || gaugeMasters || [];
+
+  // Fetch ALL question sets fresh from API for the library
   useEffect(() => {
     pqcApi.getAllQuestionSets().then(res => {
       setLibraryData(res.data || []);
     }).catch(() => {});
-
-    getGaugeMasters({ size: 1000 }).then(res => {
-      const parts = res.data?.content || res.data || [];
-      console.log('[ManageQuestionSetsModal] Loaded parts list:', parts);
-      setLocalGaugeMasters(parts);
-    }).catch((err) => {
-      console.error('[ManageQuestionSetsModal] Error loading parts list:', err);
-    });
   }, []);
 
   // Build a library of all unique questions from ALL sets
@@ -257,7 +261,6 @@ function ManageQuestionSetsModal({
   };
 
   const handleCreateNew = () => {
-    console.log('[Add New Set CLICKED] localGaugeMasters count:', localGaugeMasters.length, localGaugeMasters);
     setEditingSet({
       name: '',
       inspectionFrequency: '1/Hr',
@@ -396,21 +399,19 @@ function ManageQuestionSetsModal({
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Applies To Part (Optional)</label>
                   <select
                     className="input"
-                    onFocus={() => console.log('[Part Dropdown FOCUSED] available parts:', localGaugeMasters)}
-                    onClick={() => console.log('[Part Dropdown CLICKED] available parts:', localGaugeMasters)}
                     value={editingSet.gaugeMaster?.id || ''}
                     onChange={(e) => {
                       const gaugeId = e.target.value;
                       if (!gaugeId) {
                         setEditingSet({ ...editingSet, gaugeMaster: undefined });
                       } else {
-                        const gauge = localGaugeMasters.find(g => g.id === gaugeId);
+                        const gauge = partsList.find((g: any) => g.id === gaugeId);
                         if (gauge) setEditingSet({ ...editingSet, gaugeMaster: gauge });
                       }
                     }}
                   >
                     <option value="">Global / All Parts</option>
-                    {localGaugeMasters.map(g => (
+                    {partsList.map((g: any) => (
                       <option key={g.id} value={g.id}>{g.gaugeTypeName}</option>
                     ))}
                   </select>
