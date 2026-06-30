@@ -209,7 +209,6 @@ function ManageQuestionSetsModal({
   gaugeMasters: GaugeMaster[];
   onClose: () => void;
 }) {
-  console.log('[ManageQuestionSetsModal OPENED] Prop gaugeMasters count:', gaugeMasters?.length, gaugeMasters);
   const [sets, setSets] = useState<PqcQuestionSet[]>(questionSets);
   const [editingSet, setEditingSet] = useState<Partial<PqcQuestionSet> | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
