@@ -460,7 +460,7 @@ export default function PurchaseOrderCreatePage() {
 
   const { data: gmData } = useQuery({
     queryKey: ['gauge-masters-list'],
-    queryFn: () => getGaugeMasters({ size: 100 }),
+    queryFn: () => getGaugeMasters({ size: 1000, isActive: true }),
   });
   const gaugeMasters = gmData?.data?.content || [];
 

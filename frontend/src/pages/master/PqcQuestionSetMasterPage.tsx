@@ -26,8 +26,8 @@ export default function PqcQuestionSetMasterPage() {
       setLoading(true);
       const [qsRes, opsRes, gmRes] = await Promise.all([
         pqcApi.getAllQuestionSets(),
-        getOperationMasters(),
-        getGaugeMasters({ isActive: true })
+        getOperationMasters({ size: 1000, isActive: true }),
+        getGaugeMasters({ size: 1000, isActive: true })
       ]);
       setQuestionSets(qsRes.data || []);
       setOperations(opsRes.data?.content || opsRes.data || []);

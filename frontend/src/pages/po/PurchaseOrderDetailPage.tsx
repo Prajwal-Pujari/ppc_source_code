@@ -40,7 +40,7 @@ export default function PurchaseOrderDetailPage() {
   });
 
   const { data: gaugeMastersData } = useQuery({
-    queryKey: ['gauge-masters-dropdown'], queryFn: () => getGaugeMasters({ size: 100 }), enabled: showAddItem,
+    queryKey: ['gauge-masters-dropdown'], queryFn: () => getGaugeMasters({ size: 1000, isActive: true }), enabled: showAddItem,
   });
 
   const po: PurchaseOrder | undefined = poData?.data;
