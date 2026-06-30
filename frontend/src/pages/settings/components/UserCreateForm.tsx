@@ -13,7 +13,7 @@ const userSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
   role: z.enum(['ADMIN', 'SUPERVISOR', 'WORKER', 'QUALITY_INSPECTOR', 'VIEWER'] as const),
   canManageUsers: z.boolean(),
-  isCalibrationWorker: z.boolean().optional().default(false),
+  isCalibrationWorker: z.boolean(),
 });
 
 type UserForm = z.infer<typeof userSchema>;

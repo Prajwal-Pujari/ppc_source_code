@@ -9,6 +9,31 @@ import { jsPDF } from 'jspdf';
 import { CompanyReportHeader } from '@/components/shared/CompanyReportHeader';
 import { reportConfigApi, getEffectiveReportConfig } from '@/api/reportConfig.api';
 
+const formatReading = (val: any) => {
+  if (val == null || val === '') return '—';
+  const num = Number(val);
+  if (isNaN(num)) return val;
+  return num.toFixed(4);
+};
+
+const formatTolPlus = (val: any) => {
+  if (val == null || val === '') return '—';
+  if (val === 0 || val === '0' || Number(val) === 0) return '0.0000';
+  const num = Number(val);
+  if (!isNaN(num)) return `+${Math.abs(num).toFixed(4)}`;
+  const str = String(val).trim();
+  return str.startsWith('+') || str.startsWith('-') ? str : `+${str}`;
+};
+
+const formatTolMinus = (val: any) => {
+  if (val == null || val === '') return '—';
+  if (val === 0 || val === '0' || Number(val) === 0) return '0.0000';
+  const num = Number(val);
+  if (!isNaN(num)) return `-${Math.abs(num).toFixed(4)}`;
+  const str = String(val).trim();
+  return str.startsWith('+') || str.startsWith('-') ? str : `-${str}`;
+};
+
 export default function BulkCalibrationPrintPage() {
   const { id } = useParams<{ id: string }>();
   const [pageSize, setPageSize] = useState<'a1' | 'a2' | 'a3' | 'a4' | 'a5'>('a4');
@@ -60,8 +85,13 @@ export default function BulkCalibrationPrintPage() {
       for (let i = 0; i < gauges.length; i++) {
         const gauge = gauges[i];
         const observations = calQueries[i]?.data?.data || [];
-        const ITEMS_PER_PAGE = 4;
-        const pageCount = Math.ceil(observations.length / ITEMS_PER_PAGE);
+        const unitGroupsMap = new Map<number, any[]>();
+        observations.forEach((obs: any, idx: number) => {
+          const uNum = obs.unitNumber || (idx + 1);
+          if (!unitGroupsMap.has(uNum)) unitGroupsMap.set(uNum, []);
+          unitGroupsMap.get(uNum)!.push(obs);
+        });
+        const pageCount = unitGroupsMap.size || (observations.length > 0 ? 1 : 0);
 
         for (let p = 0; p < pageCount; p++) {
           const el = document.getElementById(`cal-page-${gauge.id}-${p}`);
@@ -153,12 +183,14 @@ export default function BulkCalibrationPrintPage() {
         const observations = calQueries[index]?.data?.data || [];
         const po = gauge.purchaseOrder;
 
-        // Group observations into pages of 4
-        const ITEMS_PER_PAGE = 4;
-        const pages = [];
-        for (let i = 0; i < observations.length; i += ITEMS_PER_PAGE) {
-          pages.push(observations.slice(i, i + ITEMS_PER_PAGE));
-        }
+        // Group observations by unitNumber so each unit gets a separate report page
+        const unitGroupsMap = new Map<number, any[]>();
+        observations.forEach((obs: any, idx: number) => {
+          const uNum = obs.unitNumber || (idx + 1);
+          if (!unitGroupsMap.has(uNum)) unitGroupsMap.set(uNum, []);
+          unitGroupsMap.get(uNum)!.push(obs);
+        });
+        const pages = Array.from(unitGroupsMap.values());
 
         if (pages.length === 0) {
           return null; // Skip gauges with no observations
@@ -171,7 +203,7 @@ export default function BulkCalibrationPrintPage() {
             <CompanyReportHeader 
               config={reportConfig}
               reportTitle="Calibration Certificate"
-              pageInfo={`Page ${pageIdx + 1} of ${pages.length} • Units ${pageObs[0]?.unitNumber}–${pageObs[pageObs.length - 1]?.unitNumber}`}
+              pageInfo={`Page ${pageIdx + 1} of ${pages.length} • Unit #${pageObs[0]?.unitNumber || (pageIdx + 1)}`}
               serialNumber={gauge.serialNumber}
               themeColor="#1E3A8A"
             />
@@ -232,35 +264,35 @@ export default function BulkCalibrationPrintPage() {
                             Unit #{obs.unitNumber}
                           </td>
                           <td style={{ padding: '5px', borderRight: '1px solid #1C1A18', borderBottom: '1px dashed #D4CCBF', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, verticalAlign: 'middle' }}>
-                            {obs.nominalGo ?? '—'}
+                            {formatReading(obs.nominalGo)}
                           </td>
                           <td style={{ padding: '5px', borderRight: '1px solid #1C1A18', borderBottom: '1px dashed #D4CCBF', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, verticalAlign: 'middle' }}>
-                            {obs.nominalNogo ?? '—'}
+                            {formatReading(obs.nominalNogo)}
                           </td>
                           <td style={{ padding: '3px 5px', borderRight: '1px solid #1C1A18', borderBottom: '1px dashed #D4CCBF', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: 9, verticalAlign: 'middle' }}>
                             {obs.specifiedGoPlus != null ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.3, fontWeight: 700, color: '#1C1A18' }}>
-                                <div>{String(obs.specifiedGoPlus).startsWith('+') || String(obs.specifiedGoPlus).startsWith('-') ? obs.specifiedGoPlus : `+${obs.specifiedGoPlus}`}</div>
-                                <div>{obs.specifiedGoMinus != null ? (Number(obs.specifiedGoMinus) >= 0 && !String(obs.specifiedGoMinus).startsWith('+') ? `+${obs.specifiedGoMinus}` : obs.specifiedGoMinus) : '—'}</div>
+                                <div>{formatTolPlus(obs.specifiedGoPlus)}</div>
+                                <div>{formatTolMinus(obs.specifiedGoMinus)}</div>
                               </div>
                             ) : '—'}
                           </td>
                           <td style={{ padding: '3px 5px', borderRight: '1px solid #1C1A18', borderBottom: '1px dashed #D4CCBF', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: 9, verticalAlign: 'middle' }}>
                             {obs.specifiedNogoPlus != null ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.3, fontWeight: 700, color: '#1C1A18' }}>
-                                <div>{String(obs.specifiedNogoPlus).startsWith('+') || String(obs.specifiedNogoPlus).startsWith('-') ? obs.specifiedNogoPlus : `+${obs.specifiedNogoPlus}`}</div>
-                                <div>{obs.specifiedNogoMinus != null ? (Number(obs.specifiedNogoMinus) >= 0 && !String(obs.specifiedNogoMinus).startsWith('+') ? `+${obs.specifiedNogoMinus}` : obs.specifiedNogoMinus) : '—'}</div>
+                                <div>{formatTolPlus(obs.specifiedNogoPlus)}</div>
+                                <div>{formatTolMinus(obs.specifiedNogoMinus)}</div>
                               </div>
                             ) : '—'}
                           </td>
                           <td style={{ padding: '5px', borderRight: '1px solid #1C1A18', borderBottom: '1px dashed #D4CCBF', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: goOOB ? '#BA1A1A' : '#1C1A18', verticalAlign: 'middle' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                              {obs.observedGo ?? '—'} {goOOB && <AlertTriangle size={10} color="#BA1A1A" />}
+                              {formatReading(obs.observedGo)} {goOOB && <AlertTriangle size={10} color="#BA1A1A" />}
                             </div>
                           </td>
                           <td style={{ padding: '5px', borderBottom: '1px dashed #D4CCBF', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: nogoOOB ? '#BA1A1A' : '#1C1A18', verticalAlign: 'middle' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                              {obs.observedNogo ?? '—'} {nogoOOB && <AlertTriangle size={10} color="#BA1A1A" />}
+                              {formatReading(obs.observedNogo)} {nogoOOB && <AlertTriangle size={10} color="#BA1A1A" />}
                             </div>
                           </td>
                         </tr>
@@ -272,7 +304,7 @@ export default function BulkCalibrationPrintPage() {
                             {obs.remarks ? `Note: ${obs.remarks}` : ''}
                           </td>
                           <td colSpan={2} style={{ padding: '5px', borderRight: '1px solid #1C1A18', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, fontSize: 9, color: '#1C1A18' }}>
-                            {obs.wearLimit != null ? `W/L : ${obs.wearLimit}` : 'W/L : —'}
+                            {obs.wearLimit != null ? `W/L : ${formatReading(obs.wearLimit)}` : 'W/L : —'}
                           </td>
                           <td colSpan={2} style={{ padding: '5px', textAlign: 'center' }}>
                             {obs.observedGo != null && obs.observedNogo != null ? (

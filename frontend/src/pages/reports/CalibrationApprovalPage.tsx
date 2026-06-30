@@ -111,8 +111,8 @@ export default function CalibrationApprovalPage() {
     const matchingAdmin = allUsers.find((u: any) => (u.id === currentUser?.id || u.role === 'ADMIN' || u.fullName === 'System Administrator') && u.signatureUrl) || allUsers.find((u: any) => u.id === currentUser?.id || u.role === 'ADMIN') || currentUser;
 
     setCalibratorNameInput(firstGauge?.calibratorName || matchingWorker?.fullName || 'Quality Inspector');
-    setCalibratorSignInput(firstGauge?.calibratorSign || matchingWorker?.signatureUrl || matchingWorker?.fullName || 'Certified Calibrator');
-    setAdminSignInput(firstGauge?.approvedByAdminSign || matchingAdmin?.signatureUrl || matchingAdmin?.fullName || 'Admin Manager');
+    setCalibratorSignInput(firstGauge?.calibratorSign || (matchingWorker as any)?.signatureUrl || matchingWorker?.fullName || 'Certified Calibrator');
+    setAdminSignInput(firstGauge?.approvedByAdminSign || (matchingAdmin as any)?.signatureUrl || (matchingAdmin as any)?.fullName || 'Admin Manager');
 
     setIsConfirmModalOpen(true);
   };

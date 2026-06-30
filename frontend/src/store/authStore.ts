@@ -9,6 +9,7 @@ interface UserInfo {
   employeeCode: string;
   factoryId: string;
   isCalibrationWorker?: boolean;
+  signatureUrl?: string;
 }
 
 interface AuthState {

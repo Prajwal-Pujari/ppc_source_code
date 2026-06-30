@@ -12,6 +12,31 @@ interface Props {
   onCompleted: () => void;
 }
 
+const formatReading = (val: any) => {
+  if (val == null || val === '') return '—';
+  const num = Number(val);
+  if (isNaN(num)) return val;
+  return num.toFixed(4);
+};
+
+const formatTolPlus = (val: any) => {
+  if (val == null || val === '') return '—';
+  if (val === 0 || val === '0' || Number(val) === 0) return '0.0000';
+  const num = Number(val);
+  if (!isNaN(num)) return `+${Math.abs(num).toFixed(4)}`;
+  const str = String(val).trim();
+  return str.startsWith('+') || str.startsWith('-') ? str : `+${str}`;
+};
+
+const formatTolMinus = (val: any) => {
+  if (val == null || val === '') return '—';
+  if (val === 0 || val === '0' || Number(val) === 0) return '0.0000';
+  const num = Number(val);
+  if (!isNaN(num)) return `-${Math.abs(num).toFixed(4)}`;
+  const str = String(val).trim();
+  return str.startsWith('+') || str.startsWith('-') ? str : `-${str}`;
+};
+
 /* ─── Global styles injected once ─── */
 const GLOBAL_STYLES = `
   .calib-form input[type=number]::-webkit-inner-spin-button,
@@ -153,8 +178,8 @@ export default function CalibrationObservationForm({ gaugeOperationId, gauge, on
     try {
       const payload = localObs.map(o => ({
         id: o.id,
-        observedGo: o.observedGo,
-        observedNogo: o.observedNogo,
+        observedGo: o.observedGo != null && o.observedGo !== '' ? Number(o.observedGo) : null,
+        observedNogo: o.observedNogo != null && o.observedNogo !== '' ? Number(o.observedNogo) : null,
         remarks: o.remarks || '',
       }));
       await saveCalibrationObservations(gaugeOperationId, payload);
@@ -177,21 +202,21 @@ export default function CalibrationObservationForm({ gaugeOperationId, gauge, on
 
   const isOutOfBounds = (obs: CalibrationObservation, field: 'go' | 'nogo') => {
     if (field === 'go') {
-      const val = obs.observedGo;
-      if (val == null) return false;
-      if (obs.specifiedGoPlus != null && val > obs.specifiedGoPlus) return true;
-      if (obs.specifiedGoMinus != null && val < obs.specifiedGoMinus) return true;
+      const val = obs.observedGo != null && obs.observedGo !== '' ? Number(obs.observedGo) : null;
+      if (val == null || isNaN(val)) return false;
+      if (obs.specifiedGoPlus != null && val > Number(obs.specifiedGoPlus)) return true;
+      if (obs.specifiedGoMinus != null && val < Number(obs.specifiedGoMinus)) return true;
       return false;
     } else {
-      const val = obs.observedNogo;
-      if (val == null) return false;
-      if (obs.specifiedNogoPlus != null && val > obs.specifiedNogoPlus) return true;
-      if (obs.specifiedNogoMinus != null && val < obs.specifiedNogoMinus) return true;
+      const val = obs.observedNogo != null && obs.observedNogo !== '' ? Number(obs.observedNogo) : null;
+      if (val == null || isNaN(val)) return false;
+      if (obs.specifiedNogoPlus != null && val > Number(obs.specifiedNogoPlus)) return true;
+      if (obs.specifiedNogoMinus != null && val < Number(obs.specifiedNogoMinus)) return true;
       return false;
     }
   };
 
-  const allFilled = localObs.every(o => o.observedGo != null && o.observedNogo != null);
+  const allFilled = localObs.every(o => o.observedGo != null && o.observedGo !== '' && o.observedNogo != null && o.observedNogo !== '');
   const hasAnyOutOfBounds = localObs.some(o => isOutOfBounds(o, 'go') || isOutOfBounds(o, 'nogo'));
   const po = gauge?.purchaseOrder;
 
@@ -339,20 +364,20 @@ export default function CalibrationObservationForm({ gaugeOperationId, gauge, on
                         VAL
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, background: '#EEF2F810' }}>
-                        {obs.higherSize != null ? obs.higherSize : '—'}
+                        {formatReading(obs.higherSize)}
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, background: '#EEF2F810' }}>
-                        {obs.lowerSize != null ? obs.lowerSize : '—'}
+                        {formatReading(obs.lowerSize)}
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, background: '#FBF4E810' }}>
-                        {obs.specifiedGoPlus != null && obs.specifiedGoMinus != null
-                          ? <><div style={{ color: '#228B22' }}>+{Number(obs.specifiedGoMinus).toFixed(4)}</div><div style={{ color: '#BA1A1A' }}>-{Number(obs.specifiedGoPlus).toFixed(4)}</div></>
+                        {obs.specifiedGoPlus != null || obs.specifiedGoMinus != null
+                          ? <><div style={{ color: '#1C1A18', fontWeight: 700 }}>{formatTolPlus(obs.specifiedGoPlus)}</div><div style={{ color: '#1C1A18', fontWeight: 700 }}>{formatTolMinus(obs.specifiedGoMinus)}</div></>
                           : '—'
                         }
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, background: '#FBF4E810' }}>
-                        {obs.specifiedNogoPlus != null && obs.specifiedNogoMinus != null
-                          ? <><div style={{ color: '#228B22' }}>+{Number(obs.specifiedNogoMinus).toFixed(4)}</div><div style={{ color: '#BA1A1A' }}>-{Number(obs.specifiedNogoPlus).toFixed(4)}</div></>
+                        {obs.specifiedNogoPlus != null || obs.specifiedNogoMinus != null
+                          ? <><div style={{ color: '#1C1A18', fontWeight: 700 }}>{formatTolPlus(obs.specifiedNogoPlus)}</div><div style={{ color: '#1C1A18', fontWeight: 700 }}>{formatTolMinus(obs.specifiedNogoMinus)}</div></>
                           : '—'
                         }
                       </td>
@@ -363,10 +388,10 @@ export default function CalibrationObservationForm({ gaugeOperationId, gauge, on
                       }}>
                         <div style={{ position: 'relative' }}>
                           <input
-                            type="number"
-                            step="0.0001"
-                            value={obs.observedGo ?? ''}
-                            onChange={(e) => updateObservation(idx, 'observedGo', e.target.value ? parseFloat(e.target.value) : null)}
+                            type="text"
+                            inputMode="decimal"
+                            value={obs.observedGo !== null && obs.observedGo !== undefined ? (typeof obs.observedGo === 'number' ? obs.observedGo.toFixed(4) : obs.observedGo) : ''}
+                            onChange={(e) => updateObservation(idx, 'observedGo', e.target.value !== '' ? e.target.value : null)}
                             placeholder="Enter GO"
                             style={{
                               width: '100%', padding: '8px 10px',
@@ -396,10 +421,10 @@ export default function CalibrationObservationForm({ gaugeOperationId, gauge, on
                       }}>
                         <div style={{ position: 'relative' }}>
                           <input
-                            type="number"
-                            step="0.0001"
-                            value={obs.observedNogo ?? ''}
-                            onChange={(e) => updateObservation(idx, 'observedNogo', e.target.value ? parseFloat(e.target.value) : null)}
+                            type="text"
+                            inputMode="decimal"
+                            value={obs.observedNogo !== null && obs.observedNogo !== undefined ? (typeof obs.observedNogo === 'number' ? obs.observedNogo.toFixed(4) : obs.observedNogo) : ''}
+                            onChange={(e) => updateObservation(idx, 'observedNogo', e.target.value !== '' ? e.target.value : null)}
                             placeholder="Enter NOGO"
                             style={{
                               width: '100%', padding: '8px 10px',

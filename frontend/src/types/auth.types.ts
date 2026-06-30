@@ -19,6 +19,7 @@ export interface UserInfo {
   factoryId: string;
   calibrationWorker?: boolean;
   isCalibrationWorker?: boolean;
+  signatureUrl?: string;
 }
 
 export type UserRole = 'ADMIN' | 'SUPERVISOR' | 'WORKER' | 'QUALITY_INSPECTOR' | 'VIEWER';
