@@ -39,6 +39,9 @@ export default function LoginPage() {
             role: res.data.user.role,
             employeeCode: res.data.user.employeeCode,
             factoryId: res.data.user.factoryId,
+            mesEnabled: res.data.user.mesEnabled ?? true,
+            pqcEnabled: res.data.user.pqcEnabled ?? true,
+            lpaEnabled: res.data.user.lpaEnabled ?? true,
           },
           res.data.accessToken,
           res.data.refreshToken

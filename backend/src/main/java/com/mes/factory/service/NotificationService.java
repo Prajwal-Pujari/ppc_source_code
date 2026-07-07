@@ -16,8 +16,8 @@ public class NotificationService {
     /**
      * Broadcast a notification to all users in a specific factory.
      */
-    public void notifyFactory(Long factoryId, String topic, NotificationMessage message) {
-        String destination = String.format("/topic/factory/%d/%s", factoryId, topic);
+    public void notifyFactory(java.util.UUID factoryId, String topic, NotificationMessage message) {
+        String destination = String.format("/topic/factory/%s/%s", factoryId, topic);
         log.debug("Sending notification to {}: {}", destination, message.getTitle());
         messagingTemplate.convertAndSend(destination, message);
     }
@@ -25,8 +25,8 @@ public class NotificationService {
     /**
      * Send a notification to a specific user.
      */
-    public void notifyUser(Long userId, NotificationMessage message) {
-        String destination = String.format("/queue/user/%d/notifications", userId);
+    public void notifyUser(java.util.UUID userId, NotificationMessage message) {
+        String destination = String.format("/queue/user/%s/notifications", userId);
         log.debug("Sending notification to user {}: {}", userId, message.getTitle());
         messagingTemplate.convertAndSend(destination, message);
     }

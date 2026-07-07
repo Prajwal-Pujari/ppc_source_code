@@ -155,21 +155,36 @@ export default function PqcApprovalsDashboard() {
                     type="button"
                     onClick={() => handleTogglePo(po.id)}
                     style={{
-                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '11px 14px', cursor: 'pointer',
+                      width: '100%', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+                      padding: '12px 14px', cursor: 'pointer',
                       background: isExpanded ? 'var(--linen)' : 'white',
                       border: '1px solid var(--silk)', borderRadius: isExpanded ? '8px 8px 0 0' : 8,
-                      textAlign: 'left',
+                      textAlign: 'left', gap: 8
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <Package size={16} color="var(--copper-bronze)" />
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--charcoal)' }}>{po.poNumber}</div>
-                        <div style={{ fontSize: 11, color: 'var(--slate)' }}>{po.customerName || 'Internal'}</div>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1 }}>
+                      <Package size={18} color="var(--copper-bronze)" style={{ marginTop: 2, flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--charcoal)' }}>{po.poNumber}</span>
+                          {po.status && (
+                            <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: '#EAE8E1', color: 'var(--charcoal)' }}>
+                              {po.status}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--copper-bronze)', marginTop: 2 }}>
+                          Customer: {po.customerName || 'Internal / Stock'}
+                        </div>
+                        <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--slate)', marginTop: 4, flexWrap: 'wrap' }}>
+                          <span>Parts: {po.completedGauges || 0}/{po.totalGauges || 0}</span>
+                          {po.orderDate && <span>Date: {new Date(po.orderDate).toLocaleDateString()}</span>}
+                        </div>
                       </div>
                     </div>
-                    {isExpanded ? <ChevronDown size={16} color="var(--ash)" /> : <ChevronRight size={16} color="var(--ash)" />}
+                    <div style={{ marginTop: 2 }}>
+                      {isExpanded ? <ChevronDown size={16} color="var(--ash)" /> : <ChevronRight size={16} color="var(--ash)" />}
+                    </div>
                   </button>
 
                   {isExpanded && (
@@ -194,21 +209,32 @@ export default function PqcApprovalsDashboard() {
                                 textAlign: 'left',
                               }}
                             >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1 }}>
                                 <div style={{
                                   width: 28, height: 28, borderRadius: 6,
                                   background: isSelected ? 'var(--copper-bronze)' : 'var(--silk)',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                                   color: isSelected ? 'white' : 'var(--slate)', fontSize: 12, fontWeight: 700,
+                                  flexShrink: 0, marginTop: 2
                                 }}>
                                   G
                                 </div>
-                                <div>
-                                  <div style={{ fontSize: 13, fontWeight: 500, color: isSelected ? 'var(--copper-bronze)' : 'var(--charcoal)' }}>
-                                    {g.gaugeTypeName || 'Part'}
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: isSelected ? 'var(--copper-bronze)' : 'var(--charcoal)', wordBreak: 'break-all' }}>
+                                    {g.serialNumber || g.gaugeId || 'SN N/A'}
                                   </div>
-                                  <div style={{ fontSize: 11, color: 'var(--ash)' }}>SN: {g.serialNumber}</div>
+                                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--charcoal)', marginTop: 2 }}>
+                                    Part: {g.gaugeTypeName || g.partName || 'Part'}
+                                  </div>
+                                  <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--slate)', marginTop: 3, flexWrap: 'wrap' }}>
+                                    {g.batchQuantity && <span>Qty: {g.batchQuantity}</span>}
+                                    {g.status && <span>Status: {g.status}</span>}
+                                    {g.currentLocation && <span>Loc: {g.currentLocation}</span>}
+                                  </div>
                                 </div>
+                              </div>
+                              <div style={{ flexShrink: 0, marginLeft: 8 }}>
+                                {isSelected && <CheckCircle2 size={16} color="var(--copper-bronze)" />}
                               </div>
                             </button>
                           );
@@ -240,6 +266,39 @@ export default function PqcApprovalsDashboard() {
             </div>
           ) : (
             <div style={{ maxWidth: 900, margin: '0 auto' }}>
+              {(() => {
+                const selG = gauges.find((g: any) => g.id === selectedGaugeId);
+                const selPo = pos.find((p: any) => p.id === expandedPoId);
+                if (!selG && !selPo) return null;
+                return (
+                  <div style={{
+                    background: 'white', border: '1px solid var(--silk)', borderRadius: 10, padding: '16px 20px',
+                    marginBottom: 24, boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+                  }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottom: '1px solid var(--silk)', paddingBottom: 12, marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--charcoal)' }}>
+                          {selG?.serialNumber || selG?.gaugeId || 'SN N/A'}
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 12, background: 'var(--linen)', color: 'var(--copper-bronze)' }}>
+                          {selG?.gaugeTypeName || selG?.partName || 'Part'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--charcoal)', background: '#F5F3EE', padding: '4px 12px', borderRadius: 6 }}>
+                        Customer: {selPo?.customerName || 'Internal / Stock'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, fontSize: 12, color: 'var(--slate)' }}>
+                      <span><strong style={{ color: 'var(--charcoal)' }}>PO Number:</strong> {selPo?.poNumber || 'N/A'}</span>
+                      {selPo?.status && <span><strong style={{ color: 'var(--charcoal)' }}>PO Status:</strong> {selPo.status}</span>}
+                      {selG?.batchQuantity && <span><strong style={{ color: 'var(--charcoal)' }}>Batch Qty:</strong> {selG.batchQuantity} units</span>}
+                      {selG?.currentLocation && <span><strong style={{ color: 'var(--charcoal)' }}>Location:</strong> {selG.currentLocation}</span>}
+                      {selPo?.orderDate && <span><strong style={{ color: 'var(--charcoal)' }}>Order Date:</strong> {new Date(selPo.orderDate).toLocaleDateString()}</span>}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div style={{ marginBottom: 24 }}>
                 <h2 style={{ margin: 0, fontSize: 18, color: 'var(--charcoal)' }}>Shift Approvals</h2>
                 <p style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--slate)' }}>

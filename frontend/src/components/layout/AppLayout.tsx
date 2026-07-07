@@ -9,6 +9,7 @@ import {
   BarChart3, Database, FileText, Settings, Bell, Menu, LogOut,
   ChevronRight, Users, Shield, Gauge, CheckCircle, CheckCheck, X, ShieldCheck
 } from 'lucide-react';
+import { ModuleSwitcher } from './ModuleSwitcher';
 
 const navSections = [
   {
@@ -60,7 +61,9 @@ const navSections = [
   {
     title: 'System',
     items: [
+      { label: 'Report & System Settings', path: '/settings/reports', icon: Settings, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
       { label: 'Users', path: '/settings/users', icon: Settings, roles: ['ADMIN'] },
+      { label: 'Module Access Control', path: '/settings/modules', icon: ShieldCheck, roles: ['ADMIN'] },
     ],
   },
 ];
@@ -197,31 +200,7 @@ export default function AppLayout() {
         </nav>
 
         {/* Module Switcher */}
-        {userRole !== 'WORKER' && (
-        <div style={{ padding: '12px 12px', borderTop: '1px solid var(--silk)' }}>
-          <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--dust)', padding: '0 8px', marginBottom: 8 }}>
-            Switch Module
-          </div>
-          <button
-            onClick={() => navigate('/pqc/dashboard')}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-              padding: '8px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500,
-              background: 'transparent', border: '1px solid var(--silk)',
-              color: 'var(--slate)', cursor: 'pointer', textAlign: 'left',
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--linen)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>content_paste_search</span>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 12 }}>PQC Module</div>
-              <div style={{ fontSize: 10, color: 'var(--ash)' }}>Quality Inspections</div>
-            </div>
-          </button>
-        </div>
-        )}
+        <ModuleSwitcher currentModule="MES" />
 
         {/* User Info */}
         <div style={{ padding: '16px', borderTop: '1px solid var(--silk)' }}>

@@ -67,7 +67,10 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
     | { type: 'qtyRow'; op: any; label: string; field: 'inspectedQty' | 'reworkQty' | 'rejectedQty' | 'scrapQty' }
     | { type: 'empty' };
 
-  const allRows: RowDef[] = [];
+  // --- Chunk rows into pages operation by operation ---
+  const pages: { isFirst: boolean; isLast: boolean; rows: RowDef[] }[] = [];
+  const limit = 12; // 12 rows fit comfortably on A4 landscape
+
   data.operations.forEach(op => {
     const uniqueParamsMap = new Map<string, PqcMeasurement>();
     op.batches.forEach(b => {
@@ -80,74 +83,60 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
     const uniqueParams = Array.from(uniqueParamsMap.values());
 
     if (uniqueParams.length > 0) {
-      allRows.push({ type: 'opHeader', op });
-      allRows.push({ type: 'timeHeader', op });
-      uniqueParams.forEach(p => {
-        allRows.push({ type: 'param', op, param: p });
-      });
-      // Append the quantity rows at the end of the operation's parameters
-      allRows.push({ type: 'qtyRow', op, label: 'Produced Actual', field: 'inspectedQty' });
-      allRows.push({ type: 'qtyRow', op, label: 'Rework', field: 'reworkQty' });
-      allRows.push({ type: 'qtyRow', op, label: 'Reject', field: 'rejectedQty' });
-      allRows.push({ type: 'qtyRow', op, label: 'Scrap', field: 'scrapQty' });
+      const opRows: RowDef[] = [
+        { type: 'opHeader', op },
+        ...uniqueParams.map(p => ({ type: 'param' as const, op, param: p })),
+        { type: 'qtyRow', op, label: 'Produced Actual', field: 'inspectedQty' },
+        { type: 'qtyRow', op, label: 'Rework', field: 'reworkQty' },
+        { type: 'qtyRow', op, label: 'Reject', field: 'rejectedQty' },
+        { type: 'qtyRow', op, label: 'Scrap', field: 'scrapQty' }
+      ];
+
+      let rowsRemaining = [...opRows];
+      let isFirstChunkForOp = true;
+
+      while (rowsRemaining.length > 0) {
+        if (!isFirstChunkForOp) {
+          rowsRemaining.unshift({ type: 'opHeader', op, isContinued: true });
+        }
+
+        let takeCount = limit;
+        if (rowsRemaining.length <= limit) {
+          takeCount = rowsRemaining.length;
+        } else {
+          // Prevent leaving just 1 to 4 quantity rows stranded alone on the next page
+          if (rowsRemaining.length - limit <= 4 && limit > 6) {
+            takeCount = rowsRemaining.length - 4;
+          }
+        }
+
+        const isLastChunkForOp = rowsRemaining.length <= takeCount;
+        const chunk = rowsRemaining.slice(0, takeCount);
+        pages.push({
+          isFirst: pages.length === 0,
+          isLast: isLastChunkForOp,
+          rows: chunk
+        });
+
+        rowsRemaining = rowsRemaining.slice(takeCount);
+        isFirstChunkForOp = false;
+      }
     }
   });
 
-  // --- 2. Chunk rows into pages for strict A4 printing/PDF generation ---
-  const pages: { isFirst: boolean; isLast: boolean; rows: RowDef[] }[] = [];
-  let rowsRemaining = [...allRows];
-  let isFirst = true;
-
-  while (rowsRemaining.length > 0) {
-    // If the next row is a param, it means we are continuing an operation from the previous page.
-    // Prepend the operation headers so the user knows what operation these parameters belong to.
-    if (!isFirst && rowsRemaining.length > 0) {
-      if (rowsRemaining[0].type === 'param' || rowsRemaining[0].type === 'qtyRow') {
-        const activeOp = rowsRemaining[0].op;
-        rowsRemaining.unshift(
-          { type: 'opHeader', op: activeOp, isContinued: true },
-          { type: 'timeHeader', op: activeOp, isContinued: true }
-        );
-      } else if (rowsRemaining[0].type === 'timeHeader') {
-        const activeOp = rowsRemaining[0].op;
-        rowsRemaining.unshift(
-          { type: 'opHeader', op: activeOp, isContinued: true }
-        );
-      }
-    }
-
-    const limit = 8; // strict limit of 8 rows per page, whether it has a footer or not
-
-    let takeCount = limit;
-    let isLast = false;
-
-    if (rowsRemaining.length <= limit) {
-      takeCount = rowsRemaining.length;
-      isLast = true;
-    } else {
-      takeCount = limit;
-      isLast = false;
-    }
-
-    const chunk = rowsRemaining.slice(0, takeCount);
-    pages.push({ isFirst, isLast, rows: chunk });
-
-    rowsRemaining = rowsRemaining.slice(takeCount);
-    isFirst = false;
+  if (pages.length === 0) {
+    pages.push({ isFirst: true, isLast: true, rows: [] });
   }
 
-  // If there are no rows remaining but we haven't placed the footer yet
-  if (pages.length === 0 || !pages[pages.length - 1].isLast) {
-    pages.push({ isFirst: pages.length === 0, isLast: true, rows: [] });
-  }
-
-  // Pad pages with empty rows so the grid covers the whole page uniformly
+  // Only pad intermediate pages with empty rows; do not pad the last page of an operation so the footer appears right below Scrap
   pages.forEach(page => {
-    const targetRows = 8; // Always pad to exactly 8 rows so all tables are identical in size
-    const currentRows = page.rows.length;
-    if (currentRows < targetRows) {
-      for (let i = 0; i < targetRows - currentRows; i++) {
-        page.rows.push({ type: 'empty' });
+    if (!page.isLast) {
+      const targetRows = limit;
+      const currentRows = page.rows.length;
+      if (currentRows < targetRows) {
+        for (let i = 0; i < targetRows - currentRows; i++) {
+          page.rows.push({ type: 'empty' });
+        }
       }
     }
   });
@@ -260,113 +249,111 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
             borderBottom: page.isLast ? 'none' : '1px solid #000'
           }}>
             <tbody>
-            {page.rows.length > 0 && (
-              <>
-                <tr style={{ backgroundColor: '#e9e7dfff' }}>
-                  <th rowSpan={2} style={{ width: '4%', whiteSpace: 'nowrap' }}>Sl. No</th>
-                  <th rowSpan={2} style={{ width: '18%' }}>Parameter</th>
-                  <th rowSpan={2} style={{ width: '10%' }}>Specification</th>
-                  <th rowSpan={2} style={{ width: '10%' }}>Tolerance</th>
-                  <th rowSpan={2} style={{ width: '10%', whiteSpace: 'nowrap' }}>Measuring Instrument/Gauge</th>
-                  <th rowSpan={2} style={{ width: '4%' }}>Time</th>
-                  <th colSpan={8}>Observations</th>
-                  <th rowSpan={2} style={{ width: '4%' }}>Total</th>
-                </tr>
-                <tr style={{ backgroundColor: '#e9e7dfff' }}>
-                  {[...Array(8)].map((_, i) => <th key={i} style={{ width: '5%', height: '20px' }}></th>)}
-                </tr>
-              </>
-            )}
-              {page.rows.map((row, rIdx) => {
-                if (row.type === 'opHeader') {
-                  return (
-                    <tr key={`op-${rIdx}`} style={{ backgroundColor: '#f5f2edff' }}>
-                      <td colSpan={15} className="left-align bold">Operation: {row.op.sequenceOrder} - {row.op.operationName} {row.isContinued ? '(Continued)' : ''}</td>
-                    </tr>
-                  );
-                }
-                if (row.type === 'timeHeader') {
-                  return (
-                    <tr key={`time-${rIdx}`}>
-                      <td colSpan={5} className="left-align bold" style={{ textAlign: 'right' }}>Time:</td>
-                      <td></td>
-                      {[...Array(8)].map((_, i) => (
-                        <td key={i} className="bold" style={{ height: '24px' }}>
-                          {row.op.batches[i] ? new Date(row.op.batches[i].logTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                        </td>
-                      ))}
-                      <td></td>
-                    </tr>
-                  );
-                }
-                if (row.type === 'param') {
-                  return (
-                    <tr key={`param-${rIdx}`}>
-                      <td>{globalSlNo++}</td>
-                      <td className="left-align">{row.param.parameterName}</td>
-                      <td>{getSpecString(row.param)}</td>
-                      <td>{getToleranceString(row.param)}</td>
-                      <td></td>
-                      <td></td>
-                      {[...Array(8)].map((_, bIndex) => {
-                        const batch = row.op.batches[bIndex];
-                        let val = '';
-                        if (batch) {
-                          const m = batch.measurements?.find((x: any) => x.questionId === row.param.questionId);
-                          if (m) {
-                            val = formatActualValue(m.actualValue, m.expectedAnswer);
-                          } else {
-                            val = '-';
-                          }
-                        }
-                        return <td key={bIndex}>{val}</td>;
-                      })}
-                      <td></td>
-                    </tr>
-                  );
-                }
-                if (row.type === 'qtyRow') {
-                  const total = row.op.batches.reduce((sum: number, b: any) => sum + (b[row.field] || 0), 0);
-                  return (
-                    <tr key={`qty-${rIdx}-${row.label}`} style={{ backgroundColor: '#faf9f6' }}>
-                      <td colSpan={6} className="left-align bold" style={{ textAlign: 'right', paddingRight: '16px' }}>
-                        {row.label}
-                      </td>
-                      {[...Array(8)].map((_, bIndex) => {
-                        const batch = row.op.batches[bIndex];
-                        let val = '';
-                        if (batch && batch[row.field] != null) {
-                          val = batch[row.field].toString();
-                        }
-                        const isBad = (row.field === 'rejectedQty' || row.field === 'scrapQty') && val !== '' && val !== '0';
-                        return (
-                          <td key={`qty-obs-${bIndex}`} className="bold" style={{ color: isBad ? '#ef4444' : 'inherit' }}>
-                            {val}
+              {(() => {
+                const activeOp = page.rows.find(r => 'op' in r && r.op)?.op;
+                const obsCount = Math.max(8, activeOp?.batches?.length || 8);
+                const totalCols = 6 + obsCount;
+                const obsColWidth = `${(37 / obsCount).toFixed(2)}%`;
+
+                return page.rows.map((row, rIdx) => {
+                  if (row.type === 'opHeader') {
+                    return (
+                      <React.Fragment key={`op-${rIdx}`}>
+                        <tr style={{ backgroundColor: '#f5f2ed' }}>
+                          <td colSpan={totalCols} className="left-align bold" style={{ fontSize: '13px', padding: '6px 8px' }}>
+                            Operation: {row.op.sequenceOrder} - {row.op.operationName} {row.isContinued ? '(Continued)' : ''}
                           </td>
-                        );
-                      })}
-                      <td className="bold" style={{ textAlign: 'center', color: 'var(--copper-bronze)' }}>
-                        {total > 0 ? total : ''}
-                      </td>
-                    </tr>
-                  );
-                }
-                if (row.type === 'empty') {
-                  return (
-                    <tr key={`empty-${rIdx}`}>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      {[...Array(8)].map((_, j) => <td key={`empty-obs-${rIdx}-${j}`} style={{ height: '24px' }}></td>)}
-                      <td></td>
-                    </tr>
-                  );
-                }
-                return null;
-              })}
+                        </tr>
+                        <tr style={{ backgroundColor: '#e9e7df' }}>
+                          <th rowSpan={2} style={{ width: '5%', whiteSpace: 'nowrap' }}>Sl. No</th>
+                          <th rowSpan={2} style={{ width: '22%' }}>Parameter</th>
+                          <th rowSpan={2} style={{ width: '12%' }}>Specification</th>
+                          <th rowSpan={2} style={{ width: '10%' }}>Tolerance</th>
+                          <th rowSpan={2} style={{ width: '8%' }}>Measuring Instrument/Gauge</th>
+                          <th colSpan={obsCount}>Observations</th>
+                          <th rowSpan={2} style={{ width: '6%' }}>Total</th>
+                        </tr>
+                        <tr style={{ backgroundColor: '#e9e7df' }}>
+                          {[...Array(obsCount)].map((_, i) => {
+                            const batch = row.op.batches?.[i];
+                            const headerVal = batch ? new Date(batch.logTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : String(i + 1);
+                            return (
+                              <th key={`obs-th-${rIdx}-${i}`} style={{ width: obsColWidth, height: '24px', fontSize: batch ? '12.5px' : '13px', fontWeight: 'bold', color: '#000' }}>
+                                {headerVal}
+                              </th>
+                            );
+                          })}
+                        </tr>
+                      </React.Fragment>
+                    );
+                  }
+                  if (row.type === 'param') {
+                    return (
+                      <tr key={`param-${rIdx}`}>
+                        <td>{globalSlNo++}</td>
+                        <td className="left-align">{row.param.parameterName}</td>
+                        <td>{getSpecString(row.param) || '-'}</td>
+                        <td>{getToleranceString(row.param) || '-'}</td>
+                        <td>{data.partName || '-'}</td>
+                        {[...Array(obsCount)].map((_, bIndex) => {
+                          const batch = row.op.batches[bIndex];
+                          let val = '';
+                          if (batch) {
+                            const m = batch.measurements?.find((x: any) => x.questionId === row.param.questionId);
+                            if (m) {
+                              val = formatActualValue(m.actualValue, m.expectedAnswer);
+                            } else {
+                              val = '-';
+                            }
+                          }
+                          return <td key={bIndex}>{val}</td>;
+                        })}
+                        <td></td>
+                      </tr>
+                    );
+                  }
+                  if (row.type === 'qtyRow') {
+                    const total = row.op.batches.reduce((sum: number, b: any) => sum + (b[row.field] || 0), 0);
+                    return (
+                      <tr key={`qty-${rIdx}-${row.label}`} style={{ backgroundColor: '#faf9f6' }}>
+                        <td colSpan={5} className="bold" style={{ textAlign: 'right', paddingRight: '12px' }}>
+                          {row.label}
+                        </td>
+                        {[...Array(obsCount)].map((_, bIndex) => {
+                          const batch = row.op.batches[bIndex];
+                          let val = '';
+                          if (batch && batch[row.field] != null) {
+                            val = batch[row.field].toString();
+                          }
+                          const isBad = (row.field === 'rejectedQty' || row.field === 'scrapQty') && val !== '' && val !== '0';
+                          return (
+                            <td key={`qty-obs-${bIndex}`} className="bold" style={{ color: isBad ? '#ef4444' : 'inherit' }}>
+                              {val}
+                            </td>
+                          );
+                        })}
+                        <td className="bold" style={{ textAlign: 'center', color: 'var(--copper-bronze)' }}>
+                          {total > 0 ? total : ''}
+                        </td>
+                      </tr>
+                    );
+                  }
+                  if (row.type === 'empty') {
+                    return (
+                      <tr key={`empty-${rIdx}`}>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        {[...Array(obsCount)].map((_, j) => <td key={`empty-obs-${rIdx}-${j}`} style={{ height: '24px' }}></td>)}
+                        <td></td>
+                      </tr>
+                    );
+                  }
+                  return null;
+                });
+              })()}
             </tbody>
           </table>
 
@@ -376,35 +363,35 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
               P.T.O.
             </div>
           )}
-          {/* FOOTER SECTION (Only on last page) */}
+          {/* FOOTER SECTION (On last page of every operation) */}
           {page.isLast && (
             <table className="cert-table" style={{ borderTop: 'none', marginTop: page.rows.length === 0 ? 0 : 'auto' }}>
               <tbody>
                 <tr>
-                  <td colSpan={6} rowSpan={3} className="left-align" style={{ verticalAlign: 'top', width: '60%', borderTop: 'none' }}>
+                  <td colSpan={1} rowSpan={3} className="left-align" style={{ verticalAlign: 'top', width: '60%', borderTop: 'none' }}>
                     <strong>Remarks(Rework/Tool Change/Dimensional Issue/Other):-</strong>
                   </td>
-                  <td colSpan={8} className="left-align" style={{ height: '30px', verticalAlign: 'top', width: '40%', borderTop: 'none' }}>
+                  <td colSpan={1} className="left-align" style={{ height: '30px', verticalAlign: 'top', width: '40%', borderTop: 'none' }}>
                     <strong>Quality Remarks</strong>
                   </td>
                 </tr>
                 <tr>
-                  <td colSpan={8} className="left-align" style={{ height: '60px', verticalAlign: 'top', padding: '8px' }}>
+                  <td colSpan={1} className="left-align" style={{ height: '60px', verticalAlign: 'top', padding: '8px' }}>
                     <strong>Operator Sign</strong>
                   </td>
                 </tr>
                 <tr>
-                  <td colSpan={8} className="left-align" style={{ height: '60px', verticalAlign: 'top', padding: '8px' }}>
+                  <td colSpan={1} className="left-align" style={{ height: '60px', verticalAlign: 'top', padding: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
                       <div style={{ width: 120 }}>
                         <strong>Inspector Sign</strong>
                       </div>
                       {config?.activeApproval?.signature && (
                         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                          <img 
-                            src={config.activeApproval.signature} 
-                            alt="Signature" 
-                            style={{ maxHeight: '44px', maxWidth: '150px', objectFit: 'contain' }} 
+                          <img
+                            src={config.activeApproval.signature}
+                            alt="Signature"
+                            style={{ maxHeight: '44px', maxWidth: '150px', objectFit: 'contain' }}
                           />
                         </div>
                       )}
@@ -418,7 +405,7 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                   </td>
                 </tr>
                 <tr>
-                  <td colSpan={14} className="left-align" style={{ height: '60px', verticalAlign: 'bottom', padding: '8px 16px' }}>
+                  <td colSpan={2} className="left-align" style={{ height: '60px', verticalAlign: 'bottom', padding: '8px 16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                       <span><strong>Additional Note:-</strong></span>
                       <span><strong>Approved By: Quality Head</strong></span>

@@ -60,6 +60,13 @@ public class PqcQuestion {
     @Builder.Default
     private Boolean isCritical = false;
 
+    @Column(name = "checking_method", length = 100)
+    private String checkingMethod;
+
+    @Column(name = "show_in_pdir")
+    @Builder.Default
+    private Boolean showInPdir = true;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;

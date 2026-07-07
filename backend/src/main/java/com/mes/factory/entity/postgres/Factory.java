@@ -60,6 +60,18 @@ public class Factory {
     @Builder.Default
     private Boolean isActive = true;
 
+    @Column(name = "mes_enabled")
+    @Builder.Default
+    private Boolean mesEnabled = true;
+
+    @Column(name = "pqc_enabled")
+    @Builder.Default
+    private Boolean pqcEnabled = true;
+
+    @Column(name = "lpa_enabled")
+    @Builder.Default
+    private Boolean lpaEnabled = true;
+
     @OneToMany(mappedBy = "factory")
     @Builder.Default
     private List<User> users = new ArrayList<>();

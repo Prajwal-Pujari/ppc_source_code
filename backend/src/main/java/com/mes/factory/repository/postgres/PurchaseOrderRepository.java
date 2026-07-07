@@ -30,12 +30,14 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, UU
                                                   Pageable pageable);
 
     @Query(
-        value = "SELECT po FROM PurchaseOrder po LEFT JOIN FETCH po.customer c " +
+        value = "SELECT DISTINCT po FROM PurchaseOrder po LEFT JOIN FETCH po.customer c " +
                 "WHERE po.factory.id = :factoryId AND " +
-                "(LOWER(po.poNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))",
-        countQuery = "SELECT COUNT(po) FROM PurchaseOrder po LEFT JOIN po.customer c " +
+                "(LOWER(po.poNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                "EXISTS (SELECT 1 FROM Gauge g WHERE g.purchaseOrder = po AND (LOWER(g.serialNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(g.gaugeTypeName) LIKE LOWER(CONCAT('%', :search, '%')))))",
+        countQuery = "SELECT COUNT(DISTINCT po) FROM PurchaseOrder po LEFT JOIN po.customer c " +
                      "WHERE po.factory.id = :factoryId AND " +
-                     "(LOWER(po.poNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))"
+                     "(LOWER(po.poNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                     "EXISTS (SELECT 1 FROM Gauge g WHERE g.purchaseOrder = po AND (LOWER(g.serialNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(g.gaugeTypeName) LIKE LOWER(CONCAT('%', :search, '%')))))"
     )
     Page<PurchaseOrder> searchByPoNumberOrCustomerName(@Param("factoryId") UUID factoryId,
                                                         @Param("search") String search,

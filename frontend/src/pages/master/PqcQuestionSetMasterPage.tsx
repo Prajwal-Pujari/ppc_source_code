@@ -191,6 +191,7 @@ export default function PqcQuestionSetMasterPage() {
             setManageOp(null);
             fetchData();
           }}
+          onRefresh={fetchData}
         />
       )}
     </div>
@@ -200,7 +201,7 @@ export default function PqcQuestionSetMasterPage() {
 // ─── Manage Question Sets Modal ───────────────────────────────────────────────
 
 function ManageQuestionSetsModal({
-  operation, questionSets, allQuestionSets, allOperations, gaugeMasters, onClose,
+  operation, questionSets, allQuestionSets, allOperations, gaugeMasters, onClose, onRefresh,
 }: {
   operation: OperationMaster;
   questionSets: PqcQuestionSet[];
@@ -208,8 +209,10 @@ function ManageQuestionSetsModal({
   allOperations: OperationMaster[];
   gaugeMasters: GaugeMaster[];
   onClose: () => void;
+  onRefresh?: () => void;
 }) {
   const [sets, setSets] = useState<PqcQuestionSet[]>(questionSets);
+  useEffect(() => { setSets(questionSets); }, [questionSets]);
   const [editingSet, setEditingSet] = useState<Partial<PqcQuestionSet> | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [showLibrary, setShowLibrary] = useState(false);
@@ -253,6 +256,8 @@ function ManageQuestionSetsModal({
         maxValue: q.maxValue,
         choices: q.choices,
         isCritical: q.isCritical || false,
+        checkingMethod: q.checkingMethod || 'D.V.C',
+        showInPdir: q.showInPdir !== false,
       };
       return { ...prev, questions: [...questions, imported] };
     });
@@ -265,7 +270,7 @@ function ManageQuestionSetsModal({
       inspectionFrequency: '1/Hr',
       operationMaster: operation as any,
       questions: [
-        { sequenceOrder: 1, questionText: '', questionType: 'PASS_FAIL', isCritical: false }
+        { sequenceOrder: 1, questionText: '', questionType: 'PASS_FAIL', isCritical: false, checkingMethod: 'D.V.C', showInPdir: true }
       ]
     });
   };
@@ -280,6 +285,7 @@ function ManageQuestionSetsModal({
       await pqcApi.deleteQuestionSet(id);
       setSets(prev => prev.filter(s => s.id !== id));
       toast.success('Question set deleted');
+      onRefresh?.();
     } catch {
       setErrorMsg('Failed to delete question set');
     }
@@ -313,6 +319,7 @@ function ManageQuestionSetsModal({
         toast.success('Question set created');
       }
       setEditingSet(null);
+      onRefresh?.();
     } catch (err) {
       setErrorMsg('Failed to save question set');
       console.error(err);
@@ -323,7 +330,7 @@ function ManageQuestionSetsModal({
     setEditingSet(prev => {
       if (!prev) return prev;
       const questions = prev.questions || [];
-      return { ...prev, questions: [...questions, { sequenceOrder: questions.length + 1, questionText: '', questionType: 'PASS_FAIL' as QuestionType, isCritical: false }] };
+      return { ...prev, questions: [...questions, { sequenceOrder: questions.length + 1, questionText: '', questionType: 'PASS_FAIL' as QuestionType, isCritical: false, checkingMethod: 'D.V.C', showInPdir: true }] };
     });
   };
 
@@ -532,7 +539,7 @@ function ManageQuestionSetsModal({
                           style={{ fontSize: 13 }}
                           value={q.questionText}
                           onChange={(e) => updateQuestion(index, 'questionText', e.target.value)}
-                          placeholder="e.g. Is surface finish within tolerance?"
+                          placeholder="e.g. Length, Width, Visual"
                           required
                         />
                       </div>
@@ -549,6 +556,19 @@ function ManageQuestionSetsModal({
                           <option value="TEXT">Text Input</option>
                           <option value="CHOICE">Multiple Choice</option>
                         </select>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--slate)', marginBottom: 3 }}>Checking Method (PDIR)</label>
+                        <input
+                          className="input"
+                          style={{ fontSize: 13 }}
+                          value={q.checkingMethod || ''}
+                          onChange={(e) => updateQuestion(index, 'checkingMethod', e.target.value)}
+                          placeholder="e.g. D.V.C, Micrometer, Visual"
+                        />
                       </div>
                     </div>
 
@@ -589,15 +609,26 @@ function ManageQuestionSetsModal({
                       </div>
                     )}
 
-                    {/* Critical toggle */}
-                    <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <input
-                        type="checkbox"
-                        checked={q.isCritical}
-                        onChange={(e) => updateQuestion(index, 'isCritical', e.target.checked)}
-                        style={{ accentColor: 'var(--copper-bronze)' }}
-                      />
-                      <span style={{ fontSize: 12, color: 'var(--charcoal)' }}>Critical (failure auto-rejects part)</span>
+                    {/* Critical & PDIR toggles */}
+                    <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', borderTop: '1px dashed var(--silk)', paddingTop: 10 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={q.showInPdir !== false}
+                          onChange={(e) => updateQuestion(index, 'showInPdir', e.target.checked)}
+                          style={{ accentColor: 'var(--copper-bronze)' }}
+                        />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--copper-dark)' }}>Show parameter in PDIR Report</span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={q.isCritical}
+                          onChange={(e) => updateQuestion(index, 'isCritical', e.target.checked)}
+                          style={{ accentColor: 'var(--copper-bronze)' }}
+                        />
+                        <span style={{ fontSize: 12, color: 'var(--charcoal)' }}>Critical (failure auto-rejects part)</span>
+                      </label>
                     </div>
                   </div>
                 ))}

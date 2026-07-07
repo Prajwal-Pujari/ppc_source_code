@@ -19,7 +19,7 @@ type ReportType = 'IN_PROCESS' | 'PDIR' | 'LAYOUT' | 'FAI' | 'FAR' | 'INCOMING';
 
 const reportTypes: { id: ReportType; label: string }[] = [
   { id: 'IN_PROCESS', label: 'In-Process Report' },
-  // { id: 'PDIR', label: 'PDIR' },
+  { id: 'PDIR', label: 'PDIR (Pre-Dispatch)' },
   // { id: 'LAYOUT', label: 'Layout Inspection' },
   // { id: 'FAI', label: 'FAI (First Article)' },
   // { id: 'FAR', label: 'FAR' },
@@ -58,6 +58,12 @@ export default function PqcReportDashboard() {
     },
     enabled: !!expandedPoId,
   });
+
+  useEffect(() => {
+    if (searchTerm && pos.length === 1 && !expandedPoId) {
+      setExpandedPoId(pos[0].id);
+    }
+  }, [pos, searchTerm, expandedPoId]);
 
   const [activeSubReport, setActiveSubReport] = useState<string>('ALL');
 
@@ -136,13 +142,16 @@ export default function PqcReportDashboard() {
       // Clone the report node to avoid messing up the live view
       const clone = reportRef.current.cloneNode(true) as HTMLElement;
 
-      // Temporarily append the clone off-screen to render it
-      clone.style.position = 'absolute';
-      clone.style.top = '-9999px';
-      clone.style.left = '-9999px';
+      // Temporarily position the clone in the top-left corner behind viewport elements so html2canvas captures exact coordinates without off-screen clipping
+      clone.style.position = 'fixed';
+      clone.style.top = '0px';
+      clone.style.left = '0px';
+      clone.style.zIndex = '-9999';
+      clone.style.pointerEvents = 'none';
       clone.style.width = '1123px';
       clone.style.maxWidth = 'none';
       clone.style.height = 'max-content';
+      clone.style.background = '#ffffff';
 
       const signatures = clone.querySelector('.print-signatures') as HTMLElement;
       if (signatures) signatures.style.display = 'flex';
@@ -169,10 +178,17 @@ export default function PqcReportDashboard() {
       if (pages.length > 0) {
         for (let i = 0; i < pages.length; i++) {
           const pageEl = pages[i] as HTMLElement;
-          // Temporarily ensure the page is visible for html2canvas
-          pageEl.style.display = 'block';
+          // Preserve flexbox layout on the page so header/footer and table spacing match screen exactly
+          pageEl.style.display = 'flex';
 
-          const canvas = await html2canvasFn(pageEl, { scale: 2, useCORS: true, windowWidth: 1123 }); // 1123px is A4 width at 96dpi
+          const canvas = await html2canvasFn(pageEl, {
+            scale: 2,
+            useCORS: true,
+            windowWidth: 1123,
+            scrollX: 0,
+            scrollY: 0,
+            backgroundColor: '#ffffff'
+          });
           const imgData = canvas.toDataURL('image/png');
 
           // Calculate height proportionally to fit width
@@ -318,23 +334,38 @@ export default function PqcReportDashboard() {
                     type="button"
                     onClick={() => handleTogglePo(po.id)}
                     style={{
-                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '11px 14px', cursor: 'pointer',
+                      width: '100%', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+                      padding: '12px 14px', cursor: 'pointer',
                       background: isExpanded ? 'var(--linen)' : 'white',
                       border: '1px solid var(--silk)', borderRadius: isExpanded ? '8px 8px 0 0' : 8,
-                      textAlign: 'left',
+                      textAlign: 'left', gap: 8
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <Package size={16} color="var(--copper-bronze)" />
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--charcoal)' }}>{po.poNumber}</div>
-                        <div style={{ fontSize: 11, color: 'var(--slate)' }}>{po.customerName || 'Internal'}</div>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1 }}>
+                      <Package size={18} color="var(--copper-bronze)" style={{ marginTop: 2, flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--charcoal)' }}>{po.poNumber}</span>
+                          {po.status && (
+                            <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: '#EAE8E1', color: 'var(--charcoal)' }}>
+                              {po.status}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--copper-bronze)', marginTop: 2 }}>
+                          Customer: {po.customerName || 'Internal / Stock'}
+                        </div>
+                        <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--slate)', marginTop: 4, flexWrap: 'wrap' }}>
+                          <span>Parts: {po.completedGauges || 0}/{po.totalGauges || 0}</span>
+                          {po.orderDate && <span>Date: {new Date(po.orderDate).toLocaleDateString()}</span>}
+                        </div>
                       </div>
                     </div>
-                    {isExpanded
-                      ? <ChevronDown size={16} color="var(--ash)" />
-                      : <ChevronRight size={16} color="var(--ash)" />}
+                    <div style={{ marginTop: 2 }}>
+                      {isExpanded
+                        ? <ChevronDown size={16} color="var(--ash)" />
+                        : <ChevronRight size={16} color="var(--ash)" />}
+                    </div>
                   </button>
 
                   {/* Gauge rows — completely separate from the PO button above */}
@@ -368,28 +399,37 @@ export default function PqcReportDashboard() {
                               onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = '#F5F3EE'; }}
                               onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = '#FAFAF8'; }}
                             >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1 }}>
                                 <div style={{
                                   width: 28, height: 28, borderRadius: 6,
                                   background: isSelected ? 'var(--copper-bronze)' : 'var(--silk)',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                                   color: isSelected ? 'white' : 'var(--slate)', fontSize: 12, fontWeight: 700,
-                                  flexShrink: 0,
+                                  flexShrink: 0, marginTop: 2
                                 }}>
                                   G
                                 </div>
-                                <div>
-                                  <div style={{ fontSize: 13, fontWeight: 500, color: isSelected ? 'var(--copper-bronze)' : 'var(--charcoal)' }}>
-                                    {g.gaugeTypeName || 'Part'}
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: isSelected ? 'var(--copper-bronze)' : 'var(--charcoal)', wordBreak: 'break-all' }}>
+                                    {g.serialNumber || g.gaugeId || 'SN N/A'}
                                   </div>
-                                  <div style={{ fontSize: 11, color: 'var(--ash)' }}>SN: {g.serialNumber}</div>
+                                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--charcoal)', marginTop: 2 }}>
+                                    Part: {g.gaugeTypeName || g.partName || 'Part'}
+                                  </div>
+                                  <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--slate)', marginTop: 3, flexWrap: 'wrap' }}>
+                                    {g.batchQuantity && <span>Qty: {g.batchQuantity}</span>}
+                                    {g.status && <span>Status: {g.status}</span>}
+                                    {g.currentLocation && <span>Loc: {g.currentLocation}</span>}
+                                  </div>
                                 </div>
                               </div>
-                              {isSelected ? (
-                                <CheckCircle2 size={14} color="var(--copper-bronze)" />
-                              ) : (
-                                <span style={{ fontSize: 11, color: 'var(--ash)', fontStyle: 'italic' }}>Click to view report</span>
-                              )}
+                              <div style={{ flexShrink: 0, marginLeft: 8 }}>
+                                {isSelected ? (
+                                  <CheckCircle2 size={16} color="var(--copper-bronze)" />
+                                ) : (
+                                  <span style={{ fontSize: 11, color: 'var(--ash)', fontStyle: 'italic' }}>View</span>
+                                )}
+                              </div>
                             </button>
                           );
                         })
@@ -417,6 +457,38 @@ export default function PqcReportDashboard() {
             </div>
           ) : (
             <div style={{ maxWidth: 1250, margin: '0 auto' }}>
+              {(() => {
+                const selG = gauges.find((g: any) => g.id === selectedGaugeId);
+                const selPo = pos.find((p: any) => p.id === expandedPoId);
+                if (!selG && !selPo) return null;
+                return (
+                  <div className="hide-on-print" style={{
+                    background: 'white', border: '1px solid var(--silk)', borderRadius: 10, padding: '16px 20px',
+                    marginBottom: 20, boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+                  }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottom: '1px solid var(--silk)', paddingBottom: 12, marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--charcoal)' }}>
+                          {selG?.serialNumber || selG?.gaugeId || 'SN N/A'}
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 12, background: 'var(--linen)', color: 'var(--copper-bronze)' }}>
+                          {selG?.gaugeTypeName || selG?.partName || 'Part'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--charcoal)', background: '#F5F3EE', padding: '4px 12px', borderRadius: 6 }}>
+                        Customer: {selPo?.customerName || 'Internal / Stock'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, fontSize: 12, color: 'var(--slate)' }}>
+                      <span><strong style={{ color: 'var(--charcoal)' }}>PO Number:</strong> {selPo?.poNumber || 'N/A'}</span>
+                      {selPo?.status && <span><strong style={{ color: 'var(--charcoal)' }}>PO Status:</strong> {selPo.status}</span>}
+                      {selG?.batchQuantity && <span><strong style={{ color: 'var(--charcoal)' }}>Batch Qty:</strong> {selG.batchQuantity} units</span>}
+                      {selG?.currentLocation && <span><strong style={{ color: 'var(--charcoal)' }}>Location:</strong> {selG.currentLocation}</span>}
+                      {selPo?.orderDate && <span><strong style={{ color: 'var(--charcoal)' }}>Order Date:</strong> {new Date(selPo.orderDate).toLocaleDateString()}</span>}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Report type tabs */}
               <div className="hide-on-print" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
@@ -498,7 +570,7 @@ export default function PqcReportDashboard() {
                   ) : (
                     <>
                       {selectedReportType === 'IN_PROCESS' && <InProcessReportView data={filteredReportData.data} config={{ ...reportConfig, activeApproval: filteredReportData.matchedApproval }} />}
-                      {/* {selectedReportType === 'PDIR' && <PdirReportView data={filteredReportData} />} */}
+                      {selectedReportType === 'PDIR' && <PdirReportView data={filteredReportData.data} config={{ ...reportConfig, activeApproval: filteredReportData.matchedApproval }} />}
                       {/* {selectedReportType === 'LAYOUT' && <LayoutReportView data={filteredReportData} />} */}
                       {/* {selectedReportType === 'FAI' && <FaiReportView data={filteredReportData} />} */}
                     </>

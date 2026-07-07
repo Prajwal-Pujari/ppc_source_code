@@ -29,5 +29,8 @@ public class AuthResponse {
         private String role;
         private String employeeCode;
         private UUID factoryId;
+        private Boolean mesEnabled;
+        private Boolean pqcEnabled;
+        private Boolean lpaEnabled;
     }
 }

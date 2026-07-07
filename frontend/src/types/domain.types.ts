@@ -66,6 +66,10 @@ export interface Gauge {
   historyCardPath?: string;
   purchaseOrder?: Partial<PurchaseOrder>;
   createdAt: string;
+  gaugeId?: string;
+  partName?: string;
+  currentLocation?: string;
+  gaugeMaster?: any;
 }
 
 export interface GaugeOperation {
@@ -159,6 +163,8 @@ export interface PqcQuestion {
   maxValue?: number;
   choices?: string[];
   isCritical: boolean;
+  checkingMethod?: string;
+  showInPdir?: boolean;
   isActive?: boolean;
 }
 
@@ -190,6 +196,8 @@ export interface PqcMeasurement {
   maxValue?: number;
   unit?: string;
   actualValue?: any;
+  checkingMethod?: string;
+  showInPdir?: boolean;
 }
 
 export interface PqcBatchLog {
@@ -212,6 +220,7 @@ export interface QualityReportOperation {
   operationName: string;
   sequenceOrder: number;
   batches: PqcBatchLog[];
+  configuredParameters?: PqcMeasurement[];
 }
 
 export interface ApprovalDto {

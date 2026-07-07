@@ -48,6 +48,7 @@ public class QualityReportDto {
         private String operationName;
         private Integer sequenceOrder;
         private List<BatchLogDto> batches;
+        private List<MeasurementDto> configuredParameters;
     }
 
     @Data
@@ -77,5 +78,7 @@ public class QualityReportDto {
         private BigDecimal maxValue;
         private String unit;
         private Object actualValue; // Could be boolean, numeric, or text
+        private String checkingMethod;
+        private Boolean showInPdir;
     }
 }

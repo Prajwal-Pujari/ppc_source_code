@@ -17,6 +17,9 @@ export interface UserInfo {
   role: UserRole;
   employeeCode: string;
   factoryId: string;
+  mesEnabled?: boolean;
+  pqcEnabled?: boolean;
+  lpaEnabled?: boolean;
 }
 
 export type UserRole = 'ADMIN' | 'SUPERVISOR' | 'WORKER' | 'QUALITY_INSPECTOR' | 'VIEWER';

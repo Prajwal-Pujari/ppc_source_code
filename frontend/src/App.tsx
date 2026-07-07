@@ -29,6 +29,14 @@ import PqcReportDashboard from './pages/pqc/PqcReportDashboard';
 import PqcApprovalsDashboard from './pages/pqc/PqcApprovalsDashboard';
 import PqcDashboardPage from '@/pages/pqc/PqcDashboardPage';
 import PqcSettingsPage from '@/pages/pqc/PqcSettingsPage';
+import PqcPoTrackerPage from '@/pages/pqc/PqcPoTrackerPage';
+import { LpaLayout } from '@/components/layout/LpaLayout';
+import { LpaDashboardPage } from '@/pages/lpa/LpaDashboardPage';
+import { LpaExecutePage } from '@/pages/lpa/LpaExecutePage';
+import { LpaReportsPage } from '@/pages/lpa/LpaReportsPage';
+import { LpaSchedulePage } from '@/pages/lpa/LpaSchedulePage';
+import { LpaQuestionSetPage } from '@/pages/lpa/LpaQuestionSetPage';
+import { ModuleSettingsPage } from '@/pages/settings/ModuleSettingsPage';
 import { Toaster } from 'react-hot-toast';
 import './index.css';
 
@@ -38,23 +46,24 @@ export default function App() {
       <Toaster position="top-right" />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/verify/:id" element={<JobCardVerificationPage />} />
 
           <Route element={<ProtectedRoute />}>
-            {/* ── MES Module (root paths) ── */}
+            {/* ── MES Module (Default / Root) ── */}
             <Route element={<AppLayout />}>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/my-tasks" element={<MyTasksPage />} />
-              <Route path="/completed-tasks" element={<CompletedTasksPage />} />
-              <Route path="/purchase-orders" element={<PurchaseOrderListPage />} />
-              <Route path="/purchase-orders/new" element={<PurchaseOrderCreatePage />} />
-              <Route path="/purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
-              <Route path="/job-cards" element={<JobCardListPage />} />
-              <Route path="/job-cards/:id" element={<JobCardDetailPage />} />
+              <Route path="/tasks/my" element={<MyTasksPage />} />
+              <Route path="/tasks/completed" element={<CompletedTasksPage />} />
+              <Route path="/po" element={<PurchaseOrderListPage />} />
+              <Route path="/po/create" element={<PurchaseOrderCreatePage />} />
+              <Route path="/po/:id" element={<PurchaseOrderDetailPage />} />
+              <Route path="/jobcards" element={<JobCardListPage />} />
+              <Route path="/jobcards/:id" element={<JobCardDetailPage />} />
+              <Route path="/jobcards/:id/verify" element={<JobCardVerificationPage />} />
+              <Route path="/operations/assign" element={<AssignOperationsPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route path="/assign-operations" element={<AssignOperationsPage />} />
+              <Route path="/reports" element={<PqcReportDashboard />} />
               <Route path="/nc-records" element={<NcRecordsPage />} />
               <Route path="/master/gauges" element={<GaugeMasterPage />} />
               <Route path="/master/operations" element={<OperationMasterPage />} />
@@ -62,12 +71,15 @@ export default function App() {
               <Route path="/master/machines" element={<MachineMasterPage />} />
               <Route path="/master/pqc-question-sets" element={<PqcQuestionSetMasterPage />} />
               <Route path="/settings/users" element={<UserManagementPage />} />
+              <Route path="/settings/modules" element={<ModuleSettingsPage />} />
+              <Route path="/settings/reports" element={<PqcSettingsPage />} />
               <Route path="/inspection" element={<InspectorLiveEntryPage />} />
             </Route>
 
             {/* ── PQC Module (/pqc/*) ── */}
             <Route element={<PqcLayout />}>
               <Route path="/pqc/dashboard" element={<PqcDashboardPage />} />
+              <Route path="/pqc/po-tracker" element={<PqcPoTrackerPage />} />
               <Route path="/pqc/inspect" element={<InspectorLiveEntryPage />} />
               <Route path="/pqc/reports" element={<PqcReportDashboard />} />
               <Route path="/pqc/approvals" element={<PqcApprovalsDashboard />} />
@@ -79,6 +91,19 @@ export default function App() {
               <Route path="/pqc/personnel" element={<PlaceholderPage title="Personnel" />} />
               <Route path="/pqc/analytics" element={<PlaceholderPage title="PQC Analytics" />} />
               <Route path="/pqc/settings" element={<PqcSettingsPage />} />
+            </Route>
+
+            {/* ── LPA Module (/lpa/*) ── */}
+            <Route element={<LpaLayout />}>
+              <Route path="/lpa/dashboard" element={<LpaDashboardPage />} />
+              <Route path="/lpa/execute" element={<LpaExecutePage />} />
+              <Route path="/lpa/reports" element={<LpaReportsPage />} />
+              <Route path="/lpa/schedules" element={<LpaSchedulePage />} />
+              <Route path="/lpa/question-sets" element={<LpaQuestionSetPage />} />
+              <Route path="/lpa/gauges" element={<GaugeMasterPage />} />
+              <Route path="/lpa/operations" element={<OperationMasterPage />} />
+              <Route path="/lpa/machines" element={<MachineMasterPage />} />
+              <Route path="/lpa/settings" element={<PqcSettingsPage />} />
             </Route>
           </Route>
 

@@ -90,6 +90,8 @@ public class PqcQuestionSetService {
                         .maxValue(item.getMaxValue())
                         .choices(item.getChoices())
                         .isCritical(item.getIsCritical() != null ? item.getIsCritical() : false)
+                        .checkingMethod(item.getCheckingMethod() != null ? item.getCheckingMethod() : "D.V.C")
+                        .showInPdir(item.getShowInPdir() != null ? item.getShowInPdir() : true)
                         .build();
                 questions.add(q);
                 seq++;
@@ -137,6 +139,8 @@ public class PqcQuestionSetService {
                         .maxValue(item.getMaxValue())
                         .choices(item.getChoices())
                         .isCritical(item.getIsCritical() != null ? item.getIsCritical() : false)
+                        .checkingMethod(item.getCheckingMethod() != null ? item.getCheckingMethod() : "D.V.C")
+                        .showInPdir(item.getShowInPdir() != null ? item.getShowInPdir() : true)
                         .build();
                 set.getQuestions().add(q);
                 seq++;

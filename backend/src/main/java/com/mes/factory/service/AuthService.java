@@ -56,11 +56,18 @@ public class AuthService {
             );
             String refreshToken = tokenProvider.generateRefreshToken(userDetails.getUserId());
 
-            // Update last login
-            userRepository.findById(userDetails.getUserId()).ifPresent(user -> {
+            // Update last login & fetch factory module flags
+            User user = userRepository.findById(userDetails.getUserId()).orElse(null);
+            Boolean mesEnabled = true, pqcEnabled = true, lpaEnabled = true;
+            if (user != null) {
                 user.setLastLoginAt(OffsetDateTime.now());
                 userRepository.save(user);
-            });
+                if (user.getFactory() != null) {
+                    mesEnabled = user.getFactory().getMesEnabled() != null ? user.getFactory().getMesEnabled() : true;
+                    pqcEnabled = user.getFactory().getPqcEnabled() != null ? user.getFactory().getPqcEnabled() : true;
+                    lpaEnabled = user.getFactory().getLpaEnabled() != null ? user.getFactory().getLpaEnabled() : true;
+                }
+            }
 
             return AuthResponse.builder()
                     .accessToken(accessToken)
@@ -73,6 +80,9 @@ public class AuthService {
                             .role(userDetails.getRole())
                             .employeeCode(userDetails.getEmployeeCode())
                             .factoryId(userDetails.getFactoryId())
+                            .mesEnabled(mesEnabled)
+                            .pqcEnabled(pqcEnabled)
+                            .lpaEnabled(lpaEnabled)
                             .build())
                     .build();
 
@@ -100,6 +110,13 @@ public class AuthService {
                 user.getEmployeeCode()
         );
 
+        Boolean mesEnabled = true, pqcEnabled = true, lpaEnabled = true;
+        if (user.getFactory() != null) {
+            mesEnabled = user.getFactory().getMesEnabled() != null ? user.getFactory().getMesEnabled() : true;
+            pqcEnabled = user.getFactory().getPqcEnabled() != null ? user.getFactory().getPqcEnabled() : true;
+            lpaEnabled = user.getFactory().getLpaEnabled() != null ? user.getFactory().getLpaEnabled() : true;
+        }
+
         return AuthResponse.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(refreshToken)
@@ -111,6 +128,9 @@ public class AuthService {
                         .role(user.getRole().name())
                         .employeeCode(user.getEmployeeCode())
                         .factoryId(user.getFactory() != null ? user.getFactory().getId() : null)
+                        .mesEnabled(mesEnabled)
+                        .pqcEnabled(pqcEnabled)
+                        .lpaEnabled(lpaEnabled)
                         .build())
                 .build();
     }

@@ -64,9 +64,9 @@ export default function PqcSettingsPage() {
       {/* ─── Header Bar ─── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--charcoal)', margin: 0 }}>Settings & Configuration</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--charcoal)', margin: 0 }}>System Settings & Report Layout</h2>
           <p style={{ fontSize: 12, color: 'var(--ash)', marginTop: 4 }}>
-            System Parameters & Preferences
+            Global Preferences, Shift Timings & Report Header Configuration for all MES Modules (PQC, LPA & General)
           </p>
         </div>
       </div>
@@ -133,7 +133,10 @@ export default function PqcSettingsPage() {
         <div className="card" style={{ padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
             <Settings size={18} color="var(--copper-bronze)" />
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--charcoal)', margin: 0 }}>Report Layout</h3>
+            <div>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--charcoal)', margin: 0 }}>Global Report Layout (All Modules)</h3>
+              <p style={{ fontSize: 11, color: 'var(--ash)', margin: 0, marginTop: 2 }}>Applies to PQC In-Process reports, PDIRs, and LPA Product Audit reports.</p>
+            </div>
           </div>
           
           <ReportConfigEditor />
@@ -236,7 +239,7 @@ function ReportConfigEditor() {
               <input type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
             </label>
             <p style={{ fontSize: 11, color: 'var(--ash)', marginTop: 8, lineHeight: 1.4 }}>
-              Upload a logo to appear on all printed PQC reports.<br/>
+              Upload a logo to appear on all printed MES, PQC & LPA reports.<br/>
               <span style={{ color: 'var(--copper-bronze)' }}>Recommended: PNG with transparent background.</span>
             </p>
           </div>

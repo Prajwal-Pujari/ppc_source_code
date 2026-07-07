@@ -8,6 +8,9 @@ interface UserInfo {
   role: string;
   employeeCode: string;
   factoryId: string;
+  mesEnabled?: boolean;
+  pqcEnabled?: boolean;
+  lpaEnabled?: boolean;
 }
 
 interface AuthState {

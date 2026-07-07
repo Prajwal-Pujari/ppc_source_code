@@ -9,6 +9,7 @@ import com.mes.factory.repository.postgres.PqcInspectionLogRepository;
 import com.mes.factory.repository.postgres.PqcQuestionSetRepository;
 import com.mes.factory.repository.postgres.ReportConfigurationRepository;
 import com.mes.factory.repository.postgres.PqcShiftApprovalRepository;
+import com.mes.factory.repository.postgres.PqcQuestionRepository;
 import com.mes.factory.entity.postgres.PqcShiftApproval;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ public class PqcReportService {
     private final PqcQuestionSetRepository questionSetRepository;
     private final ReportConfigurationRepository reportConfigurationRepository;
     private final PqcShiftApprovalRepository approvalRepository;
+    private final PqcQuestionRepository questionRepository;
 
     @Transactional
     public QualityReportDto generateReport(UUID gaugeId, String reportType, UUID shiftId, UUID operationId,
@@ -112,13 +114,7 @@ public class PqcReportService {
                         })
                         .collect(Collectors.toList());
             }
-            if (logs.isEmpty()) {
-                continue;
-            }
-
             // Fetch Question Set to map Question IDs to Parameter Names
-            // For older logs, we just fetch the current active question set. In a true
-            // system, we'd snapshot it.
             Optional<PqcQuestionSet> questionSetOpt = Optional.empty();
             if (op.getOperationMaster() != null) {
                 List<PqcQuestionSet> sets = questionSetRepository.findActiveByOperationMasterIdAndGaugeMasterId(
@@ -130,32 +126,130 @@ public class PqcReportService {
             }
 
             Map<String, PqcQuestion> questionMap = new HashMap<>();
+            List<QualityReportDto.MeasurementDto> configuredParams = new ArrayList<>();
             questionSetOpt.ifPresent(qs -> {
                 if (qs.getQuestions() != null) {
                     for (PqcQuestion q : qs.getQuestions()) {
                         questionMap.put(q.getId().toString(), q);
+                        configuredParams.add(QualityReportDto.MeasurementDto.builder()
+                                .questionId(q.getId().toString())
+                                .parameterName(q.getQuestionText())
+                                .expectedAnswer(q.getExpectedAnswer())
+                                .minValue(q.getMinValue())
+                                .maxValue(q.getMaxValue())
+                                .unit(q.getUnit())
+                                .checkingMethod(q.getCheckingMethod() != null ? q.getCheckingMethod() : "D.V.C")
+                                .showInPdir(q.getShowInPdir() != null ? q.getShowInPdir() : true)
+                                .build());
                     }
                 }
             });
 
+            if (logs.isEmpty() && configuredParams.isEmpty()) {
+                continue;
+            }
+
             List<QualityReportDto.BatchLogDto> batchDtos = new ArrayList<>();
             for (PqcInspectionLog log : logs) {
                 List<QualityReportDto.MeasurementDto> measurements = new ArrayList<>();
+                Set<String> consumedQuestionIds = new HashSet<>();
+                Set<Integer> consumedIndices = new HashSet<>();
 
+                // Helper map to look up historical questions for answers in this log
                 if (log.getQuestionAnswers() != null) {
                     for (Map<String, Object> ans : log.getQuestionAnswers()) {
-                        String questionId = (String) ans.get("questionId");
-                        Object value = ans.get("answer");
+                        String qId = (String) ans.get("questionId");
+                        if (qId != null && !questionMap.containsKey(qId)) {
+                            try {
+                                PqcQuestion q = questionRepository.findById(UUID.fromString(qId)).orElse(null);
+                                if (q != null) {
+                                    questionMap.put(qId, q);
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                }
 
-                        PqcQuestion q = questionMap.get(questionId);
+                // Add measurements for all configured parameters
+                for (int i = 0; i < configuredParams.size(); i++) {
+                    QualityReportDto.MeasurementDto cp = configuredParams.get(i);
+                    Object val = null;
+
+                    // 1. Try exact UUID match
+                    if (log.getQuestionAnswers() != null) {
+                        for (int j = 0; j < log.getQuestionAnswers().size(); j++) {
+                            if (consumedIndices.contains(j)) continue;
+                            Map<String, Object> ans = log.getQuestionAnswers().get(j);
+                            String qId = (String) ans.get("questionId");
+                            if (qId != null && qId.equals(cp.getQuestionId())) {
+                                val = ans.get("answer");
+                                consumedIndices.add(j);
+                                consumedQuestionIds.add(qId);
+                                break;
+                            }
+                        }
+                    }
+
+                    // 2. Try parameter name match (case-insensitive) if UUID didn't match
+                    if (val == null && cp.getParameterName() != null && log.getQuestionAnswers() != null) {
+                        for (int j = 0; j < log.getQuestionAnswers().size(); j++) {
+                            if (consumedIndices.contains(j)) continue;
+                            Map<String, Object> ans = log.getQuestionAnswers().get(j);
+                            String qId = (String) ans.get("questionId");
+                            PqcQuestion histQ = qId != null ? questionMap.get(qId) : null;
+                            if (histQ != null && histQ.getQuestionText() != null &&
+                                histQ.getQuestionText().trim().equalsIgnoreCase(cp.getParameterName().trim())) {
+                                val = ans.get("answer");
+                                consumedIndices.add(j);
+                                if (qId != null) consumedQuestionIds.add(qId);
+                                break;
+                            }
+                        }
+                    }
+
+                    // 3. Fallback to positional matching (index i)
+                    if (val == null && log.getQuestionAnswers() != null && i < log.getQuestionAnswers().size() && !consumedIndices.contains(i)) {
+                        Map<String, Object> ansAtIdx = log.getQuestionAnswers().get(i);
+                        val = ansAtIdx.get("answer");
+                        consumedIndices.add(i);
+                        String qIdAtIdx = (String) ansAtIdx.get("questionId");
+                        if (qIdAtIdx != null) consumedQuestionIds.add(qIdAtIdx);
+                    }
+
+                    measurements.add(QualityReportDto.MeasurementDto.builder()
+                            .questionId(cp.getQuestionId())
+                            .parameterName(cp.getParameterName())
+                            .expectedAnswer(cp.getExpectedAnswer())
+                            .minValue(cp.getMinValue())
+                            .maxValue(cp.getMaxValue())
+                            .unit(cp.getUnit())
+                            .actualValue(val)
+                            .checkingMethod(cp.getCheckingMethod())
+                            .showInPdir(cp.getShowInPdir())
+                            .build());
+                }
+
+                // Add any genuine extra historical answers that exceeded the configured checklist length
+                if (log.getQuestionAnswers() != null) {
+                    for (int j = 0; j < log.getQuestionAnswers().size(); j++) {
+                        if (consumedIndices.contains(j)) continue;
+                        // If index j is within configuredParams bounds, question #j was already included above
+                        if (j < configuredParams.size()) continue;
+
+                        Map<String, Object> ans = log.getQuestionAnswers().get(j);
+                        String questionId = (String) ans.get("questionId");
+                        PqcQuestion q = questionId != null ? questionMap.get(questionId) : null;
+
                         measurements.add(QualityReportDto.MeasurementDto.builder()
                                 .questionId(questionId)
-                                .parameterName(q != null ? q.getQuestionText() : "Unknown Parameter")
+                                .parameterName(q != null && q.getQuestionText() != null ? q.getQuestionText() : "Archived Parameter #" + (j + 1))
                                 .expectedAnswer(q != null ? q.getExpectedAnswer() : null)
                                 .minValue(q != null ? q.getMinValue() : null)
                                 .maxValue(q != null ? q.getMaxValue() : null)
                                 .unit(q != null ? q.getUnit() : null)
-                                .actualValue(value)
+                                .actualValue(ans.get("answer"))
+                                .checkingMethod(q != null && q.getCheckingMethod() != null ? q.getCheckingMethod() : "D.V.C")
+                                .showInPdir(q != null && q.getShowInPdir() != null ? q.getShowInPdir() : true)
                                 .build());
                     }
                 }
@@ -181,6 +275,7 @@ public class PqcReportService {
                     .operationName(op.getOperationName())
                     .sequenceOrder(op.getSequenceOrder())
                     .batches(batchDtos)
+                    .configuredParameters(configuredParams)
                     .build());
         }
 

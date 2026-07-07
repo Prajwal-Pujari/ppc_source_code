@@ -44,7 +44,7 @@ export function InspectorLiveEntryPage() {
       for (const shift of allShifts) {
         let start = shift.startTime;
         let end = shift.endTime;
-        
+
         // Handle Spring Boot LocalTime array format: [hour, minute]
         if (Array.isArray(start)) start = `${String(start[0]).padStart(2, '0')}:${String(start[1]).padStart(2, '0')}:00`;
         if (Array.isArray(end)) end = `${String(end[0]).padStart(2, '0')}:${String(end[1]).padStart(2, '0')}:00`;
@@ -94,7 +94,7 @@ export function InspectorLiveEntryPage() {
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [remarks, setRemarks] = useState('');
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, any>>({});
-  
+
   // Auto-complete state
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [completionProgress, setCompletionProgress] = useState<CompletionProgress | null>(null);
@@ -180,7 +180,7 @@ export function InspectorLiveEntryPage() {
   const submitMutation = useMutation({
     mutationFn: async () => {
       if (!selectedOp) return;
-      
+
       const answersArray = Object.entries(questionAnswers).map(([qId, answer]) => ({
         questionId: qId,
         answer: answer
@@ -302,16 +302,16 @@ export function InspectorLiveEntryPage() {
       <div className="il-input-card" style={{ marginBottom: -8 }}>
         <div className="il-input-card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px' }}>
           <label className="il-data-label" style={{ color: 'var(--charcoal)', textTransform: 'uppercase' }}>Production Shift</label>
-          <select 
-            value={selectedShiftId || ''} 
+          <select
+            value={selectedShiftId || ''}
             onChange={e => setSelectedShiftId(e.target.value)}
             className="il-input il-input-sm"
             style={{ width: 250, fontFamily: "'DM Sans', sans-serif" }}
           >
             <option value="" disabled>Select Shift...</option>
             {shifts.map(shift => {
-              const startStr = Array.isArray(shift.startTime) ? `${String(shift.startTime[0]).padStart(2, '0')}:${String(shift.startTime[1]).padStart(2, '0')}` : String(shift.startTime).substring(0,5);
-              const endStr = Array.isArray(shift.endTime) ? `${String(shift.endTime[0]).padStart(2, '0')}:${String(shift.endTime[1]).padStart(2, '0')}` : String(shift.endTime).substring(0,5);
+              const startStr = Array.isArray(shift.startTime) ? `${String(shift.startTime[0]).padStart(2, '0')}:${String(shift.startTime[1]).padStart(2, '0')}` : String(shift.startTime).substring(0, 5);
+              const endStr = Array.isArray(shift.endTime) ? `${String(shift.endTime[0]).padStart(2, '0')}:${String(shift.endTime[1]).padStart(2, '0')}` : String(shift.endTime).substring(0, 5);
               return (
                 <option key={shift.id} value={shift.id}>
                   {shift.shiftName} ({startStr} - {endStr})
@@ -326,8 +326,8 @@ export function InspectorLiveEntryPage() {
       <div className="il-input-card" style={{ marginBottom: -8 }}>
         <div className="il-input-card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px' }}>
           <label className="il-data-label" style={{ color: 'var(--charcoal)', textTransform: 'uppercase' }}>Machine Used</label>
-          <select 
-            value={selectedMachineId || ''} 
+          <select
+            value={selectedMachineId || ''}
             onChange={e => setSelectedMachineId(e.target.value)}
             className="il-input il-input-sm"
             style={{ width: 250, fontFamily: "'DM Sans', sans-serif" }}
@@ -603,7 +603,7 @@ export function InspectorLiveEntryPage() {
                 className="il-input il-input-sm"
                 style={{ paddingLeft: 36, fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}
               />
-              <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
             </div>
             <select
               value={customerFilter}

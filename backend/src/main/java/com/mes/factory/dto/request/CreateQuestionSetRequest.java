@@ -41,5 +41,7 @@ public class CreateQuestionSetRequest {
         private BigDecimal maxValue;
         private List<String> choices;
         private Boolean isCritical = false;
+        private String checkingMethod;
+        private Boolean showInPdir = true;
     }
 }
