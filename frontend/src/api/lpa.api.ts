@@ -30,9 +30,9 @@ export interface LpaQuestionSet {
   name: string;
   description?: string;
   defaultFrequency?: string;
-  operationMaster?: { id: string; operationName: string };
-  gaugeMaster?: { id: string; gaugeTypeName: string; name?: string };
-  machineMaster?: { id: string; machineName: string; machineCode?: string };
+  operationMaster?: { id: string; operationName: string; operationCode?: string; [key: string]: any };
+  gaugeMaster?: { id: string; gaugeTypeName: string; name?: string; [key: string]: any };
+  machineMaster?: { id: string; machineName: string; machineCode?: string; [key: string]: any };
   questions: LpaQuestionItem[];
 }
 
@@ -40,10 +40,10 @@ export interface LpaSchedule {
   id: string;
   auditType: LpaAuditType;
   questionSet?: LpaQuestionSet;
-  operationMaster?: { id: string; operationName: string };
-  gaugeMaster?: { id: string; gaugeTypeName: string };
-  machineMaster?: { id: string; machineName: string };
-  assignedTo?: { id: string; fullName: string };
+  operationMaster?: { id: string; operationName: string; operationCode?: string; [key: string]: any };
+  gaugeMaster?: { id: string; gaugeTypeName: string; name?: string; [key: string]: any };
+  machineMaster?: { id: string; machineName: string; machineCode?: string; [key: string]: any };
+  assignedTo?: { id: string; fullName: string; [key: string]: any };
   assignedRole?: string;
   frequency: string;
   nextDueDate: string;

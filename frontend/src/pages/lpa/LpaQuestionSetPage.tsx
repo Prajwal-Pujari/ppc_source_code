@@ -352,7 +352,7 @@ export function LpaQuestionSetPage() {
                                         </span>
                                         {qs.operationMaster ? (
                                           <span style={{ fontSize: 11, background: '#f0fdf4', color: '#166534', padding: '2px 8px', borderRadius: 6, border: '1px solid #bbf7d0', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                            <Settings size={12} /> Op: {qs.operationMaster.operationName} ({qs.operationMaster.operationCode})
+                                            <Settings size={12} /> Op: {qs.operationMaster.operationName} ({(qs.operationMaster as any).operationCode})
                                           </span>
                                         ) : (
                                           <span style={{ fontSize: 11, background: '#f8fafc', color: '#475569', padding: '2px 8px', borderRadius: 6, border: '1px solid #e2e8f0' }}>
@@ -895,7 +895,7 @@ function ManageLpaChecklistsModal({
                     >
                       <option value="">-- All Parts (Plant-Wide) --</option>
                       {gaugeMasters.map(g => (
-                        <option key={g.id} value={g.id}>{g.gaugeTypeName || g.name}</option>
+                        <option key={g.id} value={g.id}>{g.gaugeTypeName || (g as any).name}</option>
                       ))}
                     </select>
                     <span style={{ fontSize: 10, color: 'var(--ash)', marginTop: 2, display: 'block' }}>
@@ -912,7 +912,7 @@ function ManageLpaChecklistsModal({
                       onChange={(e) => {
                         const opId = e.target.value;
                         const op = availableOperations.find(o => o.id === opId);
-                        setEditingSet({ ...editingSet, operationMaster: op });
+                        setEditingSet({ ...editingSet, operationMaster: op as any });
                       }}
                       style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--silk)', background: 'var(--warm-white)', fontSize: 12 }}
                     >
@@ -935,7 +935,7 @@ function ManageLpaChecklistsModal({
                       onChange={(e) => {
                         const mId = e.target.value;
                         const m = machineMasters.find(x => x.id === mId);
-                        setEditingSet({ ...editingSet, machineMaster: m });
+                        setEditingSet({ ...editingSet, machineMaster: m as any });
                       }}
                       style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--silk)', background: 'var(--warm-white)', fontSize: 12 }}
                     >

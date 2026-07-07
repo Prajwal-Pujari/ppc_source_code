@@ -250,7 +250,7 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
           }}>
             <tbody>
               {(() => {
-                const activeOp = page.rows.find(r => 'op' in r && r.op)?.op;
+                const activeOp = (page.rows.find(r => 'op' in r && (r as any).op) as any)?.op;
                 const obsCount = Math.max(8, activeOp?.batches?.length || 8);
                 const totalCols = 6 + obsCount;
                 const obsColWidth = `${(37 / obsCount).toFixed(2)}%`;

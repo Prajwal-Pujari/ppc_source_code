@@ -461,7 +461,7 @@ export function LpaExecutePage() {
 
                 {/* Answer Input Controls */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                  {(selectedSchedule.auditType === 'PRODUCT_AUDIT' || selectedSchedule.questionSet?.auditType === 'PRODUCT_AUDIT') ? (
+                  {(selectedSchedule?.auditType === 'PRODUCT_AUDIT' || selectedSchedule?.questionSet?.auditType === 'PRODUCT_AUDIT') ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--slate)', textTransform: 'uppercase' }}>5 Sample Observations:</span>
