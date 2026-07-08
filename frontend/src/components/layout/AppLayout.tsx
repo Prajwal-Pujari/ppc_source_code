@@ -15,14 +15,14 @@ const navSections = [
   {
     title: 'Overview',
     items: [
-      { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'WORKER', 'VIEWER'] },
+      { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
     ],
   },
   {
     title: 'Work Floor',
     items: [
-      { label: 'My Tasks', path: '/tasks/my', icon: ClipboardList, roles: ['WORKER', 'SUPERVISOR', 'ADMIN', 'VIEWER'] },
-      { label: 'Completed Work', path: '/tasks/completed', icon: CheckCircle, roles: ['WORKER', 'SUPERVISOR', 'ADMIN', 'VIEWER'] },
+      { label: 'My Tasks', path: '/tasks/my', icon: ClipboardList, roles: ['WORKER'] },
+      { label: 'Completed Work', path: '/tasks/completed', icon: CheckCircle, roles: ['WORKER'] },
       { label: 'Shop Floor Queue', path: '/operations/assign', icon: Users, roles: ['SUPERVISOR', 'ADMIN', 'VIEWER'] },
     ],
   },
