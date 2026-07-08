@@ -51,16 +51,23 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             {/* ── MES Module (Default / Root) ── */}
             <Route element={<AppLayout />}>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<RoleRedirect />} />
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/my-tasks" element={<Navigate to="/tasks/my" replace />} />
+              <Route path="/completed-tasks" element={<Navigate to="/tasks/completed" replace />} />
               <Route path="/tasks/my" element={<MyTasksPage />} />
               <Route path="/tasks/completed" element={<CompletedTasksPage />} />
               <Route path="/po" element={<PurchaseOrderListPage />} />
               <Route path="/po/create" element={<PurchaseOrderCreatePage />} />
               <Route path="/po/:id" element={<PurchaseOrderDetailPage />} />
+              <Route path="/purchase-orders" element={<Navigate to="/po" replace />} />
+              <Route path="/purchase-orders/new" element={<Navigate to="/po/create" replace />} />
+              <Route path="/purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
               <Route path="/jobcards" element={<JobCardListPage />} />
               <Route path="/jobcards/:id" element={<JobCardDetailPage />} />
               <Route path="/jobcards/:id/verify" element={<JobCardVerificationPage />} />
+              <Route path="/job-cards" element={<Navigate to="/jobcards" replace />} />
+              <Route path="/job-cards/:id" element={<JobCardDetailPage />} />
               <Route path="/operations/assign" element={<AssignOperationsPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/reports" element={<PqcReportDashboard />} />
@@ -129,7 +136,7 @@ function RoleRedirect() {
   const user = useAuthStore((s) => s.user);
   // For now, both MES and PQC are enabled. Redirect based on role.
   // QUALITY_INSPECTOR goes to PQC first; everyone else goes to MES.
-  if (user?.role === 'WORKER') return <Navigate to="/my-tasks" replace />;
+  if (user?.role === 'WORKER') return <Navigate to="/tasks/my" replace />;
   if (user?.role === 'QUALITY_INSPECTOR') return <Navigate to="/pqc/dashboard" replace />;
   return <Navigate to="/dashboard" replace />;
 }

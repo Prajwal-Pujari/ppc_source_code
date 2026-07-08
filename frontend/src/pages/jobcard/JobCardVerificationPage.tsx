@@ -76,7 +76,7 @@ export default function JobCardVerificationPage() {
           <ShieldCheck size={24} />
           <div>
             <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Verified Document</h2>
-            <p style={{ margin: 0, fontSize: 11, opacity: 0.8 }}>Issued by MES Factory Precision Manufacturing</p>
+            <p style={{ margin: 0, fontSize: 11, opacity: 0.8 }}>Issued by P-Track Factory Precision Manufacturing</p>
           </div>
         </div>
         

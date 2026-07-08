@@ -66,7 +66,7 @@ export default function PqcSettingsPage() {
         <div>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--charcoal)', margin: 0 }}>System Settings & Report Layout</h2>
           <p style={{ fontSize: 12, color: 'var(--ash)', marginTop: 4 }}>
-            Global Preferences, Shift Timings & Report Header Configuration for all MES Modules (PQC, LPA & General)
+            Global Preferences, Shift Timings & Report Header Configuration for all P-Track Modules (PQC, LPA & General)
           </p>
         </div>
       </div>
@@ -239,7 +239,7 @@ function ReportConfigEditor() {
               <input type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
             </label>
             <p style={{ fontSize: 11, color: 'var(--ash)', marginTop: 8, lineHeight: 1.4 }}>
-              Upload a logo to appear on all printed MES, PQC & LPA reports.<br/>
+              Upload a logo to appear on all printed P-Track, PQC & LPA reports.<br/>
               <span style={{ color: 'var(--copper-bronze)' }}>Recommended: PNG with transparent background.</span>
             </p>
           </div>

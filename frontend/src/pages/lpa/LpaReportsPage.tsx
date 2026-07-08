@@ -437,7 +437,7 @@ export function LpaReportsPage() {
                         {reportConfig?.customerLogo ? (
                           <img src={reportConfig.customerLogo} alt="Customer Logo" style={{ maxHeight: '48px', maxWidth: '100%', objectFit: 'contain' }} />
                         ) : (
-                          'PRECISION FORGE MES'
+                          'PRECISION FORGE P-TRACK'
                         )}
                       </td>
                       <td style={{ width: '53%', borderRight: '2px solid #000', padding: '16px 10px', textAlign: 'center', fontWeight: 900, fontSize: '20px', letterSpacing: '1px', textTransform: 'uppercase', color: '#000', verticalAlign: 'middle' }}>

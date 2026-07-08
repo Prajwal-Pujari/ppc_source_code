@@ -10,6 +10,10 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ currentModule })
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 
+  if (user?.role === 'WORKER') {
+    return null;
+  }
+
   const mesEnabled = user?.mesEnabled !== false;
   const pqcEnabled = user?.pqcEnabled !== false;
   const lpaEnabled = user?.lpaEnabled !== false;
@@ -40,7 +44,7 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ currentModule })
           >
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>precision_manufacturing</span>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 12 }}>MES Module</div>
+              <div style={{ fontWeight: 600, fontSize: 12 }}>P-Track Module</div>
               <div style={{ fontSize: 10, color: 'var(--ash)' }}>Production Tracking</div>
             </div>
           </button>

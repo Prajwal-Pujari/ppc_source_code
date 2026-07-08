@@ -46,7 +46,7 @@ export default function LoginPage() {
           res.data.accessToken,
           res.data.refreshToken
         );
-        navigate(res.data.user.role === 'WORKER' ? '/my-tasks' : '/dashboard');
+        navigate(res.data.user.role === 'WORKER' ? '/tasks/my' : '/dashboard');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed. Please check credentials.');
@@ -75,10 +75,10 @@ export default function LoginPage() {
             <Shield size={28} color="white" />
           </div>
           <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--charcoal)' }}>
-            PPC
+            AQS - Products
           </h1>
           <p style={{ fontSize: 13, color: 'var(--ash)', marginTop: 4 }}>
-            AQS Product
+            Sign in to your account
           </p>
         </div>
 

@@ -143,7 +143,7 @@ export function ModuleSettingsPage() {
             Tailored Customer Deployments
           </div>
           <div style={{ fontSize: 13, color: 'var(--slate)', lineHeight: 1.5 }}>
-            Different customers and facilities require specific combinations of MES, PQC, and LPA.
+            Different customers and facilities require specific combinations of P-Track, PQC, and LPA.
             Toggling a module off will instantly hide its navigation menus, dashboards, and tools from all facility personnel,
             streamlining their workspace to only what they need.
           </div>
@@ -173,7 +173,7 @@ export function ModuleSettingsPage() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                 <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--charcoal)' }}>
-                  Manufacturing Execution System (MES)
+                  Production Tracking System (P-Track)
                 </span>
                 <span style={{
                   fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 12,

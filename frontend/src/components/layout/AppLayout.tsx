@@ -29,15 +29,15 @@ const navSections = [
   {
     title: 'Orders',
     items: [
-      { label: 'Purchase Orders', path: '/po', icon: Package, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'WORKER', 'VIEWER'] },
-      { label: 'Job Cards', path: '/jobcards', icon: Gauge, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'WORKER', 'VIEWER'] },
+      { label: 'Purchase Orders', path: '/po', icon: Package, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
+      { label: 'Job Cards', path: '/jobcards', icon: Gauge, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
       { label: 'Shift Approvals', path: '/pqc/approvals', icon: ShieldCheck, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
     ],
   },
   {
     title: 'Quality',
     items: [
-      { label: 'Inspection', path: '/pqc/dashboard', icon: Shield, roles: ['WORKER', 'QUALITY_INSPECTOR', 'ADMIN', 'SUPERVISOR', 'VIEWER'] },
+      { label: 'Inspection', path: '/inspection', icon: Shield, roles: ['WORKER', 'QUALITY_INSPECTOR', 'ADMIN', 'SUPERVISOR', 'VIEWER'] },
       { label: 'NC Records', path: '/nc-records', icon: AlertTriangle, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
     ],
   },
@@ -136,13 +136,13 @@ export default function AppLayout() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: 'white', fontWeight: 700, fontSize: 14,
             }}>
-              PPC
+              PT
             </div>
             <div>
               <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--charcoal)', letterSpacing: '-0.02em' }}>
-                PPC
+                P-Track
               </div>
-              <div style={{ fontSize: 11, color: 'var(--ash)' }}>AQS Product</div>
+              <div style={{ fontSize: 11, color: 'var(--ash)' }}>AQS - Products</div>
             </div>
           </div>
         </div>

@@ -78,7 +78,7 @@ export default function CompletedTasksPage() {
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
-        <button onClick={() => navigate('/my-tasks')}
+        <button onClick={() => navigate('/tasks/my')}
           style={{ background: 'none', border: '1px solid var(--silk)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#807665' }}>
           <ArrowLeft size={15} /> Back to Tasks
         </button>

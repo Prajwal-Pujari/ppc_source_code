@@ -480,7 +480,7 @@ export default function MyTasksPage() {
       )}
       {/* Completed Work Banner */}
       {completedCount > 0 && (
-        <div onClick={() => navigate('/completed-tasks')} style={{
+        <div onClick={() => navigate('/tasks/completed')} style={{
           marginTop: 24, padding: '16px 24px', borderRadius: 10,
           background: 'rgba(34,139,34,0.04)', border: '1px solid rgba(34,139,34,0.15)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
