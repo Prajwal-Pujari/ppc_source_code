@@ -167,9 +167,10 @@ export default function AppLayout() {
                     <Link
                       key={item.path}
                       to={item.path}
+                      className={`sidebar-nav-link ${isActive ? 'active' : ''}`}
                       onClick={() => {
-                        // Auto-close sidebar on mobile after clicking a link
-                        if (window.innerWidth <= 768 && sidebarOpen) {
+                        // Auto-close sidebar on mobile/tablet after clicking a link
+                        if (window.innerWidth <= 1024 && sidebarOpen) {
                           toggleSidebar();
                         }
                       }}
@@ -181,12 +182,6 @@ export default function AppLayout() {
                         fontWeight: isActive ? 600 : 400,
                         textDecoration: 'none',
                         transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isActive) e.currentTarget.style.background = 'var(--silk)';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActive) e.currentTarget.style.background = 'transparent';
                       }}
                     >
                       <Icon size={16} />

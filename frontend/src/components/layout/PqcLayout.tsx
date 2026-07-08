@@ -112,8 +112,9 @@ export default function PqcLayout() {
               <Link
                 key={item.path}
                 to={item.path}
+                className={`sidebar-nav-link ${isActive ? 'active' : ''}`}
                 onClick={() => {
-                  if (window.innerWidth <= 768 && sidebarOpen) {
+                  if (window.innerWidth <= 1024 && sidebarOpen) {
                     toggleSidebar();
                   }
                 }}
@@ -127,12 +128,6 @@ export default function PqcLayout() {
                   transition: 'all 0.15s ease',
                   marginBottom: 2,
                   borderLeft: isActive ? '3px solid var(--copper-bronze)' : '3px solid transparent',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) e.currentTarget.style.background = 'var(--linen)';
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) e.currentTarget.style.background = 'transparent';
                 }}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: 20, fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>

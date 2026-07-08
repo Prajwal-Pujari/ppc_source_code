@@ -77,7 +77,7 @@ export function LpaLayout() {
         flexDirection: 'column',
         overflow: 'hidden',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        zIndex: 10,
+        zIndex: 50,
       }}>
         {/* LPA Logo */}
         <div style={{
@@ -118,8 +118,9 @@ export function LpaLayout() {
               <Link
                 key={item.path}
                 to={item.path}
+                className={`sidebar-nav-link ${isActive ? 'active' : ''}`}
                 onClick={() => {
-                  if (window.innerWidth <= 768 && sidebarOpen) {
+                  if (window.innerWidth <= 1024 && sidebarOpen) {
                     closeSidebar();
                   }
                 }}
@@ -131,18 +132,6 @@ export function LpaLayout() {
                   background: isActive ? 'var(--linen)' : 'transparent',
                   textDecoration: 'none', transition: 'all 0.15s',
                   position: 'relative',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = 'rgba(235, 230, 224, 0.4)';
-                    e.currentTarget.style.color = 'var(--charcoal)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = 'var(--slate)';
-                  }
                 }}
               >
                 {isActive && (

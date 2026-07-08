@@ -29,6 +29,7 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ currentModule })
         {currentModule !== 'MES' && mesEnabled && (
           <button
             onClick={() => navigate('/dashboard')}
+            className="sidebar-nav-link"
             style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 10,
               padding: '8px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500,
@@ -36,8 +37,6 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ currentModule })
               color: 'var(--slate)', cursor: 'pointer', textAlign: 'left',
               transition: 'all 0.15s',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--linen)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>precision_manufacturing</span>
             <div>
@@ -50,6 +49,7 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ currentModule })
         {currentModule !== 'PQC' && pqcEnabled && (
           <button
             onClick={() => navigate('/pqc/dashboard')}
+            className="sidebar-nav-link"
             style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 10,
               padding: '8px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500,
@@ -57,8 +57,6 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ currentModule })
               color: 'var(--slate)', cursor: 'pointer', textAlign: 'left',
               transition: 'all 0.15s',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--linen)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>content_paste_search</span>
             <div>
@@ -71,6 +69,7 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ currentModule })
         {currentModule !== 'LPA' && lpaEnabled && (
           <button
             onClick={() => navigate('/lpa/dashboard')}
+            className="sidebar-nav-link"
             style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 10,
               padding: '8px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500,
@@ -78,8 +77,6 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ currentModule })
               color: 'var(--slate)', cursor: 'pointer', textAlign: 'left',
               transition: 'all 0.15s',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--linen)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>fact_check</span>
             <div>
