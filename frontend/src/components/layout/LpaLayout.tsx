@@ -56,16 +56,27 @@ export function LpaLayout() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: 'var(--cream)' }}>
+      {/* Overlay for mobile sidebar */}
+      {sidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={toggleSidebar}
+        />
+      )}
+
       {/* ── LPA Sidebar ── */}
       <aside 
         className={`responsive-sidebar ${sidebarOpen ? 'open' : ''}`}
         style={{
-        width: 'var(--sidebar-width)',
-        minWidth: 'var(--sidebar-width)',
+        width: sidebarOpen ? '240px' : '0px',
+        minWidth: sidebarOpen ? '240px' : '0px',
+        transform: `translateX(${sidebarOpen ? '0' : '-100%'})`,
         background: 'var(--warm-white)',
-        borderRight: '1px solid var(--silk)',
+        borderRight: sidebarOpen ? '1px solid var(--silk)' : 'none',
         display: 'flex',
         flexDirection: 'column',
+        overflow: 'hidden',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         zIndex: 10,
       }}>
         {/* LPA Logo */}
@@ -107,7 +118,11 @@ export function LpaLayout() {
               <Link
                 key={item.path}
                 to={item.path}
-                onClick={closeSidebar}
+                onClick={() => {
+                  if (window.innerWidth <= 768 && sidebarOpen) {
+                    closeSidebar();
+                  }
+                }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '10px 14px', borderRadius: 6,
