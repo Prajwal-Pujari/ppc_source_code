@@ -15,47 +15,47 @@ const navSections = [
   {
     title: 'Overview',
     items: [
-      { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
+      { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'WORKER', 'VIEWER'] },
     ],
   },
   {
     title: 'Work Floor',
     items: [
-      { label: 'My Tasks', path: '/my-tasks', icon: ClipboardList, roles: ['WORKER'] },
-      { label: 'Completed Work', path: '/completed-tasks', icon: CheckCircle, roles: ['WORKER'] },
-      { label: 'Shop Floor Queue', path: '/assign-operations', icon: Users, roles: ['SUPERVISOR', 'ADMIN'] },
+      { label: 'My Tasks', path: '/tasks/my', icon: ClipboardList, roles: ['WORKER', 'SUPERVISOR', 'ADMIN', 'VIEWER'] },
+      { label: 'Completed Work', path: '/tasks/completed', icon: CheckCircle, roles: ['WORKER', 'SUPERVISOR', 'ADMIN', 'VIEWER'] },
+      { label: 'Shop Floor Queue', path: '/operations/assign', icon: Users, roles: ['SUPERVISOR', 'ADMIN', 'VIEWER'] },
     ],
   },
   {
     title: 'Orders',
     items: [
-      { label: 'Purchase Orders', path: '/purchase-orders', icon: Package, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
-      { label: 'Job Cards', path: '/job-cards', icon: Gauge, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
+      { label: 'Purchase Orders', path: '/po', icon: Package, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'WORKER', 'VIEWER'] },
+      { label: 'Job Cards', path: '/jobcards', icon: Gauge, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'WORKER', 'VIEWER'] },
       { label: 'Shift Approvals', path: '/pqc/approvals', icon: ShieldCheck, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
     ],
   },
   {
     title: 'Quality',
     items: [
-      { label: 'Inspection', path: '/inspection', icon: Shield, roles: ['WORKER', 'QUALITY_INSPECTOR'] },
-      { label: 'NC Records', path: '/nc-records', icon: AlertTriangle, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
+      { label: 'Inspection', path: '/pqc/dashboard', icon: Shield, roles: ['WORKER', 'QUALITY_INSPECTOR', 'ADMIN', 'SUPERVISOR', 'VIEWER'] },
+      { label: 'NC Records', path: '/nc-records', icon: AlertTriangle, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
     ],
   },
   {
     title: 'Intelligence',
     items: [
-      { label: 'Analytics', path: '/analytics', icon: BarChart3, roles: ['ADMIN', 'SUPERVISOR'] },
-      { label: 'Reports', path: '/reports', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
+      { label: 'Analytics', path: '/analytics', icon: BarChart3, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
+      { label: 'Reports', path: '/reports', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
     ],
   },
   {
     title: 'Master Data',
     items: [
-      { label: 'Part / Product Master', path: '/master/gauges', icon: Database, roles: ['ADMIN'] },
-      { label: 'Operations', path: '/master/operations', icon: Wrench, roles: ['ADMIN'] },
-      { label: 'Customers', path: '/master/customers', icon: Users, roles: ['ADMIN'] },
-      { label: 'Machine Master', path: '/master/machines', icon: Settings, roles: ['ADMIN'] },
-      { label: 'Question Sets', path: '/master/pqc-question-sets', icon: CheckCheck, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
+      { label: 'Part / Product Master', path: '/master/gauges', icon: Database, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
+      { label: 'Operations', path: '/master/operations', icon: Wrench, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
+      { label: 'Customers', path: '/master/customers', icon: Users, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
+      { label: 'Machine Master', path: '/master/machines', icon: Settings, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
+      { label: 'Question Sets', path: '/master/pqc-question-sets', icon: CheckCheck, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
     ],
   },
   {
