@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, Pencil, Trash2, ChevronDown, ChevronRight,
   Check, Save, X, Settings, Search, AlertCircle, ClipboardList, Copy, BookOpen,
+  Upload, FileSpreadsheet, Loader
 } from 'lucide-react';
 import { pqcApi } from '../../api/pqc.api';
 import { getOperationMasters } from '../../api/operation-master.api';
@@ -19,6 +20,10 @@ export default function PqcQuestionSetMasterPage() {
   const [loading, setLoading] = useState(true);
   const [expandedOpId, setExpandedOpId] = useState<string | null>(null);
   const [manageOp, setManageOp] = useState<OperationMaster | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importingFile, setImportingFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ questionSetsCreated: number; questionsCreated: number; operationsCreated: number; gaugesCreated: number } | null>(null);
 
   const { data: gmData } = useQuery({
     queryKey: ['gauge-masters-list'],
@@ -47,6 +52,25 @@ export default function PqcQuestionSetMasterPage() {
     }
   };
 
+  const handleImportExcel = async () => {
+    if (!importingFile) {
+      toast.error('Please select an Excel file');
+      return;
+    }
+    try {
+      setImporting(true);
+      const res = await pqcApi.importQuestionSetsFromExcel(importingFile);
+      setImportResult(res.data);
+      toast.success('Successfully imported Control Plan!');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to import Excel control plan');
+      console.error(error);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   // Group question sets by operation master id
   const qsByOp = questionSets.reduce<Record<string, PqcQuestionSet[]>>((acc, qs) => {
     const opId = qs.operationMaster?.id;
@@ -63,6 +87,19 @@ export default function PqcQuestionSetMasterPage() {
         <div>
           <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)' }}>Operations & Question Sets</h2>
           <p style={{ fontSize: 12, color: 'var(--ash)', marginTop: 2 }}>Assign multiple inspection checklists per operation</p>
+        </div>
+        <div>
+          <button
+            onClick={() => { setImportingFile(null); setImportResult(null); setIsImportModalOpen(true); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 8,
+              fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              background: 'var(--copper-bronze)', color: 'white', border: 'none',
+              boxShadow: '0 2px 6px rgba(139,105,20,0.2)'
+            }}
+          >
+            <FileSpreadsheet size={16} /> Import Excel Control Plan
+          </button>
         </div>
       </div>
 
@@ -194,6 +231,172 @@ export default function PqcQuestionSetMasterPage() {
           onRefresh={fetchData}
         />
       )}
+
+      <ControlPlanImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => { setIsImportModalOpen(false); setImportResult(null); }}
+        importingFile={importingFile}
+        setImportingFile={setImportingFile}
+        importing={importing}
+        handleImportExcel={handleImportExcel}
+        importResult={importResult}
+      />
+    </div>
+  );
+}
+
+// ─── Control Plan Import Modal ────────────────────────────────────────────────
+
+function ControlPlanImportModal({
+  isOpen,
+  onClose,
+  importingFile,
+  setImportingFile,
+  importing,
+  handleImportExcel,
+  importResult
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  importingFile: File | null;
+  setImportingFile: (file: File | null) => void;
+  importing: boolean;
+  handleImportExcel: () => void;
+  importResult: { questionSetsCreated: number; questionsCreated: number; operationsCreated: number; gaugesCreated: number } | null;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 24
+    }}>
+      <div style={{
+        background: 'var(--warm-white)', borderRadius: 16, width: '100%', maxWidth: 540,
+        boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden', border: '1px solid var(--silk)'
+      }} className="animate-fade-in">
+        <div style={{
+          padding: '20px 24px', background: 'var(--bone-white)', borderBottom: '1px solid var(--silk)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <FileSpreadsheet size={22} color="var(--copper-bronze)" />
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)' }}>Import Control Plan (.xlsx)</h3>
+              <p style={{ fontSize: 12, color: 'var(--ash)' }}>Automatic parsing of multi-sheet Customer/Inoxpa files</p>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ash)' }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <div style={{ padding: 24 }}>
+          {importResult ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'center', padding: '16px 0' }}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#dcfce7', color: '#166534', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+                <Check size={32} />
+              </div>
+              <h4 style={{ fontSize: 18, fontWeight: 700, color: '#166534' }}>Control Plan Imported Successfully!</h4>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, textAlign: 'left', marginTop: 8 }}>
+                <div style={{ padding: 14, background: 'white', borderRadius: 8, border: '1px solid #bbf7d0' }}>
+                  <span style={{ fontSize: 12, color: 'var(--ash)' }}>Question Sets Created</span>
+                  <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--charcoal)', marginTop: 4 }}>{importResult.questionSetsCreated}</p>
+                </div>
+                <div style={{ padding: 14, background: 'white', borderRadius: 8, border: '1px solid #bbf7d0' }}>
+                  <span style={{ fontSize: 12, color: 'var(--ash)' }}>Inspection Parameters</span>
+                  <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--charcoal)', marginTop: 4 }}>{importResult.questionsCreated}</p>
+                </div>
+                <div style={{ padding: 14, background: 'white', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: 12, color: 'var(--ash)' }}>Operations Registered</span>
+                  <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--charcoal)', marginTop: 4 }}>{importResult.operationsCreated}</p>
+                </div>
+                <div style={{ padding: 14, background: 'white', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: 12, color: 'var(--ash)' }}>Gauges Auto-Bound</span>
+                  <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--charcoal)', marginTop: 4 }}>{importResult.gaugesCreated}</p>
+                </div>
+              </div>
+
+              <button
+                onClick={onClose}
+                style={{
+                  marginTop: 16, padding: '10px 24px', background: 'var(--copper-bronze)', color: 'white',
+                  borderRadius: 8, fontWeight: 600, fontSize: 14, border: 'none', cursor: 'pointer'
+                }}
+              >
+                Close & View Question Sets
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <label style={{
+                border: '2px dashed var(--silk)', borderRadius: 12, padding: '36px 20px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', background: 'white', transition: 'all 0.2s'
+              }}>
+                <Upload size={36} color="var(--copper-bronze)" style={{ marginBottom: 12 }} />
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--charcoal)' }}>
+                  {importingFile ? importingFile.name : 'Click to Upload or Drag Control Plan Excel'}
+                </span>
+                <span style={{ fontSize: 12, color: 'var(--ash)', marginTop: 4 }}>
+                  Supports multi-sheet .xlsx (e.g., CONTORL PLAN_Inoxpa_09122025.xlsx)
+                </span>
+                <input
+                  type="file"
+                  accept=".xlsx, .xls"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setImportingFile(e.target.files[0]);
+                    }
+                  }}
+                />
+              </label>
+
+              {importingFile && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 12, background: 'var(--linen)', borderRadius: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <FileSpreadsheet size={18} color="var(--copper-bronze)" />
+                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--charcoal)' }}>{importingFile.name}</span>
+                  </div>
+                  <button
+                    onClick={() => setImportingFile(null)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ash)', fontSize: 12 }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  style={{ padding: '9px 18px', borderRadius: 8, background: 'transparent', border: '1px solid var(--silk)', color: 'var(--charcoal)', fontWeight: 500, fontSize: 13, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleImportExcel}
+                  disabled={!importingFile || importing}
+                  style={{
+                    padding: '9px 20px', borderRadius: 8,
+                    background: importingFile && !importing ? 'var(--copper-bronze)' : 'var(--ash)',
+                    color: 'white', border: 'none', fontWeight: 600, fontSize: 13,
+                    cursor: importingFile && !importing ? 'pointer' : 'not-allowed',
+                    display: 'flex', alignItems: 'center', gap: 8
+                  }}
+                >
+                  {importing && <Loader size={16} className="animate-spin" />}
+                  {importing ? 'Analyzing & Importing...' : '🚀 Start Automatic Import'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

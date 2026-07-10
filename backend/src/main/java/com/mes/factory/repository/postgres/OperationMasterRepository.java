@@ -15,4 +15,6 @@ public interface OperationMasterRepository extends JpaRepository<OperationMaster
     Page<OperationMaster> findByFactoryIdAndIsActiveTrue(UUID factoryId, Pageable pageable);
 
     Optional<OperationMaster> findByFactoryIdAndOperationCode(UUID factoryId, String operationCode);
+
+    Optional<OperationMaster> findFirstByFactoryIdAndOperationNameAndIsActiveTrue(UUID factoryId, String operationName);
 }

@@ -16,7 +16,7 @@ fi
 
 echo ""
 echo "[1/3] Clearing PostgreSQL Data..."
-sudo docker exec ppc-postgres psql -U pqc_mes_user -d pqc_mes -c "DELETE FROM activity_logs; DELETE FROM nc_records; DELETE FROM pqc_inspection_logs; DELETE FROM pqc_questions; DELETE FROM pqc_question_sets; DELETE FROM gauge_operations; DELETE FROM gauges; DELETE FROM po_line_item_operations; DELETE FROM po_line_items; DELETE FROM po_comments; DELETE FROM purchase_orders; DELETE FROM customers; DELETE FROM gauge_master_operations; DELETE FROM gauge_master; DELETE FROM operation_master; DELETE FROM factory_shifts; DELETE FROM users WHERE username != 'admin';"
+sudo docker exec ppc-postgres psql -U pqc_mes_user -d pqc_mes -c "DELETE FROM lpa_audit_log_answers; DELETE FROM lpa_audit_logs; DELETE FROM lpa_schedules; DELETE FROM lpa_questions; DELETE FROM lpa_question_sets; DELETE FROM pqc_shift_approvals; DELETE FROM activity_logs; DELETE FROM nc_records; DELETE FROM pqc_inspection_logs; DELETE FROM pqc_questions; DELETE FROM pqc_question_sets; DELETE FROM gauge_operations; DELETE FROM gauges; DELETE FROM po_line_item_operations; DELETE FROM po_line_items; DELETE FROM po_comments; DELETE FROM purchase_orders; DELETE FROM customers; DELETE FROM gauge_master_operations; DELETE FROM gauge_master; DELETE FROM operation_master; DELETE FROM factory_shifts; DELETE FROM users WHERE username != 'admin';"
 
 echo ""
 echo "[2/3] Clearing MySQL Analytics Data..."

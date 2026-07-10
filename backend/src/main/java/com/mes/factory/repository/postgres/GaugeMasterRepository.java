@@ -12,4 +12,6 @@ import java.util.UUID;
 public interface GaugeMasterRepository extends JpaRepository<GaugeMaster, UUID> {
 
     Page<GaugeMaster> findByFactoryIdAndIsActiveTrue(UUID factoryId, Pageable pageable);
+
+    java.util.Optional<GaugeMaster> findFirstByFactoryIdAndGaugeTypeNameAndIsActiveTrue(UUID factoryId, String gaugeTypeName);
 }

@@ -58,6 +58,15 @@ public class PqcQuestionSetController {
         return ResponseEntity.ok(ApiResponse.success(set, "Question set created"));
     }
 
+    @PostMapping(value = "/import-excel", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> importExcel(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        java.util.Map<String, Object> result = questionSetService.importFromExcel(user.getUserId(), file);
+        return ResponseEntity.ok(ApiResponse.success(result, "Control Plan Excel imported successfully"));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN')")
     public ResponseEntity<ApiResponse<PqcQuestionSet>> update(
