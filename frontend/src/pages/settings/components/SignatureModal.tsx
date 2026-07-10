@@ -15,7 +15,7 @@ export default function SignatureModal({ userId, userName, existingSignature, on
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [mode, setMode] = useState<'DRAW' | 'UPLOAD'>('DRAW');
+  const [mode, setMode] = useState<'DRAW' | 'UPLOAD'>(existingSignature ? 'UPLOAD' : 'DRAW');
   const [signatureData, setSignatureData] = useState<string | null>(existingSignature || null);
   const [isSaving, setIsSaving] = useState(false);
   const addNotification = useNotificationStore(s => s.addNotification);
@@ -94,8 +94,8 @@ export default function SignatureModal({ userId, userName, existingSignature, on
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 1024 * 1024) { // 1MB limit
-      addNotification('Error', 'Image too large. Max 1MB.', 'error');
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      addNotification('Error', 'Image too large. Max 5MB.', 'error');
       return;
     }
 
@@ -108,6 +108,9 @@ export default function SignatureModal({ userId, userName, existingSignature, on
 
   const handleClear = () => {
     setSignatureData(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     if (mode === 'DRAW' && canvasRef.current) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
@@ -175,9 +178,7 @@ export default function SignatureModal({ userId, userName, existingSignature, on
           </div>
 
           <div style={{ border: '2px dashed var(--border)', borderRadius: 12, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', background: '#f8f9fa' }}>
-            {signatureData ? (
-              <img src={signatureData} alt="Signature" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-            ) : mode === 'DRAW' ? (
+            {mode === 'DRAW' ? (
               <canvas
                 ref={canvasRef}
                 width={400}
@@ -191,6 +192,8 @@ export default function SignatureModal({ userId, userName, existingSignature, on
                 onTouchMove={draw}
                 onTouchEnd={stopDrawing}
               />
+            ) : signatureData ? (
+              <img src={signatureData} alt="Signature" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
             ) : (
               <div style={{ textAlign: 'center' }}>
                 <input
