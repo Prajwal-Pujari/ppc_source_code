@@ -42,19 +42,19 @@ services:
       - ppc-redis-data:/data
     restart: always
 
-  # ─── MinIO (File Storage) ───
-  minio:
+  # ─── File Storage (MinIO Engine) ───
+  filestore:
     image: minio/minio:latest
-    container_name: ppc-minio
+    container_name: ppc-filestore
     command: server /data --address ":9110" --console-address ":9111"
     environment:
-      MINIO_ROOT_USER: ppc_minio
-      MINIO_ROOT_PASSWORD: ppc_minio_secret
+      MINIO_ROOT_USER: ppc_storage_admin
+      MINIO_ROOT_PASSWORD: ppc_storage_secret
     ports:
       - "9110:9110"
       - "9111:9111"
     volumes:
-      - ppc-minio-data:/data
+      - ppc-filestore-data:/data
     restart: always
 
   # ─── Java Backend (Spring Boot) ───
@@ -65,7 +65,7 @@ services:
       - postgres
       - mysql
       - redis
-      - minio
+      - filestore
     environment:
       # Override application.yml for Docker networking
       SPRING_DATASOURCE_PRIMARY_URL: jdbc:postgresql://postgres:5444/ppc_factory
@@ -79,9 +79,9 @@ services:
       SPRING_FLYWAY_URL: jdbc:postgresql://postgres:5444/ppc_factory
       SPRING_FLYWAY_USER: ppc_db_user
       SPRING_FLYWAY_PASSWORD: ppc_db_password
-      MINIO_ENDPOINT: http://minio:9110
-      MINIO_ACCESS_KEY: ppc_minio
-      MINIO_SECRET_KEY: ppc_minio_secret
+      MINIO_ENDPOINT: http://filestore:9110
+      MINIO_ACCESS_KEY: ppc_storage_admin
+      MINIO_SECRET_KEY: ppc_storage_secret
       MES_WEBSOCKET_ALLOWED_ORIGINS: "*"
     restart: always
 
@@ -99,4 +99,4 @@ volumes:
   ppc-postgres-data:
   ppc-mysql-data:
   ppc-redis-data:
-  ppc-minio-data:
+  ppc-filestore-data:

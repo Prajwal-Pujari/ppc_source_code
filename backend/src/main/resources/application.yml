@@ -61,8 +61,8 @@ jwt:
 
 minio:
   endpoint: http://localhost:9110
-  access-key: ppc_minio
-  secret-key: ppc_minio_secret
+  access-key: ppc_storage_admin
+  secret-key: ppc_storage_secret
   bucket-name: ppc-factory
 
 mes:
