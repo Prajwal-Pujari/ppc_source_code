@@ -178,8 +178,8 @@ export default function CalibrationObservationForm({ gaugeOperationId, gauge, on
     try {
       const payload = localObs.map(o => ({
         id: o.id,
-        observedGo: o.observedGo != null && o.observedGo !== '' ? Number(o.observedGo) : null,
-        observedNogo: o.observedNogo != null && o.observedNogo !== '' ? Number(o.observedNogo) : null,
+        observedGo: o.observedGo != null && (o.observedGo as any) !== '' ? Number(o.observedGo) : null,
+        observedNogo: o.observedNogo != null && (o.observedNogo as any) !== '' ? Number(o.observedNogo) : null,
         remarks: o.remarks || '',
       }));
       await saveCalibrationObservations(gaugeOperationId, payload);
@@ -202,13 +202,13 @@ export default function CalibrationObservationForm({ gaugeOperationId, gauge, on
 
   const isOutOfBounds = (obs: CalibrationObservation, field: 'go' | 'nogo') => {
     if (field === 'go') {
-      const val = obs.observedGo != null && obs.observedGo !== '' ? Number(obs.observedGo) : null;
+      const val = obs.observedGo != null && (obs.observedGo as any) !== '' ? Number(obs.observedGo) : null;
       if (val == null || isNaN(val)) return false;
       if (obs.specifiedGoPlus != null && val > Number(obs.specifiedGoPlus)) return true;
       if (obs.specifiedGoMinus != null && val < Number(obs.specifiedGoMinus)) return true;
       return false;
     } else {
-      const val = obs.observedNogo != null && obs.observedNogo !== '' ? Number(obs.observedNogo) : null;
+      const val = obs.observedNogo != null && (obs.observedNogo as any) !== '' ? Number(obs.observedNogo) : null;
       if (val == null || isNaN(val)) return false;
       if (obs.specifiedNogoPlus != null && val > Number(obs.specifiedNogoPlus)) return true;
       if (obs.specifiedNogoMinus != null && val < Number(obs.specifiedNogoMinus)) return true;
@@ -216,7 +216,7 @@ export default function CalibrationObservationForm({ gaugeOperationId, gauge, on
     }
   };
 
-  const allFilled = localObs.every(o => o.observedGo != null && o.observedGo !== '' && o.observedNogo != null && o.observedNogo !== '');
+  const allFilled = localObs.every(o => o.observedGo != null && (o.observedGo as any) !== '' && o.observedNogo != null && (o.observedNogo as any) !== '');
   const hasAnyOutOfBounds = localObs.some(o => isOutOfBounds(o, 'go') || isOutOfBounds(o, 'nogo'));
   const po = gauge?.purchaseOrder;
 

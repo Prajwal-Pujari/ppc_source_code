@@ -170,8 +170,8 @@ export interface CalibrationObservation {
   specifiedNogoPlus: number;
   specifiedNogoMinus: number;
   wearLimit?: number;
-  observedGo: number | null;
-  observedNogo: number | null;
+  observedGo: number | string | null;
+  observedNogo: number | string | null;
   result: 'PENDING' | 'PASS' | 'FAIL';
   remarks?: string;
   recordedBy?: any;

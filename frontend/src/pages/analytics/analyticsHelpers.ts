@@ -1,3 +1,4 @@
+// @ts-ignore
 import * as XLSX from 'xlsx';
 
 export const COLORS = ['#8B6914','#3A6B4A','#8B3A3A','#4A6FA5','#6B5A8B','#C68B2F','#A05A2C','#2C8BA0','#6B8B3A','#A02C5A'];
