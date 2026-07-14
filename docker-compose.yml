@@ -5,12 +5,13 @@ services:
   postgres:
     image: postgres:15
     container_name: ppc-postgres
+    command: -p 5444
     environment:
       POSTGRES_DB: ppc_factory
       POSTGRES_USER: ppc_db_user
       POSTGRES_PASSWORD: ppc_db_password
     ports:
-      - "5433:5432"
+      - "5444:5444"
     volumes:
       - ppc-postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -18,11 +19,12 @@ services:
   mysql:
     image: mysql:8
     container_name: ppc-mysql
+    command: --port=3344
     environment:
       MYSQL_DATABASE: ppc_analytics
       MYSQL_ROOT_PASSWORD: root
     ports:
-      - "3307:3306"
+      - "3344:3344"
     volumes:
       - ppc-mysql-data:/var/lib/mysql
     restart: unless-stopped
@@ -30,8 +32,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ppc-redis
+    command: redis-server --port 6399
     ports:
-      - "6381:6379"
+      - "6399:6399"
     volumes:
       - ppc-redis-data:/data
     restart: unless-stopped
@@ -39,13 +42,13 @@ services:
   minio:
     image: minio/minio:latest
     container_name: ppc-minio
-    command: server /data --console-address ":9001"
+    command: server /data --address ":9110" --console-address ":9111"
     environment:
       MINIO_ROOT_USER: ppc_minio
       MINIO_ROOT_PASSWORD: ppc_minio_secret
     ports:
-      - "9004:9000"
-      - "9005:9001"
+      - "9110:9110"
+      - "9111:9111"
     volumes:
       - ppc-minio-data:/data
     restart: unless-stopped

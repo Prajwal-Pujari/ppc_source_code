@@ -1,5 +1,5 @@
 server:
-  port: 8087
+  port: 9091
 
 spring:
   application:
@@ -7,7 +7,7 @@ spring:
 
   datasource:
     primary:
-      url: jdbc:postgresql://localhost:5433/ppc_factory
+      url: jdbc:postgresql://localhost:5444/ppc_factory
       username: ppc_db_user
       password: ppc_db_password
       driver-class-name: org.postgresql.Driver
@@ -20,7 +20,7 @@ spring:
         ddl-auto: validate
         show-sql: false
     secondary:
-      url: jdbc:mysql://localhost:3307/ppc_analytics?useSSL=false&allowPublicKeyRetrieval=true
+      url: jdbc:mysql://localhost:3344/ppc_analytics?useSSL=false&allowPublicKeyRetrieval=true
       username: root
       password: root
       driver-class-name: com.mysql.cj.jdbc.Driver
@@ -36,7 +36,7 @@ spring:
   data:
     redis:
       host: localhost
-      port: 6379
+      port: 6399
 
   servlet:
     multipart:
@@ -52,7 +52,7 @@ spring:
     validate-on-migrate: false
     user: ppc_db_user
     password: ppc_db_password
-    url: jdbc:postgresql://localhost:5433/ppc_factory
+    url: jdbc:postgresql://localhost:5444/ppc_factory
 
 jwt:
   secret: Y2hhbmdlbWVjaGFuZ2VtZWNoYW5nZW1lY2hhbmdlbWVjaGFuZ2VtZWNoYW5nZW1lY2hhbmdlbWVjaGFuZ2VtZQ==
@@ -60,11 +60,11 @@ jwt:
   refresh-token-expiration-ms: 31536000000
 
 minio:
-  endpoint: http://localhost:9000
+  endpoint: http://localhost:9110
   access-key: ppc_minio
   secret-key: ppc_minio_secret
   bucket-name: ppc-factory
 
 mes:
   websocket:
-    allowed-origins: http://localhost:5173
+    allowed-origins: http://localhost:9090,http://localhost:5173
