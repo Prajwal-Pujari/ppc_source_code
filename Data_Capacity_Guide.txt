@@ -132,13 +132,13 @@ STEP 1: Backup the data you want to archive
 ----------------------------------------------------------------------
 Run this command on the client's server to export old data:
 
-  docker exec ppc-postgres pg_dump -U mes_db_user mes_factory > backup_full_2026.sql
+  docker exec ppc-postgres pg_dump -U ppc_db_user ppc_factory > backup_full_2026.sql
 
 This creates a complete snapshot of the entire database.
 
 STEP 2: Export ONLY old completed POs (optional, more targeted)
 ----------------------------------------------------------------------
-  docker exec ppc-postgres psql -U mes_db_user -d mes_factory -c "\COPY (SELECT * FROM purchase_orders WHERE status = 'COMPLETED' AND created_at < '2024-01-01') TO '/tmp/archived_pos.csv' CSV HEADER"
+  docker exec ppc-postgres psql -U ppc_db_user -d ppc_factory -c "\COPY (SELECT * FROM purchase_orders WHERE status = 'COMPLETED' AND created_at < '2024-01-01') TO '/tmp/archived_pos.csv' CSV HEADER"
 
   docker cp ppc-postgres:/tmp/archived_pos.csv C:\PPC-Archives\archived_pos_2024.csv
 
@@ -146,7 +146,7 @@ STEP 3: Delete the archived data from the live database
 ----------------------------------------------------------------------
 WARNING: Only run this AFTER confirming the backup is safe!
 
-  docker exec ppc-postgres psql -U mes_db_user -d mes_factory -c "
+  docker exec ppc-postgres psql -U ppc_db_user -d ppc_factory -c "
     DELETE FROM nc_records WHERE created_at < '2024-01-01';
     DELETE FROM gauge_operations WHERE created_at < '2024-01-01';
     DELETE FROM gauges WHERE created_at < '2024-01-01' AND status = 'COMPLETED';
@@ -155,7 +155,7 @@ WARNING: Only run this AFTER confirming the backup is safe!
 
 STEP 4: Reclaim disk space
 ----------------------------------------------------------------------
-  docker exec ppc-postgres psql -U mes_db_user -d mes_factory -c "VACUUM FULL;"
+  docker exec ppc-postgres psql -U ppc_db_user -d ppc_factory -c "VACUUM FULL;"
 
 
 ======================================================================
@@ -168,7 +168,7 @@ CREATE A BACKUP SCRIPT (save as C:\PPC-Backups\daily-backup.bat):
 ----------------------------------------------------------------------
   @echo off
   set DATE=%date:~10,4%-%date:~4,2%-%date:~7,2%
-  docker exec ppc-postgres pg_dump -U mes_db_user mes_factory > C:\PPC-Backups\ppc_backup_%DATE%.sql
+  docker exec ppc-postgres pg_dump -U ppc_db_user ppc_factory > C:\PPC-Backups\ppc_backup_%DATE%.sql
   
   REM Delete backups older than 30 days
   forfiles /p "C:\PPC-Backups" /m "ppc_backup_*.sql" /d -30 /c "cmd /c del @path" 2>nul

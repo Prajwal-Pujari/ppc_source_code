@@ -1,56 +1,57 @@
 version: '3.8'
+name: ppc-app
 
 services:
   postgres:
     image: postgres:15
-    container_name: mes-postgres
+    container_name: ppc-postgres
     environment:
-      POSTGRES_DB: mes_factory
-      POSTGRES_USER: mes_db_user
-      POSTGRES_PASSWORD: mes_db_password
+      POSTGRES_DB: ppc_factory
+      POSTGRES_USER: ppc_db_user
+      POSTGRES_PASSWORD: ppc_db_password
     ports:
       - "5433:5432"
     volumes:
-      - mes-postgres-data:/var/lib/postgresql/data
+      - ppc-postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
 
   mysql:
     image: mysql:8
-    container_name: mes-mysql
+    container_name: ppc-mysql
     environment:
-      MYSQL_DATABASE: mes_analytics
+      MYSQL_DATABASE: ppc_analytics
       MYSQL_ROOT_PASSWORD: root
     ports:
       - "3307:3306"
     volumes:
-      - mes-mysql-data:/var/lib/mysql
+      - ppc-mysql-data:/var/lib/mysql
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
-    container_name: mes-redis
+    container_name: ppc-redis
     ports:
       - "6379:6379"
     volumes:
-      - mes-redis-data:/data
+      - ppc-redis-data:/data
     restart: unless-stopped
 
   minio:
     image: minio/minio:latest
-    container_name: mes-minio
+    container_name: ppc-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: mes_minio
-      MINIO_ROOT_PASSWORD: mes_minio_secret
+      MINIO_ROOT_USER: ppc_minio
+      MINIO_ROOT_PASSWORD: ppc_minio_secret
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - mes-minio-data:/data
+      - ppc-minio-data:/data
     restart: unless-stopped
 
 volumes:
-  mes-postgres-data:
-  mes-mysql-data:
-  mes-redis-data:
-  mes-minio-data:
+  ppc-postgres-data:
+  ppc-mysql-data:
+  ppc-redis-data:
+  ppc-minio-data:

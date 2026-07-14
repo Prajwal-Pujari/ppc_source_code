@@ -3,13 +3,13 @@ server:
 
 spring:
   application:
-    name: mes-factory
+    name: ppc-factory
 
   datasource:
     primary:
-      url: jdbc:postgresql://localhost:5433/mes_factory
-      username: mes_db_user
-      password: mes_db_password
+      url: jdbc:postgresql://localhost:5433/ppc_factory
+      username: ppc_db_user
+      password: ppc_db_password
       driver-class-name: org.postgresql.Driver
       hikari:
         maximum-pool-size: 20
@@ -20,7 +20,7 @@ spring:
         ddl-auto: validate
         show-sql: false
     secondary:
-      url: jdbc:mysql://localhost:3307/mes_analytics?useSSL=false&allowPublicKeyRetrieval=true
+      url: jdbc:mysql://localhost:3307/ppc_analytics?useSSL=false&allowPublicKeyRetrieval=true
       username: root
       password: root
       driver-class-name: com.mysql.cj.jdbc.Driver
@@ -50,9 +50,9 @@ spring:
     ignore-missing-migrations: true
     ignore-migration-patterns: "*:missing,*:modified,*:future"
     validate-on-migrate: false
-    user: mes_db_user
-    password: mes_db_password
-    url: jdbc:postgresql://localhost:5433/mes_factory
+    user: ppc_db_user
+    password: ppc_db_password
+    url: jdbc:postgresql://localhost:5433/ppc_factory
 
 jwt:
   secret: Y2hhbmdlbWVjaGFuZ2VtZWNoYW5nZW1lY2hhbmdlbWVjaGFuZ2VtZWNoYW5nZW1lY2hhbmdlbWVjaGFuZ2VtZQ==
@@ -61,9 +61,9 @@ jwt:
 
 minio:
   endpoint: http://localhost:9000
-  access-key: mes_minio
-  secret-key: mes_minio_secret
-  bucket-name: mes-factory
+  access-key: ppc_minio
+  secret-key: ppc_minio_secret
+  bucket-name: ppc-factory
 
 mes:
   websocket:
