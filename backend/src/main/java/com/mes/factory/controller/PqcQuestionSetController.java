@@ -1,6 +1,7 @@
 package com.mes.factory.controller;
 
 import com.mes.factory.dto.request.CreateQuestionSetRequest;
+import com.mes.factory.dto.request.ControlPlanPreviewDTO;
 import com.mes.factory.dto.response.ApiResponse;
 import com.mes.factory.entity.postgres.PqcQuestionSet;
 import com.mes.factory.security.CustomUserDetails;
@@ -65,6 +66,24 @@ public class PqcQuestionSetController {
             @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
         java.util.Map<String, Object> result = questionSetService.importFromExcel(user.getUserId(), file);
         return ResponseEntity.ok(ApiResponse.success(result, "Control Plan Excel imported successfully"));
+    }
+
+    @PostMapping(value = "/analyze-excel", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<ApiResponse<ControlPlanPreviewDTO>> analyzeExcel(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        ControlPlanPreviewDTO preview = questionSetService.analyzeExcel(user.getUserId(), file);
+        return ResponseEntity.ok(ApiResponse.success(preview, "Control Plan analyzed successfully"));
+    }
+
+    @PostMapping("/commit-import")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> commitImport(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestBody ControlPlanPreviewDTO request) {
+        java.util.Map<String, Object> result = questionSetService.commitImport(user.getUserId(), request);
+        return ResponseEntity.ok(ApiResponse.success(result, "Control Plan Question Sets created successfully"));
     }
 
     @PutMapping("/{id}")

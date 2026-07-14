@@ -1,6 +1,7 @@
 package com.mes.factory.service;
 
 import com.mes.factory.dto.request.CreateQuestionSetRequest;
+import com.mes.factory.dto.request.ControlPlanPreviewDTO;
 import com.mes.factory.entity.postgres.*;
 import com.mes.factory.exception.ResourceNotFoundException;
 import com.mes.factory.repository.postgres.*;
@@ -310,6 +311,250 @@ public class PqcQuestionSetService {
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse Excel file: " + e.getMessage(), e);
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("questionSetsCreated", questionSetsCreated);
+        result.put("questionsCreated", questionsCreated);
+        result.put("operationsCreated", operationsCreated);
+        result.put("gaugesCreated", gaugesCreated);
+        return result;
+    }
+
+    @Transactional(readOnly = true)
+    public ControlPlanPreviewDTO analyzeExcel(UUID userId, MultipartFile file) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        Factory factory = user.getFactory();
+        if (factory == null) {
+            throw new IllegalArgumentException("User does not have an assigned factory.");
+        }
+
+        List<ControlPlanPreviewDTO.PartPreview> parts = new ArrayList<>();
+
+        try (InputStream is = file.getInputStream(); Workbook workbook = WorkbookFactory.create(is)) {
+            for (int s = 0; s < workbook.getNumberOfSheets(); s++) {
+                Sheet sheet = workbook.getSheetAt(s);
+                String sheetName = sheet.getSheetName().trim();
+                String partNo = "";
+                String partName = sheetName;
+
+                ControlPlanPreviewDTO.PartPreview currentPart = new ControlPlanPreviewDTO.PartPreview();
+                currentPart.setPartNo(partNo);
+                currentPart.setPartName(partName);
+                currentPart.setOperations(new ArrayList<>());
+                parts.add(currentPart);
+
+                ControlPlanPreviewDTO.OperationPreview currentOp = null;
+                int currentSeq = 1;
+
+                for (int r = 0; r <= sheet.getLastRowNum(); r++) {
+                    Row row = sheet.getRow(r);
+                    if (row == null) continue;
+
+                    String colB = getCellString(row.getCell(1)); // Part No
+                    String colC = getCellString(row.getCell(2)); // Part Name
+                    String colD = getCellString(row.getCell(3)); // Operation Sq. No.
+                    String colE = getCellString(row.getCell(4)); // Parameter
+                    String colF = getCellString(row.getCell(5)); // MIN
+                    String colG = getCellString(row.getCell(6)); // MAX
+                    String colH = getCellString(row.getCell(7)); // Inspection Method
+
+                    if (!colB.isEmpty() && !colB.equalsIgnoreCase("Part No.") && !colB.equalsIgnoreCase("Part No")) {
+                        partNo = colB;
+                        currentPart.setPartNo(partNo);
+                    }
+                    if (!colC.isEmpty() && !colC.equalsIgnoreCase("Part Name")) {
+                        partName = colC;
+                        currentPart.setPartName(partName);
+                    }
+
+                    if (!colD.isEmpty() && !colD.equalsIgnoreCase("Operation Sq. No.") && !colD.equalsIgnoreCase("Operation Sq. No")) {
+                        String opName = colD;
+                        String tempCode = opName.split("/")[0].trim().toUpperCase();
+                        if (tempCode.length() > 50) tempCode = tempCode.substring(0, 50);
+                        final String finalOpName = opName;
+
+                        Optional<OperationMaster> opMasterOpt = operationMasterRepository.findFirstByFactoryIdAndOperationNameAndIsActiveTrue(factory.getId(), finalOpName);
+                        UUID existingId = opMasterOpt.map(OperationMaster::getId).orElse(null);
+
+                        currentOp = new ControlPlanPreviewDTO.OperationPreview();
+                        currentOp.setOperationName(finalOpName);
+                        currentOp.setOperationCode(tempCode);
+                        currentOp.setExistingOperationMasterId(existingId);
+                        currentOp.setQuestions(new ArrayList<>());
+                        currentPart.getOperations().add(currentOp);
+                        currentSeq = 1;
+                    }
+
+                    if (currentOp != null && !colE.isEmpty() && !colE.equalsIgnoreCase("Parameter")) {
+                        Double minVal = null;
+                        Double maxVal = null;
+                        String qType = "TEXT";
+                        String expAns = colF + (colG.isEmpty() || colG.equals("-") ? "" : " / " + colG);
+
+                        try {
+                            String cleanMin = colF.replaceAll("[^0-9.-]", "");
+                            String cleanMax = colG.replaceAll("[^0-9.-]", "");
+                            if (!cleanMin.isEmpty() && !cleanMax.isEmpty() && !colF.contains("Ra") && !colG.contains("Ra")) {
+                                minVal = Double.parseDouble(cleanMin);
+                                maxVal = Double.parseDouble(cleanMax);
+                                qType = "NUMERIC";
+                            }
+                        } catch (Exception ex) {
+                            qType = "TEXT";
+                        }
+
+                        if (colE.toLowerCase().contains("chamfer")) {
+                            qType = "TEXT";
+                        }
+
+                        ControlPlanPreviewDTO.QuestionPreview q = new ControlPlanPreviewDTO.QuestionPreview();
+                        q.setSequenceOrder(currentSeq++);
+                        q.setQuestionText(colE);
+                        q.setQuestionType(qType);
+                        q.setExpectedAnswer(expAns);
+                        q.setMinValue(minVal);
+                        q.setMaxValue(maxVal);
+                        q.setCheckingMethod(colH.isEmpty() ? "D.V.C" : colH);
+                        q.setIsCritical(colE.toLowerCase().contains("dia") || colE.toLowerCase().contains("width"));
+                        currentOp.getQuestions().add(q);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to analyze Excel file: " + e.getMessage(), e);
+        }
+
+        return new ControlPlanPreviewDTO(parts);
+    }
+
+    @Transactional
+    public Map<String, Object> commitImport(UUID userId, ControlPlanPreviewDTO previewDto) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        Factory factory = user.getFactory();
+        if (factory == null) {
+            throw new IllegalArgumentException("User does not have an assigned factory.");
+        }
+
+        int questionSetsCreated = 0;
+        int questionsCreated = 0;
+        int operationsCreated = 0;
+        int gaugesCreated = 0;
+
+        if (previewDto.getParts() != null) {
+            for (ControlPlanPreviewDTO.PartPreview part : previewDto.getParts()) {
+                String partNo = part.getPartNo() != null ? part.getPartNo().trim() : "";
+                String partName = part.getPartName() != null ? part.getPartName().trim() : "";
+
+                if (part.getOperations() != null) {
+                    for (ControlPlanPreviewDTO.OperationPreview opPreview : part.getOperations()) {
+                        String opName = opPreview.getOperationName() != null ? opPreview.getOperationName().trim() : "Operation";
+                        String opCode = opPreview.getOperationCode() != null ? opPreview.getOperationCode().trim() : "OP";
+                        if (opCode.length() > 50) opCode = opCode.substring(0, 50);
+
+                        final String finalOpName = opName;
+                        final String finalOpCode = opCode;
+
+                        OperationMaster currentOpMaster;
+                        if (opPreview.getExistingOperationMasterId() != null) {
+                            currentOpMaster = operationMasterRepository.findById(opPreview.getExistingOperationMasterId())
+                                    .orElseGet(() -> {
+                                        OperationMaster newOp = OperationMaster.builder()
+                                                .factory(factory)
+                                                .operationName(finalOpName)
+                                                .operationCode(finalOpCode)
+                                                .department("PQC")
+                                                .isActive(true)
+                                                .build();
+                                        return operationMasterRepository.save(newOp);
+                                    });
+                        } else {
+                            currentOpMaster = operationMasterRepository.findFirstByFactoryIdAndOperationNameAndIsActiveTrue(factory.getId(), finalOpName)
+                                    .orElseGet(() -> {
+                                        OperationMaster newOp = OperationMaster.builder()
+                                                .factory(factory)
+                                                .operationName(finalOpName)
+                                                .operationCode(finalOpCode)
+                                                .department("PQC")
+                                                .isActive(true)
+                                                .build();
+                                        return operationMasterRepository.save(newOp);
+                                    });
+                            if (currentOpMaster.getCreatedAt() == null) {
+                                operationsCreated++;
+                            }
+                        }
+
+                        String setName = (partNo.isEmpty() ? "" : "[" + partNo + "] ") + partName + " - " + currentOpMaster.getOperationName();
+                        if (setName.length() > 255) setName = setName.substring(0, 255);
+
+                        PqcQuestionSet set = PqcQuestionSet.builder()
+                                .operationMaster(currentOpMaster)
+                                .factory(factory)
+                                .name(setName)
+                                .inspectionFrequency("SHIFT_START")
+                                .createdBy(user)
+                                .isActive(true)
+                                .questions(new ArrayList<>())
+                                .build();
+                        PqcQuestionSet currentSet = questionSetRepository.save(set);
+                        questionSetsCreated++;
+
+                        if (opPreview.getQuestions() != null) {
+                            for (ControlPlanPreviewDTO.QuestionPreview qPreview : opPreview.getQuestions()) {
+                                String qText = qPreview.getQuestionText() != null ? qPreview.getQuestionText().trim() : "";
+                                if (qText.isEmpty()) continue;
+
+                                String method = qPreview.getCheckingMethod() != null ? qPreview.getCheckingMethod().trim() : "D.V.C";
+                                GaugeMaster gaugeMaster = null;
+                                if (!method.isEmpty() && !method.equalsIgnoreCase("Inspection Method") && !method.equals("-")) {
+                                    final String finalGaugeName = method;
+                                    gaugeMaster = gaugeMasterRepository.findFirstByFactoryIdAndGaugeTypeNameAndIsActiveTrue(factory.getId(), finalGaugeName)
+                                            .orElseGet(() -> {
+                                                GaugeMaster newGauge = GaugeMaster.builder()
+                                                        .factory(factory)
+                                                        .gaugeTypeName(finalGaugeName)
+                                                        .categoryCode("INSPECTION")
+                                                        .unitOfMeasurement("mm")
+                                                        .isActive(true)
+                                                        .build();
+                                                return gaugeMasterRepository.save(newGauge);
+                                            });
+                                    if (gaugeMaster.getCreatedAt() == null) {
+                                        gaugesCreated++;
+                                    }
+                                }
+
+                                QuestionType qType = QuestionType.TEXT;
+                                if ("NUMERIC".equalsIgnoreCase(qPreview.getQuestionType())) {
+                                    qType = QuestionType.NUMERIC;
+                                }
+
+                                java.math.BigDecimal minVal = qPreview.getMinValue() != null ? java.math.BigDecimal.valueOf(qPreview.getMinValue()) : null;
+                                java.math.BigDecimal maxVal = qPreview.getMaxValue() != null ? java.math.BigDecimal.valueOf(qPreview.getMaxValue()) : null;
+
+                                PqcQuestion q = PqcQuestion.builder()
+                                        .questionSet(currentSet)
+                                        .sequenceOrder(qPreview.getSequenceOrder() != null ? qPreview.getSequenceOrder() : 1)
+                                        .questionText(qText)
+                                        .questionType(qType)
+                                        .expectedAnswer(qPreview.getExpectedAnswer())
+                                        .unit(gaugeMaster != null && gaugeMaster.getUnitOfMeasurement() != null ? gaugeMaster.getUnitOfMeasurement() : "mm")
+                                        .minValue(minVal)
+                                        .maxValue(maxVal)
+                                        .isCritical(qPreview.getIsCritical() != null && qPreview.getIsCritical())
+                                        .checkingMethod(method)
+                                        .showInPdir(true)
+                                        .build();
+                                questionRepository.save(q);
+                                questionsCreated++;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         Map<String, Object> result = new HashMap<>();

@@ -65,6 +65,22 @@ export const pqcApi = {
     return response.data;
   },
 
+  analyzeExcelControlPlan: async (file: File): Promise<{ data: any }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/pqc/question-sets/analyze-excel', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  commitExcelControlPlan: async (previewData: any): Promise<{ data: { questionSetsCreated: number; questionsCreated: number; operationsCreated: number; gaugesCreated: number } }> => {
+    const response = await api.post('/pqc/question-sets/commit-import', previewData);
+    return response.data;
+  },
+
   deleteQuestionSet: async (id: string): Promise<void> => {
     await api.delete(`/pqc/question-sets/${id}`);
   }
