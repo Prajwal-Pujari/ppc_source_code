@@ -31,7 +31,7 @@ services:
     image: redis:7-alpine
     container_name: ppc-redis
     ports:
-      - "6379:6379"
+      - "6381:6379"
     volumes:
       - ppc-redis-data:/data
     restart: unless-stopped
@@ -44,8 +44,8 @@ services:
       MINIO_ROOT_USER: ppc_minio
       MINIO_ROOT_PASSWORD: ppc_minio_secret
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9004:9000"
+      - "9005:9001"
     volumes:
       - ppc-minio-data:/data
     restart: unless-stopped
