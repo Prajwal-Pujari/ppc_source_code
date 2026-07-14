@@ -17,21 +17,21 @@ if [[ ! "$CONTINUE" =~ ^[Yy]$ ]]; then
 fi
 
 # Detect Postgres container
-PG_CONTAINER=$(docker ps --format '{{.Names}}' | grep -i "postgres" | head -n 1)
+PG_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E -i "pqc-pg|postgres" | head -n 1)
 if [ -z "$PG_CONTAINER" ]; then
-    PG_CONTAINER="ppc-postgres"
+    PG_CONTAINER="pqc-pg-engine"
 fi
 
 # Detect MySQL container
-MYSQL_CONTAINER=$(docker ps --format '{{.Names}}' | grep -i "mysql" | head -n 1)
+MYSQL_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E -i "pqc-my|mysql" | head -n 1)
 if [ -z "$MYSQL_CONTAINER" ]; then
-    MYSQL_CONTAINER="ppc-mysql"
+    MYSQL_CONTAINER="pqc-my-engine"
 fi
 
 # Detect Redis container
-REDIS_CONTAINER=$(docker ps --format '{{.Names}}' | grep -i "redis" | head -n 1)
+REDIS_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E -i "pqc-cache|redis" | head -n 1)
 if [ -z "$REDIS_CONTAINER" ]; then
-    REDIS_CONTAINER="ppc-redis"
+    REDIS_CONTAINER="pqc-cache-engine"
 fi
 
 echo ""

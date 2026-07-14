@@ -4,13 +4,15 @@
 # ===================================================
 
 CONTAINER=""
-if docker ps --format '{{.Names}}' | grep -q "^ppc-postgres$"; then
+if docker ps --format '{{.Names}}' | grep -q "^pqc-pg-engine$"; then
+    CONTAINER="pqc-pg-engine"
+elif docker ps --format '{{.Names}}' | grep -q "^ppc-postgres$"; then
     CONTAINER="ppc-postgres"
 elif docker ps --format '{{.Names}}' | grep -q "^mes-postgres$"; then
     CONTAINER="mes-postgres"
 else
-    # Try finding any container with postgres in its name
-    CONTAINER=$(docker ps --format '{{.Names}}' | grep -i "postgres" | head -n 1)
+    # Try finding any container with postgres or pqc-pg in its name
+    CONTAINER=$(docker ps --format '{{.Names}}' | grep -E -i "postgres|pqc-pg" | head -n 1)
 fi
 
 if [ -z "$CONTAINER" ]; then
