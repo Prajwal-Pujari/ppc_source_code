@@ -14,7 +14,7 @@ if /i "%CONTINUE%" neq "Y" (
 
 echo.
 echo [1/3] Clearing PostgreSQL Data...
-docker exec pqc-mes-postgres psql -U pqc_mes_user -d pqc_mes -c "DELETE FROM activity_logs; DELETE FROM nc_records; DELETE FROM pqc_inspection_logs; DELETE FROM pqc_questions; DELETE FROM pqc_question_sets; DELETE FROM gauge_operations; DELETE FROM gauges; DELETE FROM po_line_item_operations; DELETE FROM po_line_items; DELETE FROM po_comments; DELETE FROM purchase_orders; DELETE FROM customers; DELETE FROM gauge_master_operations; DELETE FROM gauge_master; DELETE FROM operation_master; DELETE FROM factory_shifts; DELETE FROM users WHERE username != 'admin';"
+docker exec pqc-mes-postgres psql -U pqc_mes_user -d pqc_mes -c "TRUNCATE TABLE activity_logs, nc_records, pqc_inspection_logs, pqc_questions, pqc_question_sets, po_line_item_operations, gauges, gauge_operations, po_line_items, po_comments, purchase_orders, lpa_audit_log_answers, lpa_audit_logs, lpa_schedules, lpa_questions, lpa_question_sets, gauge_master_operations, gauge_master, operation_master, part_master, customers CASCADE;"
 
 echo.
 echo [2/3] Clearing MySQL Analytics Data...

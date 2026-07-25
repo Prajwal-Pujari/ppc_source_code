@@ -20,6 +20,7 @@ const pqcNavItems = [
   { label: 'Part / Product Master', path: '/pqc/gauges', icon: 'straighten' },
   { label: 'Operations', path: '/pqc/operations', icon: 'build' },
   { label: 'Machine Master', path: '/pqc/machines', icon: 'precision_manufacturing' },
+  { label: 'Machine Schedule', path: '/pqc/machine-schedule', icon: 'calendar_clock' },
   { label: 'Batch Records', path: '/pqc/batch-records', icon: 'layers' },
   { label: 'Personnel', path: '/pqc/personnel', icon: 'badge' },
   { label: 'Analytics', path: '/pqc/analytics', icon: 'bar_chart' },

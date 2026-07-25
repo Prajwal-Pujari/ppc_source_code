@@ -35,7 +35,6 @@ export default function OperationMasterPage() {
       operationName: fd.get('operationName'),
       operationCode: fd.get('operationCode'),
       department: fd.get('department'),
-      standardTimeHours: fd.get('standardTimeHours') ? parseFloat(fd.get('standardTimeHours') as string) : null,
       skillLevel: fd.get('skillLevel'),
       instructions: fd.get('instructions'),
       isOutsourced: fd.get('isOutsourced') === 'on',
@@ -73,10 +72,6 @@ export default function OperationMasterPage() {
                 <input className="input" name="department" defaultValue={editing?.department || ''} placeholder="e.g. Machining" />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Standard Time (hours)</label>
-                <input className="input font-mono" name="standardTimeHours" type="number" step="0.25" defaultValue={editing?.standardTimeHours || ''} placeholder="2.00" />
-              </div>
-              <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Skill Level</label>
                 <select className="input" name="skillLevel" defaultValue={editing?.skillLevel || ''}>
                   <option value="">Select...</option>
@@ -109,12 +104,12 @@ export default function OperationMasterPage() {
         <table>
           <thead>
             <tr>
+              <th>Part</th>
               <th>Operation Name</th>
               <th>Code</th>
               <th>Department</th>
-              <th>Std Time</th>
-              <th>Skill Level</th>
-              <th>Type</th>
+              <th>Skill Req.</th>
+              <th>Outsourced</th>
               <th style={{ width: 100 }}>Actions</th>
             </tr>
           </thead>
@@ -128,10 +123,19 @@ export default function OperationMasterPage() {
             ) : (
               operations.map((op: any) => (
                 <tr key={op.id}>
+                  <td>
+                    {op.partMaster ? (
+                      <div style={{ fontWeight: 500, color: 'var(--charcoal)' }}>
+                        {op.partMaster.partNo}
+                        <div style={{ fontSize: 12, color: 'var(--slate)' }}>{op.partMaster.partName}</div>
+                      </div>
+                    ) : (
+                      <span style={{ color: 'var(--ash)' }}>Global</span>
+                    )}
+                  </td>
                   <td style={{ fontWeight: 600, color: 'var(--charcoal)' }}>{op.operationName}</td>
                   <td><span className="badge" style={{ background: 'var(--linen)', color: 'var(--copper-bronze)', fontFamily: 'JetBrains Mono, monospace' }}>{op.operationCode}</span></td>
                   <td>{op.department || '—'}</td>
-                  <td className="font-mono">{op.standardTimeHours ? `${op.standardTimeHours}h` : '—'}</td>
                   <td>
                     <span style={{
                       fontSize: 11, fontWeight: 500, color:

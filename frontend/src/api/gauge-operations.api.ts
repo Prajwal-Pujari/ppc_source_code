@@ -2,8 +2,8 @@ import api from '@/lib/axios';
 import type { ApiResponse } from '@/types/api.types';
 import type { GaugeOperation } from '@/types/domain.types';
 
-export const assignOperation = async (id: string, workerId: string) => {
-  const res = await api.put<ApiResponse<GaugeOperation>>(`/gauge-operations/${id}/assign`, { workerId });
+export const assignOperation = async (id: string, workerId: string, machineId?: string) => {
+  const res = await api.put<ApiResponse<GaugeOperation>>(`/gauge-operations/${id}/assign`, { workerId, machineId });
   return res.data;
 };
 

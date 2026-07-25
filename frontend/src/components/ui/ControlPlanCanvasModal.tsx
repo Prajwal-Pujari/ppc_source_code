@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Upload, FileSpreadsheet, Loader, Check, X, ArrowRight, Settings,
   Layers, Link2, Pencil, Trash2, ShieldAlert, ChevronRight, CornerDownRight,
@@ -29,6 +29,18 @@ export default function ControlPlanCanvasModal({
   const [selectedOpIndex, setSelectedOpIndex] = useState<number>(0);
   const [commitResult, setCommitResult] = useState<any | null>(null);
 
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedFile(null);
+      setPreviewData(null);
+      setCommitResult(null);
+      setAnalyzing(false);
+      setCommitting(false);
+      setSelectedPartIndex(0);
+      setSelectedOpIndex(0);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleAnalyzeFile = async () => {
@@ -57,7 +69,11 @@ export default function ControlPlanCanvasModal({
       setCommitting(true);
       const res = await pqcApi.commitExcelControlPlan(previewData);
       setCommitResult(res.data);
-      toast.success('Control Plan and Question Sets saved successfully');
+      if (res.data.skippedSets > 0) {
+        toast.success(`Control Plan saved. ${res.data.skippedSets} Question Set(s) already existed and were skipped.`);
+      } else {
+        toast.success('Control Plan and Question Sets saved successfully');
+      }
       onSuccess();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to save Control Plan');
@@ -126,52 +142,7 @@ export default function ControlPlanCanvasModal({
 
         {/* Content Area */}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          {commitResult ? (
-            /* Success Screen (Clean, Professional, No Emojis) */
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48, gap: 20, textAlign: 'center', margin: 'auto' }}>
-              <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#dcfce7', color: '#166534', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Check size={36} />
-              </div>
-              <div>
-                <h4 style={{ fontSize: 20, fontWeight: 700, color: 'var(--charcoal)', margin: 0 }}>
-                  Control Plan Committed Successfully
-                </h4>
-                <p style={{ fontSize: 13, color: 'var(--ash)', marginTop: 6 }}>
-                  All selected operations, tolerances, and gauges have been synchronized with your master database.
-                </p>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, width: '100%', maxWidth: 460, marginTop: 12 }}>
-                <div style={{ padding: 16, background: 'white', borderRadius: 10, border: '1px solid #bbf7d0', textAlign: 'left' }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ash)', textTransform: 'uppercase' }}>Question Sets</span>
-                  <p style={{ fontSize: 24, fontWeight: 800, color: '#166534', margin: '4px 0 0 0' }}>{commitResult.questionSetsCreated}</p>
-                </div>
-                <div style={{ padding: 16, background: 'white', borderRadius: 10, border: '1px solid #bbf7d0', textAlign: 'left' }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ash)', textTransform: 'uppercase' }}>Inspection Items</span>
-                  <p style={{ fontSize: 24, fontWeight: 800, color: '#166534', margin: '4px 0 0 0' }}>{commitResult.questionsCreated}</p>
-                </div>
-                <div style={{ padding: 16, background: 'white', borderRadius: 10, border: '1px solid var(--silk)', textAlign: 'left' }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ash)', textTransform: 'uppercase' }}>Operations Bound</span>
-                  <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--charcoal)', margin: '4px 0 0 0' }}>{commitResult.operationsCreated}</p>
-                </div>
-                <div style={{ padding: 16, background: 'white', borderRadius: 10, border: '1px solid var(--silk)', textAlign: 'left' }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ash)', textTransform: 'uppercase' }}>Gauges Registered</span>
-                  <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--charcoal)', margin: '4px 0 0 0' }}>{commitResult.gaugesCreated}</p>
-                </div>
-              </div>
-
-              <button
-                onClick={onClose}
-                style={{
-                  marginTop: 20, padding: '10px 28px', background: 'var(--copper-bronze)', color: 'white',
-                  borderRadius: 8, fontWeight: 600, fontSize: 14, border: 'none', cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(139,105,20,0.25)'
-                }}
-              >
-                Close & Return to List
-              </button>
-            </div>
-          ) : !previewData ? (
+          {!previewData ? (
             /* Upload State */
             <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 24 }}>
               <label style={{
@@ -265,10 +236,21 @@ export default function ControlPlanCanvasModal({
                       transition: 'all 0.15s', boxShadow: selectedPartIndex === idx ? '0 4px 10px rgba(139,105,20,0.1)' : 'none'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span className="badge font-mono" style={{ background: selectedPartIndex === idx ? 'var(--copper-bronze)' : 'var(--silk)', color: selectedPartIndex === idx ? 'white' : 'var(--charcoal)', fontSize: 10 }}>
-                        {part.partNo || `P#${idx + 1}`}
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span className="badge font-mono" style={{ background: selectedPartIndex === idx ? 'var(--copper-bronze)' : 'var(--silk)', color: selectedPartIndex === idx ? 'white' : 'var(--charcoal)', fontSize: 10 }}>
+                          {part.partNo || `P#${idx + 1}`}
+                        </span>
+                      </div>
+                      {part.isExistingPart ? (
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#166534', background: '#dcfce7', padding: '2px 6px', borderRadius: 4 }}>
+                          LINKED
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#b45309', background: '#fef3c7', padding: '2px 6px', borderRadius: 4 }}>
+                          NEW
+                        </span>
+                      )}
                     </div>
                     <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--charcoal)', margin: '6px 0 0 0', lineHeight: '1.3' }}>
                       {part.partName}
@@ -311,17 +293,64 @@ export default function ControlPlanCanvasModal({
                       )}
 
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: 6 }}>
-                          {op.operationCode || `OP${opIdx + 1}`}
-                        </span>
+                        {!isExisting ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} onClick={(e) => e.stopPropagation()}>
+                            <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Code:</label>
+                            <input
+                              type="text"
+                              value={op.operationCode || ''}
+                              onChange={(e) => {
+                                const newData = { ...previewData };
+                                newData.parts[selectedPartIndex].operations[opIdx].operationCode = e.target.value;
+                                setPreviewData(newData);
+                              }}
+                              style={{ width: 60, padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1', fontSize: 11, fontWeight: 700 }}
+                            />
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: 11, fontWeight: 700, background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: 6 }}>
+                            {op.operationCode || `OP${opIdx + 1}`}
+                          </span>
+                        )}
                         <span style={{ fontSize: 11, fontWeight: 600, color: isExisting ? '#166534' : '#b45309', background: isExisting ? '#dcfce7' : '#fef3c7', padding: '2px 8px', borderRadius: 6 }}>
                           {isExisting ? 'Linked to Database' : 'Auto-Create New'}
                         </span>
                       </div>
 
-                      <h4 style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', margin: '10px 0 8px 0', lineHeight: '1.3' }}>
+                      <h4 style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', margin: '10px 0 4px 0', lineHeight: '1.3' }}>
                         {op.operationName}
                       </h4>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Dep:</label>
+                          <input
+                            type="text"
+                            value={op.department || ''}
+                            onChange={(e) => {
+                              const newData = { ...previewData };
+                              newData.parts[selectedPartIndex].operations[opIdx].department = e.target.value;
+                              setPreviewData(newData);
+                            }}
+                            placeholder="e.g. PQC"
+                            style={{ width: 70, padding: '4px 6px', borderRadius: 4, border: '1px solid #cbd5e1', fontSize: 11 }}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Time (m):</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={op.cycleTimeMins !== null && op.cycleTimeMins !== undefined ? op.cycleTimeMins : ''}
+                            onChange={(e) => {
+                              const newData = { ...previewData };
+                              newData.parts[selectedPartIndex].operations[opIdx].cycleTimeMins = e.target.value ? parseFloat(e.target.value) : null;
+                              setPreviewData(newData);
+                            }}
+                            style={{ width: 60, padding: '4px 6px', borderRadius: 4, border: '1px solid #cbd5e1', fontSize: 11 }}
+                          />
+                        </div>
+                      </div>
 
                       {/* Operation Master Linker Dropdown */}
                       <div style={{ marginTop: 10, background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }} onClick={(e) => e.stopPropagation()}>

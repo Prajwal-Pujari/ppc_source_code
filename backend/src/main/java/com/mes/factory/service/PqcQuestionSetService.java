@@ -25,17 +25,20 @@ public class PqcQuestionSetService {
     private final PqcQuestionRepository questionRepository;
     private final OperationMasterRepository operationMasterRepository;
     private final GaugeMasterRepository gaugeMasterRepository;
+    private final GaugeMasterOperationRepository gaugeMasterOperationRepository;
     private final UserRepository userRepository;
 
     public PqcQuestionSetService(PqcQuestionSetRepository questionSetRepository,
                                   PqcQuestionRepository questionRepository,
                                   OperationMasterRepository operationMasterRepository,
                                   GaugeMasterRepository gaugeMasterRepository,
+                                  GaugeMasterOperationRepository gaugeMasterOperationRepository,
                                   UserRepository userRepository) {
         this.questionSetRepository = questionSetRepository;
         this.questionRepository = questionRepository;
         this.operationMasterRepository = operationMasterRepository;
         this.gaugeMasterRepository = gaugeMasterRepository;
+        this.gaugeMasterOperationRepository = gaugeMasterOperationRepository;
         this.userRepository = userRepository;
     }
 
@@ -179,6 +182,7 @@ public class PqcQuestionSetService {
         int questionsCreated = 0;
         int operationsCreated = 0;
         int gaugesCreated = 0;
+        int skippedSets = 0;
 
         try (InputStream is = file.getInputStream(); Workbook workbook = WorkbookFactory.create(is)) {
             for (int s = 0; s < workbook.getNumberOfSheets(); s++) {
@@ -197,11 +201,12 @@ public class PqcQuestionSetService {
 
                     String colB = getCellString(row.getCell(1)); // Part No
                     String colC = getCellString(row.getCell(2)); // Part Name
-                    String colD = getCellString(row.getCell(3)); // Operation Sq. No.
-                    String colE = getCellString(row.getCell(4)); // Parameter
-                    String colF = getCellString(row.getCell(5)); // MIN
-                    String colG = getCellString(row.getCell(6)); // MAX
-                    String colH = getCellString(row.getCell(7)); // Inspection Method
+                    String colD = getCellString(row.getCell(3)); // Cycle Time
+                    String colE = getCellString(row.getCell(4)); // Operation Sq. No.
+                    String colF = getCellString(row.getCell(5)); // Parameter
+                    String colG = getCellString(row.getCell(6)); // MIN
+                    String colH = getCellString(row.getCell(7)); // MAX
+                    String colI = getCellString(row.getCell(8)); // Inspection Method
 
                     if (!colB.isEmpty() && !colB.equalsIgnoreCase("Part No.") && !colB.equalsIgnoreCase("Part No")) {
                         partNo = colB;
@@ -210,20 +215,47 @@ public class PqcQuestionSetService {
                         partName = colC;
                     }
 
-                    if (!colD.isEmpty() && !colD.equalsIgnoreCase("Operation Sq. No.") && !colD.equalsIgnoreCase("Operation Sq. No")) {
-                        String opName = colD;
+                    if (!colE.isEmpty() && !colE.equalsIgnoreCase("Operation Sq. No.") && !colE.equalsIgnoreCase("Operation Sq. No")) {
+                        String opName = colE;
                         String tempCode = opName.split("/")[0].trim().toUpperCase();
                         if (tempCode.length() > 50) tempCode = tempCode.substring(0, 50);
                         final String finalOpName = opName;
                         final String finalOpCode = tempCode;
+                        
+                        java.math.BigDecimal parsedCycleTime = null;
+                        try {
+                            if (!colD.isEmpty() && !colD.equalsIgnoreCase("Cycle Time") && !colD.equalsIgnoreCase("Standard Time")) {
+                                parsedCycleTime = new java.math.BigDecimal(colD.replaceAll("[^0-9.-]", ""));
+                            }
+                        } catch (Exception ignored) {}
+                        
+                        final java.math.BigDecimal finalCycleTimeHours = parsedCycleTime != null ? 
+                                parsedCycleTime.divide(new java.math.BigDecimal("60"), 2, java.math.RoundingMode.HALF_UP) : null;
 
-                        OperationMaster opMaster = operationMasterRepository.findFirstByFactoryIdAndOperationNameAndIsActiveTrue(factory.getId(), finalOpName)
+                        final String finalPartName = partName;
+                        final String finalPartNo = partNo.isEmpty() ? finalPartName : partNo;
+                        GaugeMaster gaugeMaster = null;
+                        if (!finalPartNo.isEmpty()) {
+                            gaugeMaster = gaugeMasterRepository.findFirstByFactoryIdAndCategoryCodeAndIsActiveTrue(factory.getId(), finalPartNo)
                                 .orElseGet(() -> {
+                                    GaugeMaster gm = GaugeMaster.builder()
+                                        .factory(factory)
+                                        .categoryCode(finalPartNo)
+                                        .gaugeTypeName(finalPartName)
+                                        .isActive(true)
+                                        .build();
+                                    return gaugeMasterRepository.save(gm);
+                                });
+                        }
+                        final GaugeMaster currentGaugeMaster = gaugeMaster;
+
+                        Optional<OperationMaster> existingOpOpt = operationMasterRepository.findFirstByFactoryIdAndOperationNameAndIsActiveTrue(factory.getId(), finalOpName);
+                        
+                        OperationMaster opMaster = existingOpOpt.orElseGet(() -> {
                                     OperationMaster newOp = OperationMaster.builder()
                                             .factory(factory)
                                             .operationName(finalOpName)
                                             .operationCode(finalOpCode)
-                                            .department("PQC")
                                             .isActive(true)
                                             .build();
                                     return operationMasterRepository.save(newOp);
@@ -238,6 +270,7 @@ public class PqcQuestionSetService {
 
                         PqcQuestionSet set = PqcQuestionSet.builder()
                                 .operationMaster(currentOpMaster)
+                                .gaugeMaster(currentGaugeMaster)
                                 .factory(factory)
                                 .name(setName)
                                 .inspectionFrequency("SHIFT_START")
@@ -250,35 +283,16 @@ public class PqcQuestionSetService {
                         currentSeq = 1;
                     }
 
-                    if (currentSet != null && !colE.isEmpty() && !colE.equalsIgnoreCase("Parameter")) {
-                        GaugeMaster gaugeMaster = null;
-                        if (!colH.isEmpty() && !colH.equalsIgnoreCase("Inspection Method") && !colH.equals("-")) {
-                            final String finalGaugeName = colH;
-                            gaugeMaster = gaugeMasterRepository.findFirstByFactoryIdAndGaugeTypeNameAndIsActiveTrue(factory.getId(), finalGaugeName)
-                                    .orElseGet(() -> {
-                                        GaugeMaster newGauge = GaugeMaster.builder()
-                                                .factory(factory)
-                                                .gaugeTypeName(finalGaugeName)
-                                                .categoryCode("INSPECTION")
-                                                .unitOfMeasurement("mm")
-                                                .isActive(true)
-                                                .build();
-                                        return gaugeMasterRepository.save(newGauge);
-                                    });
-                            if (gaugeMaster.getCreatedAt() == null) {
-                                gaugesCreated++;
-                            }
-                        }
-
+                    if (currentSet != null && !colF.isEmpty() && !colF.equalsIgnoreCase("Parameter")) {
                         java.math.BigDecimal minVal = null;
                         java.math.BigDecimal maxVal = null;
                         QuestionType qType = QuestionType.TEXT;
-                        String expAns = colF + (colG.isEmpty() || colG.equals("-") ? "" : " / " + colG);
+                        String expAns = colG + (colH.isEmpty() || colH.equals("-") ? "" : " / " + colH);
 
                         try {
-                            String cleanMin = colF.replaceAll("[^0-9.-]", "");
-                            String cleanMax = colG.replaceAll("[^0-9.-]", "");
-                            if (!cleanMin.isEmpty() && !cleanMax.isEmpty() && !colF.contains("Ra") && !colG.contains("Ra")) {
+                            String cleanMin = colG.replaceAll("[^0-9.-]", "");
+                            String cleanMax = colH.replaceAll("[^0-9.-]", "");
+                            if (!cleanMin.isEmpty() && !cleanMax.isEmpty() && !colG.contains("Ra") && !colH.contains("Ra")) {
                                 minVal = new java.math.BigDecimal(cleanMin);
                                 maxVal = new java.math.BigDecimal(cleanMax);
                                 qType = QuestionType.NUMERIC;
@@ -287,21 +301,20 @@ public class PqcQuestionSetService {
                             qType = QuestionType.TEXT;
                         }
 
-                        if (colE.toLowerCase().contains("chamfer") || colE.toLowerCase().contains("chamfer")) {
+                        if (colF.toLowerCase().contains("chamfer") || colF.toLowerCase().contains("chamfer")) {
                             qType = QuestionType.TEXT;
                         }
 
                         PqcQuestion q = PqcQuestion.builder()
                                 .questionSet(currentSet)
                                 .sequenceOrder(currentSeq++)
-                                .questionText(colE)
+                                .questionText(colF)
                                 .questionType(qType)
                                 .expectedAnswer(expAns)
-                                .unit(gaugeMaster != null && gaugeMaster.getUnitOfMeasurement() != null ? gaugeMaster.getUnitOfMeasurement() : "mm")
                                 .minValue(minVal)
                                 .maxValue(maxVal)
-                                .isCritical(colE.toLowerCase().contains("dia") || colE.toLowerCase().contains("width"))
-                                .checkingMethod(colH.isEmpty() ? "D.V.C" : colH)
+                                .isCritical(colF.toLowerCase().contains("dia") || colF.toLowerCase().contains("width"))
+                                .checkingMethod(colI.isEmpty() ? "D.V.C" : colI)
                                 .showInPdir(true)
                                 .build();
                         questionRepository.save(q);
@@ -318,6 +331,7 @@ public class PqcQuestionSetService {
         result.put("questionsCreated", questionsCreated);
         result.put("operationsCreated", operationsCreated);
         result.put("gaugesCreated", gaugesCreated);
+        result.put("skippedSets", skippedSets);
         return result;
     }
 
@@ -347,6 +361,8 @@ public class PqcQuestionSetService {
 
                 ControlPlanPreviewDTO.OperationPreview currentOp = null;
                 int currentSeq = 1;
+                
+
 
                 for (int r = 0; r <= sheet.getLastRowNum(); r++) {
                     Row row = sheet.getRow(r);
@@ -354,11 +370,12 @@ public class PqcQuestionSetService {
 
                     String colB = getCellString(row.getCell(1)); // Part No
                     String colC = getCellString(row.getCell(2)); // Part Name
-                    String colD = getCellString(row.getCell(3)); // Operation Sq. No.
-                    String colE = getCellString(row.getCell(4)); // Parameter
-                    String colF = getCellString(row.getCell(5)); // MIN
-                    String colG = getCellString(row.getCell(6)); // MAX
-                    String colH = getCellString(row.getCell(7)); // Inspection Method
+                    String colD = getCellString(row.getCell(3)); // Cycle Time
+                    String colE = getCellString(row.getCell(4)); // Operation Sq. No.
+                    String colF = getCellString(row.getCell(5)); // Parameter
+                    String colG = getCellString(row.getCell(6)); // MIN
+                    String colH = getCellString(row.getCell(7)); // MAX
+                    String colI = getCellString(row.getCell(8)); // Inspection Method
 
                     if (!colB.isEmpty() && !colB.equalsIgnoreCase("Part No.") && !colB.equalsIgnoreCase("Part No")) {
                         partNo = colB;
@@ -369,34 +386,42 @@ public class PqcQuestionSetService {
                         currentPart.setPartName(partName);
                     }
 
-                    if (!colD.isEmpty() && !colD.equalsIgnoreCase("Operation Sq. No.") && !colD.equalsIgnoreCase("Operation Sq. No")) {
-                        String opName = colD;
+                    if (!colE.isEmpty() && !colE.equalsIgnoreCase("Operation Sq. No.") && !colE.equalsIgnoreCase("Operation Sq. No")) {
+                        String opName = colE;
                         String tempCode = opName.split("/")[0].trim().toUpperCase();
                         if (tempCode.length() > 50) tempCode = tempCode.substring(0, 50);
                         final String finalOpName = opName;
 
-                        Optional<OperationMaster> opMasterOpt = operationMasterRepository.findFirstByFactoryIdAndOperationNameAndIsActiveTrue(factory.getId(), finalOpName);
-                        UUID existingId = opMasterOpt.map(OperationMaster::getId).orElse(null);
+                        Double parsedCycleTime = null;
+                        try {
+                            if (!colD.isEmpty() && !colD.equalsIgnoreCase("Cycle Time") && !colD.equalsIgnoreCase("Standard Time")) {
+                                parsedCycleTime = Double.parseDouble(colD.replaceAll("[^0-9.-]", ""));
+                            }
+                        } catch (Exception ignored) {}
 
-                        currentOp = new ControlPlanPreviewDTO.OperationPreview();
-                        currentOp.setOperationName(finalOpName);
-                        currentOp.setOperationCode(tempCode);
-                        currentOp.setExistingOperationMasterId(existingId);
-                        currentOp.setQuestions(new ArrayList<>());
-                        currentPart.getOperations().add(currentOp);
-                        currentSeq = 1;
+                        if (currentOp == null || !currentOp.getOperationName().equals(finalOpName)) {
+                            currentOp = new ControlPlanPreviewDTO.OperationPreview();
+                            currentOp.setOperationName(finalOpName);
+                            currentOp.setOperationCode(tempCode);
+                            currentOp.setDepartment("PQC");
+                            currentOp.setExistingOperationMasterId(null); // Will be recalculated later
+                            currentOp.setCycleTimeMins(parsedCycleTime);
+                            currentOp.setQuestions(new ArrayList<>());
+                            currentPart.getOperations().add(currentOp);
+                            currentSeq = 1;
+                        }
                     }
 
-                    if (currentOp != null && !colE.isEmpty() && !colE.equalsIgnoreCase("Parameter")) {
+                    if (currentOp != null && !colF.isEmpty() && !colF.equalsIgnoreCase("Parameter")) {
                         Double minVal = null;
                         Double maxVal = null;
                         String qType = "TEXT";
-                        String expAns = colF + (colG.isEmpty() || colG.equals("-") ? "" : " / " + colG);
+                        String expAns = colG + (colH.isEmpty() || colH.equals("-") ? "" : " / " + colH);
 
                         try {
-                            String cleanMin = colF.replaceAll("[^0-9.-]", "");
-                            String cleanMax = colG.replaceAll("[^0-9.-]", "");
-                            if (!cleanMin.isEmpty() && !cleanMax.isEmpty() && !colF.contains("Ra") && !colG.contains("Ra")) {
+                            String cleanMin = colG.replaceAll("[^0-9.-]", "");
+                            String cleanMax = colH.replaceAll("[^0-9.-]", "");
+                            if (!cleanMin.isEmpty() && !cleanMax.isEmpty() && !colG.contains("Ra") && !colH.contains("Ra")) {
                                 minVal = Double.parseDouble(cleanMin);
                                 maxVal = Double.parseDouble(cleanMax);
                                 qType = "NUMERIC";
@@ -405,28 +430,74 @@ public class PqcQuestionSetService {
                             qType = "TEXT";
                         }
 
-                        if (colE.toLowerCase().contains("chamfer")) {
+                        if (colF.toLowerCase().contains("chamfer")) {
                             qType = "TEXT";
                         }
 
                         ControlPlanPreviewDTO.QuestionPreview q = new ControlPlanPreviewDTO.QuestionPreview();
                         q.setSequenceOrder(currentSeq++);
-                        q.setQuestionText(colE);
+                        q.setQuestionText(colF);
                         q.setQuestionType(qType);
                         q.setExpectedAnswer(expAns);
                         q.setMinValue(minVal);
                         q.setMaxValue(maxVal);
-                        q.setCheckingMethod(colH.isEmpty() ? "D.V.C" : colH);
-                        q.setIsCritical(colE.toLowerCase().contains("dia") || colE.toLowerCase().contains("width"));
+                        q.setCheckingMethod(colI.isEmpty() ? "D.V.C" : colI);
+                        q.setIsCritical(colF.toLowerCase().contains("dia") || colF.toLowerCase().contains("width"));
                         currentOp.getQuestions().add(q);
                     }
                 }
             }
+            
+            // Post-process to group parts by partNo and merge operations
+            java.util.Map<String, ControlPlanPreviewDTO.PartPreview> mergedParts = new java.util.LinkedHashMap<>();
+            for (ControlPlanPreviewDTO.PartPreview p : parts) {
+                String key = (p.getPartNo() != null && !p.getPartNo().isEmpty()) ? p.getPartNo() : p.getPartName();
+                if (mergedParts.containsKey(key)) {
+                    ControlPlanPreviewDTO.PartPreview existing = mergedParts.get(key);
+                    // Merge operations
+                    for (ControlPlanPreviewDTO.OperationPreview newOp : p.getOperations()) {
+                        ControlPlanPreviewDTO.OperationPreview existingOp = existing.getOperations().stream()
+                                .filter(o -> o.getOperationName().equals(newOp.getOperationName()))
+                                .findFirst()
+                                .orElse(null);
+                        if (existingOp != null) {
+                            existingOp.getQuestions().addAll(newOp.getQuestions());
+                        } else {
+                            existing.getOperations().add(newOp);
+                        }
+                    }
+                } else {
+                    mergedParts.put(key, p);
+                }
+            }
+            List<ControlPlanPreviewDTO.PartPreview> finalParts = new ArrayList<>(mergedParts.values());
+
+            // Post-process to link parts and their specific operations
+            for (ControlPlanPreviewDTO.PartPreview p : finalParts) {
+                if (p.getPartNo() != null && !p.getPartNo().isEmpty()) {
+                    Optional<GaugeMaster> gmOpt = gaugeMasterRepository.findFirstByFactoryIdAndCategoryCodeAndIsActiveTrue(factory.getId(), p.getPartNo());
+                    if (gmOpt.isPresent()) {
+                        p.setIsExistingPart(true);
+                        p.setExistingGaugeMasterId(gmOpt.get().getId());
+                        
+                        for (ControlPlanPreviewDTO.OperationPreview op : p.getOperations()) {
+                            Optional<OperationMaster> omOpt = operationMasterRepository.findFirstByFactoryIdAndOperationNameAndIsActiveTrue(factory.getId(), op.getOperationName());
+                            op.setExistingOperationMasterId(omOpt.map(OperationMaster::getId).orElse(null));
+                        }
+                    } else {
+                        p.setIsExistingPart(false);
+                        p.setExistingGaugeMasterId(null);
+                        for (ControlPlanPreviewDTO.OperationPreview op : p.getOperations()) {
+                            op.setExistingOperationMasterId(null);
+                        }
+                    }
+                }
+            }
+            
+            return new ControlPlanPreviewDTO(finalParts);
         } catch (Exception e) {
             throw new RuntimeException("Failed to analyze Excel file: " + e.getMessage(), e);
         }
-
-        return new ControlPlanPreviewDTO(parts);
     }
 
     @Transactional
@@ -442,20 +513,42 @@ public class PqcQuestionSetService {
         int questionsCreated = 0;
         int operationsCreated = 0;
         int gaugesCreated = 0;
+        int skippedSets = 0;
 
         if (previewDto.getParts() != null) {
-            for (ControlPlanPreviewDTO.PartPreview part : previewDto.getParts()) {
-                String partNo = part.getPartNo() != null ? part.getPartNo().trim() : "";
-                String partName = part.getPartName() != null ? part.getPartName().trim() : "";
+            for (ControlPlanPreviewDTO.PartPreview partPreview : previewDto.getParts()) {
+                String partNo = partPreview.getPartNo() != null ? partPreview.getPartNo().trim() : "";
+                String partName = partPreview.getPartName() != null ? partPreview.getPartName().trim() : "";
+                
+                final String finalPartName = partName;
+                final String finalPartNo = partNo.isEmpty() ? finalPartName : partNo;
+                
+                GaugeMaster gaugeMaster = null;
+                if (!finalPartNo.isEmpty()) {
+                    gaugeMaster = gaugeMasterRepository.findFirstByFactoryIdAndCategoryCodeAndIsActiveTrue(factory.getId(), finalPartNo)
+                        .orElseGet(() -> {
+                            GaugeMaster gm = GaugeMaster.builder()
+                                .factory(factory)
+                                .categoryCode(finalPartNo)
+                                .gaugeTypeName(finalPartName)
+                                .isActive(true)
+                                .build();
+                            return gaugeMasterRepository.save(gm);
+                        });
+                }
+                final GaugeMaster currentGaugeMaster = gaugeMaster;
 
-                if (part.getOperations() != null) {
-                    for (ControlPlanPreviewDTO.OperationPreview opPreview : part.getOperations()) {
+                if (partPreview.getOperations() != null) {
+                    for (ControlPlanPreviewDTO.OperationPreview opPreview : partPreview.getOperations()) {
                         String opName = opPreview.getOperationName() != null ? opPreview.getOperationName().trim() : "Operation";
                         String opCode = opPreview.getOperationCode() != null ? opPreview.getOperationCode().trim() : "OP";
                         if (opCode.length() > 50) opCode = opCode.substring(0, 50);
 
                         final String finalOpName = opName;
                         final String finalOpCode = opCode;
+                    
+                        java.math.BigDecimal previewTimeHours = opPreview.getCycleTimeMins() != null ? 
+                            java.math.BigDecimal.valueOf(opPreview.getCycleTimeMins() / 60.0).setScale(2, java.math.RoundingMode.HALF_UP) : null;
 
                         OperationMaster currentOpMaster;
                         if (opPreview.getExistingOperationMasterId() != null) {
@@ -471,27 +564,68 @@ public class PqcQuestionSetService {
                                         return operationMasterRepository.save(newOp);
                                     });
                         } else {
-                            currentOpMaster = operationMasterRepository.findFirstByFactoryIdAndOperationNameAndIsActiveTrue(factory.getId(), finalOpName)
-                                    .orElseGet(() -> {
+                            Optional<OperationMaster> existingOpOpt = operationMasterRepository.findFirstByFactoryIdAndOperationNameAndIsActiveTrue(factory.getId(), finalOpName);
+                            
+                            currentOpMaster = existingOpOpt.orElseGet(() -> {
                                         OperationMaster newOp = OperationMaster.builder()
                                                 .factory(factory)
                                                 .operationName(finalOpName)
                                                 .operationCode(finalOpCode)
-                                                .department("PQC")
+                                                .department(opPreview.getDepartment() != null && !opPreview.getDepartment().trim().isEmpty() ? opPreview.getDepartment() : "PQC")
                                                 .isActive(true)
                                                 .build();
                                         return operationMasterRepository.save(newOp);
                                     });
-                            if (currentOpMaster.getCreatedAt() == null) {
-                                operationsCreated++;
+                        }
+                        if (currentOpMaster.getCreatedAt() == null) {
+                            operationsCreated++;
+                        }
+                        
+                        java.math.BigDecimal finalCycleTimeMins = opPreview.getCycleTimeMins() != null ? 
+                            java.math.BigDecimal.valueOf(opPreview.getCycleTimeMins()).setScale(2, java.math.RoundingMode.HALF_UP) : null;
+
+                        // Link Operation to Gauge if not linked
+                        if (currentGaugeMaster != null) {
+                            Optional<GaugeMasterOperation> existingLink = gaugeMasterOperationRepository.findFirstByGaugeMasterIdAndOperationMasterId(currentGaugeMaster.getId(), currentOpMaster.getId());
+                            if (existingLink.isEmpty()) {
+                                int nextSeq = 0;
+                                List<GaugeMasterOperation> existingOps = gaugeMasterOperationRepository.findByGaugeMasterIdOrderBySequenceOrder(currentGaugeMaster.getId());
+                                if (!existingOps.isEmpty()) {
+                                    nextSeq = existingOps.stream().mapToInt(GaugeMasterOperation::getSequenceOrder).max().orElse(-1) + 1;
+                                }
+                                GaugeMasterOperation newLink = GaugeMasterOperation.builder()
+                                    .gaugeMaster(currentGaugeMaster)
+                                    .operationMaster(currentOpMaster)
+                                    .sequenceOrder(nextSeq)
+                                    .cycleTimeMins(finalCycleTimeMins)
+                                    .isMandatory(true)
+                                    .build();
+                                gaugeMasterOperationRepository.saveAndFlush(newLink);
+                            } else if (finalCycleTimeMins != null && existingLink.get().getCycleTimeMins() == null) {
+                                GaugeMasterOperation link = existingLink.get();
+                                link.setCycleTimeMins(finalCycleTimeMins);
+                                gaugeMasterOperationRepository.saveAndFlush(link);
                             }
                         }
 
                         String setName = (partNo.isEmpty() ? "" : "[" + partNo + "] ") + partName + " - " + currentOpMaster.getOperationName();
                         if (setName.length() > 255) setName = setName.substring(0, 255);
 
+                        // AI Verification: Prevent duplicates by skipping if it already exists
+                        UUID gaugeId = currentGaugeMaster != null ? currentGaugeMaster.getId() : null;
+                        Optional<PqcQuestionSet> existingSetOpt = gaugeId != null 
+                            ? questionSetRepository.findFirstByFactoryIdAndGaugeMasterIdAndOperationMasterIdAndNameAndIsActiveTrue(factory.getId(), gaugeId, currentOpMaster.getId(), setName)
+                            : Optional.empty();
+
+                        if (existingSetOpt.isPresent()) {
+                            // Skip this question set entirely to prevent duplicate data
+                            skippedSets++;
+                            continue;
+                        }
+
                         PqcQuestionSet set = PqcQuestionSet.builder()
                                 .operationMaster(currentOpMaster)
+                                .gaugeMaster(currentGaugeMaster)
                                 .factory(factory)
                                 .name(setName)
                                 .inspectionFrequency("SHIFT_START")
@@ -508,25 +642,7 @@ public class PqcQuestionSetService {
                                 if (qText.isEmpty()) continue;
 
                                 String method = qPreview.getCheckingMethod() != null ? qPreview.getCheckingMethod().trim() : "D.V.C";
-                                GaugeMaster gaugeMaster = null;
-                                if (!method.isEmpty() && !method.equalsIgnoreCase("Inspection Method") && !method.equals("-")) {
-                                    final String finalGaugeName = method;
-                                    gaugeMaster = gaugeMasterRepository.findFirstByFactoryIdAndGaugeTypeNameAndIsActiveTrue(factory.getId(), finalGaugeName)
-                                            .orElseGet(() -> {
-                                                GaugeMaster newGauge = GaugeMaster.builder()
-                                                        .factory(factory)
-                                                        .gaugeTypeName(finalGaugeName)
-                                                        .categoryCode("INSPECTION")
-                                                        .unitOfMeasurement("mm")
-                                                        .isActive(true)
-                                                        .build();
-                                                return gaugeMasterRepository.save(newGauge);
-                                            });
-                                    if (gaugeMaster.getCreatedAt() == null) {
-                                        gaugesCreated++;
-                                    }
-                                }
-
+                                
                                 QuestionType qType = QuestionType.TEXT;
                                 if ("NUMERIC".equalsIgnoreCase(qPreview.getQuestionType())) {
                                     qType = QuestionType.NUMERIC;
@@ -541,11 +657,10 @@ public class PqcQuestionSetService {
                                         .questionText(qText)
                                         .questionType(qType)
                                         .expectedAnswer(qPreview.getExpectedAnswer())
-                                        .unit(gaugeMaster != null && gaugeMaster.getUnitOfMeasurement() != null ? gaugeMaster.getUnitOfMeasurement() : "mm")
-                                        .minValue(minVal)
-                                        .maxValue(maxVal)
+                                        .checkingMethod(qPreview.getCheckingMethod())
+                                        .minValue(qPreview.getMinValue() != null ? new java.math.BigDecimal(qPreview.getMinValue()) : null)
                                         .isCritical(qPreview.getIsCritical() != null && qPreview.getIsCritical())
-                                        .checkingMethod(method)
+                                        .checkingMethod(qPreview.getCheckingMethod())
                                         .showInPdir(true)
                                         .build();
                                 questionRepository.save(q);
@@ -562,6 +677,7 @@ public class PqcQuestionSetService {
         result.put("questionsCreated", questionsCreated);
         result.put("operationsCreated", operationsCreated);
         result.put("gaugesCreated", gaugesCreated);
+        result.put("skippedSets", skippedSets);
         return result;
     }
 

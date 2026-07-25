@@ -134,11 +134,11 @@ export interface OperationMaster {
   operationName: string;
   operationCode: string;
   department?: string;
-  standardTimeHours?: number;
   skillLevel?: string;
   instructions?: string;
   isOutsourced: boolean;
   isActive: boolean;
+  createdAt?: string;
 }
 
 export interface DashboardSummary {

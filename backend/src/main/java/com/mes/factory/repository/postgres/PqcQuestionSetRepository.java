@@ -11,6 +11,7 @@ import java.util.UUID;
 
 public interface PqcQuestionSetRepository extends JpaRepository<PqcQuestionSet, UUID> {
 
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"operationMaster", "gaugeMaster"})
     List<PqcQuestionSet> findByFactoryIdAndIsActiveTrueOrderByCreatedAtDesc(UUID factoryId);
 
     @Query("SELECT qs FROM PqcQuestionSet qs LEFT JOIN FETCH qs.questions q " +
@@ -23,6 +24,8 @@ public interface PqcQuestionSetRepository extends JpaRepository<PqcQuestionSet, 
            "WHERE qs.operationMaster.id = :operationMasterId AND qs.isActive = true AND qs.gaugeMaster IS NULL " +
            "ORDER BY q.sequenceOrder ASC")
     Optional<PqcQuestionSet> findActiveGlobalByOperationMasterId(UUID operationMasterId);
+
+    Optional<PqcQuestionSet> findFirstByFactoryIdAndGaugeMasterIdAndOperationMasterIdAndNameAndIsActiveTrue(UUID factoryId, UUID gaugeMasterId, UUID operationMasterId, String name);
 
     @Query("SELECT DISTINCT qs FROM PqcQuestionSet qs " +
            "LEFT JOIN FETCH qs.operationMaster " +

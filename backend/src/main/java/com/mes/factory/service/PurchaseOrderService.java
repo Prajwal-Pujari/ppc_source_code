@@ -2,6 +2,7 @@ package com.mes.factory.service;
 
 import com.mes.factory.audit.Auditable;
 import com.mes.factory.dto.request.PurchaseOrderRequest;
+import com.mes.factory.dto.response.PoLineItemOperationResponse;
 import com.mes.factory.dto.response.PurchaseOrderResponse;
 import com.mes.factory.entity.postgres.Customer;
 import com.mes.factory.entity.postgres.Factory;
@@ -14,6 +15,7 @@ import com.mes.factory.entity.postgres.OperationMaster;
 import com.mes.factory.entity.postgres.OperationStatus;
 import com.mes.factory.entity.postgres.PoLineItem;
 import com.mes.factory.entity.postgres.PoLineItemOperation;
+import com.mes.factory.entity.postgres.MachineMaster;
 import com.mes.factory.entity.postgres.PoStatus;
 import com.mes.factory.entity.postgres.PriorityLevel;
 import com.mes.factory.entity.postgres.PurchaseOrder;
@@ -27,6 +29,7 @@ import com.mes.factory.repository.postgres.GaugeMasterRepository;
 import com.mes.factory.repository.postgres.GaugeOperationRepository;
 import com.mes.factory.repository.postgres.GaugeRepository;
 import com.mes.factory.repository.postgres.OperationMasterRepository;
+import com.mes.factory.repository.postgres.MachineMasterRepository;
 import com.mes.factory.repository.postgres.PoLineItemRepository;
 import com.mes.factory.repository.postgres.PurchaseOrderRepository;
 import com.mes.factory.repository.postgres.UserRepository;
@@ -67,6 +70,7 @@ public class PurchaseOrderService {
     private final QrCodeService qrCodeService;
     private final MesEventPublisher eventPublisher;
     private final ReportConfigurationRepository reportConfigRepo;
+    private final MachineMasterRepository machineMasterRepository;
 
     public PurchaseOrderService(PurchaseOrderRepository purchaseOrderRepository,
                                  PoLineItemRepository poLineItemRepository,
@@ -80,6 +84,7 @@ public class PurchaseOrderService {
                                  GaugeMasterService gaugeMasterService,
                                  QrCodeService qrCodeService,
                                  ReportConfigurationRepository reportConfigRepo,
+                                 MachineMasterRepository machineMasterRepository,
                                  MesEventPublisher eventPublisher) {
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.poLineItemRepository = poLineItemRepository;
@@ -93,6 +98,7 @@ public class PurchaseOrderService {
         this.gaugeMasterService = gaugeMasterService;
         this.qrCodeService = qrCodeService;
         this.reportConfigRepo = reportConfigRepo;
+        this.machineMasterRepository = machineMasterRepository;
         this.eventPublisher = eventPublisher;
     }
 
@@ -185,6 +191,20 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
                         lineItem.getOperations().add(plio);
                     }
                     poLineItemRepository.save(lineItem);
+                } else {
+                    // Copy default operations from GaugeMaster to PoLineItem
+                    List<GaugeMasterOperation> defaults = gaugeMasterService.getDefaultOperationSequenceEntities(gm.getId());
+                    for (GaugeMasterOperation gmo : defaults) {
+                        PoLineItemOperation plio = PoLineItemOperation.builder()
+                                .poLineItem(lineItem)
+                                .operationMaster(gmo.getOperationMaster())
+                                .sequenceOrder(gmo.getSequenceOrder())
+                                .isMandatory(gmo.getIsMandatory() != null ? gmo.getIsMandatory() : true)
+                                .cycleTimeMins(gmo.getCycleTimeMins())
+                                .build();
+                        lineItem.getOperations().add(plio);
+                    }
+                    poLineItemRepository.save(lineItem);
                 }
 
                 po.getLineItems().add(lineItem);
@@ -262,6 +282,8 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
                 GaugeOperation gaugeOp = GaugeOperation.builder()
                         .gauge(gauge)
                         .operationMaster(entry.operationMaster)
+                        .machineMaster(entry.machineMaster)
+                        .cycleTimeMins(entry.cycleTimeMins)
                         .operationName(entry.operationMaster.getOperationName())
                         .sequenceOrder(entry.sequenceOrder)
                         .status(OperationStatus.PENDING)
@@ -336,6 +358,27 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
                             .materialGradeOverride(li.getMaterialGradeOverride())
                             .lineNotes(li.getLineNotes())
                             .gaugeMaster(gmInfo)
+                            .operations(li.getOperations() != null ? li.getOperations().stream().map(op -> {
+                                PoLineItemOperationResponse.MachineMasterInfo mInfo = null;
+                                if (op.getMachineMaster() != null) {
+                                    mInfo = PoLineItemOperationResponse.MachineMasterInfo.builder()
+                                            .id(op.getMachineMaster().getId())
+                                            .machineName(op.getMachineMaster().getMachineName())
+                                            .machineCode(op.getMachineMaster().getMachineCode())
+                                            .build();
+                                }
+                                return PoLineItemOperationResponse.builder()
+                                        .id(op.getId())
+                                        .operationMasterId(op.getOperationMaster().getId())
+                                        .operationName(op.getOperationMaster().getOperationName())
+                                        .operationCode(op.getOperationMaster().getOperationCode())
+                                        .department(op.getOperationMaster().getDepartment())
+                                        .sequenceOrder(op.getSequenceOrder())
+                                        .isMandatory(op.getIsMandatory())
+                                        .cycleTimeMins(op.getCycleTimeMins())
+                                        .machineMaster(mInfo)
+                                        .build();
+                            }).collect(Collectors.toList()) : java.util.List.of())
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -364,6 +407,21 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
                 .build();
 
         lineItem = poLineItemRepository.save(lineItem);
+
+        // Copy default operations from GaugeMaster to PoLineItem
+        List<GaugeMasterOperation> defaults = gaugeMasterService.getDefaultOperationSequenceEntities(gm.getId());
+        for (GaugeMasterOperation gmo : defaults) {
+            PoLineItemOperation plio = PoLineItemOperation.builder()
+                    .poLineItem(lineItem)
+                    .operationMaster(gmo.getOperationMaster())
+                    .sequenceOrder(gmo.getSequenceOrder())
+                    .isMandatory(gmo.getIsMandatory() != null ? gmo.getIsMandatory() : true)
+                    .cycleTimeMins(gmo.getCycleTimeMins())
+                    .build();
+            lineItem.getOperations().add(plio);
+        }
+        
+        poLineItemRepository.save(lineItem);
         log.info("Added line item to PO {}: gauge={}, qty={}", po.getPoNumber(), gm.getGaugeTypeName(), request.getQuantity());
         return lineItem;
     }
@@ -374,8 +432,147 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
         if (po.getStatus() != PoStatus.DRAFT) {
             throw new BusinessException("Line items can only be deleted from DRAFT POs", "INVALID_STATUS");
         }
-        poLineItemRepository.deleteById(lineItemId);
-        log.info("Deleted line item {} from PO {}", lineItemId, po.getPoNumber());
+
+        PoLineItem lineItem = poLineItemRepository.findById(lineItemId)
+                .orElseThrow(() -> new ResourceNotFoundException("PoLineItem", "id", lineItemId));
+
+        if (!lineItem.getPurchaseOrder().getId().equals(poId)) {
+            throw new BusinessException("Line item does not belong to this PO", "INVALID_ASSOCIATION");
+        }
+
+        poLineItemRepository.delete(lineItem);
+        po.getLineItems().remove(lineItem);
+    }
+    
+    @Transactional
+    public PurchaseOrder updatePurchaseOrder(UUID poId, com.mes.factory.dto.request.PurchaseOrderUpdateRequest request) {
+        PurchaseOrder po = getPurchaseOrder(poId);
+        if (po.getStatus() != PoStatus.DRAFT) {
+            throw new BusinessException("Only DRAFT POs can be edited", "INVALID_STATUS");
+        }
+        
+        if (request.getOrderDate() != null) {
+            po.setOrderDate(request.getOrderDate());
+        }
+        if (request.getExpectedDeliveryDate() != null) {
+            po.setExpectedDeliveryDate(request.getExpectedDeliveryDate());
+        }
+        
+        return purchaseOrderRepository.save(po);
+    }
+
+    @Transactional
+    public com.mes.factory.dto.response.PoLineItemResponse updateLineItem(UUID poId, UUID lineItemId, com.mes.factory.dto.request.LineItemUpdateRequest request) {
+        PurchaseOrder po = getPurchaseOrder(poId);
+        if (po.getStatus() != PoStatus.DRAFT) {
+            throw new BusinessException("Line items can only be updated in DRAFT POs", "INVALID_STATUS");
+        }
+
+        PoLineItem lineItem = poLineItemRepository.findById(lineItemId)
+                .orElseThrow(() -> new ResourceNotFoundException("PoLineItem", "id", lineItemId));
+
+        if (!lineItem.getPurchaseOrder().getId().equals(poId)) {
+            throw new BusinessException("Line item does not belong to this PO", "INVALID_ASSOCIATION");
+        }
+
+        if (request.getQuantity() != null) {
+            lineItem.setQuantity(request.getQuantity());
+        }
+
+        lineItem = poLineItemRepository.save(lineItem);
+        
+        com.mes.factory.dto.response.PoLineItemResponse.GaugeMasterInfo gmInfo = null;
+        if (lineItem.getGaugeMaster() != null) {
+            gmInfo = com.mes.factory.dto.response.PoLineItemResponse.GaugeMasterInfo.builder()
+                    .id(lineItem.getGaugeMaster().getId())
+                    .gaugeTypeName(lineItem.getGaugeMaster().getGaugeTypeName())
+                    .categoryCode(lineItem.getGaugeMaster().getCategoryCode())
+                    .defaultMaterialGrade(lineItem.getGaugeMaster().getDefaultMaterialGrade())
+                    .unitOfMeasurement(lineItem.getGaugeMaster().getUnitOfMeasurement())
+                    .build();
+        }
+
+        return com.mes.factory.dto.response.PoLineItemResponse.builder()
+                .id(lineItem.getId())
+                .nominalSize(lineItem.getNominalSize())
+                .sizeUnit(lineItem.getSizeUnit())
+                .quantity(lineItem.getQuantity())
+                .materialGradeOverride(lineItem.getMaterialGradeOverride())
+                .lineNotes(lineItem.getLineNotes())
+                .gaugeMaster(gmInfo)
+                .operations(lineItem.getOperations() != null ? lineItem.getOperations().stream().map(op -> {
+                    com.mes.factory.dto.response.PoLineItemOperationResponse.MachineMasterInfo mInfo = null;
+                    if (op.getMachineMaster() != null) {
+                        mInfo = com.mes.factory.dto.response.PoLineItemOperationResponse.MachineMasterInfo.builder()
+                                .id(op.getMachineMaster().getId())
+                                .machineName(op.getMachineMaster().getMachineName())
+                                .machineCode(op.getMachineMaster().getMachineCode())
+                                .build();
+                    }
+                    return com.mes.factory.dto.response.PoLineItemOperationResponse.builder()
+                            .id(op.getId())
+                            .operationMasterId(op.getOperationMaster().getId())
+                            .operationName(op.getOperationMaster().getOperationName())
+                            .operationCode(op.getOperationMaster().getOperationCode())
+                            .department(op.getOperationMaster().getDepartment())
+                            .sequenceOrder(op.getSequenceOrder())
+                            .isMandatory(op.getIsMandatory())
+                            .cycleTimeMins(op.getCycleTimeMins())
+                            .machineMaster(mInfo)
+                            .build();
+                }).collect(java.util.stream.Collectors.toList()) : java.util.List.of())
+                .build();
+    }
+    
+    @Transactional
+    public PoLineItemOperationResponse updateLineItemOperation(UUID poId, UUID lineItemId, UUID opId, UUID machineId, java.math.BigDecimal cycleTimeMins) {
+        PurchaseOrder po = getPurchaseOrder(poId);
+        if (po.getStatus() != PoStatus.DRAFT) {
+            throw new BusinessException("Operations can only be modified on DRAFT POs", "INVALID_STATUS");
+        }
+        
+        PoLineItem lineItem = poLineItemRepository.findById(lineItemId)
+                .orElseThrow(() -> new ResourceNotFoundException("PoLineItem", "id", lineItemId));
+        
+        PoLineItemOperation operation = lineItem.getOperations().stream()
+                .filter(op -> op.getId().equals(opId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("PoLineItemOperation", "id", opId));
+                
+        if (machineId != null) {
+            MachineMaster machine = machineMasterRepository.findById(machineId)
+                    .orElseThrow(() -> new ResourceNotFoundException("MachineMaster", "id", machineId));
+            operation.setMachineMaster(machine);
+        } else {
+            operation.setMachineMaster(null);
+        }
+        
+        if (cycleTimeMins != null) {
+            operation.setCycleTimeMins(cycleTimeMins);
+        }
+        
+        poLineItemRepository.save(lineItem);
+        
+        PoLineItemOperationResponse.MachineMasterInfo mInfo = null;
+        if (operation.getMachineMaster() != null) {
+            mInfo = PoLineItemOperationResponse.MachineMasterInfo.builder()
+                    .id(operation.getMachineMaster().getId())
+                    .machineName(operation.getMachineMaster().getMachineName())
+                    .machineCode(operation.getMachineMaster().getMachineCode())
+                    .build();
+        }
+        
+        return PoLineItemOperationResponse.builder()
+                .id(operation.getId())
+                .operationMasterId(operation.getOperationMaster().getId())
+                .operationName(operation.getOperationMaster().getOperationName())
+                .operationCode(operation.getOperationMaster().getOperationCode())
+                .department(operation.getOperationMaster().getDepartment())
+                .sequenceOrder(operation.getSequenceOrder())
+                .isMandatory(operation.getIsMandatory())
+                .cycleTimeMins(operation.getCycleTimeMins())
+                .machineMaster(mInfo)
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -389,13 +586,13 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
         // Check for custom operations on the line item
         if (lineItem.getOperations() != null && !lineItem.getOperations().isEmpty()) {
             for (PoLineItemOperation plio : lineItem.getOperations()) {
-                entries.add(new OperationSequenceEntry(plio.getOperationMaster(), plio.getSequenceOrder()));
+                entries.add(new OperationSequenceEntry(plio.getOperationMaster(), plio.getSequenceOrder(), plio.getMachineMaster(), plio.getCycleTimeMins()));
             }
         } else {
             // Fall back to gauge master default operations
             List<GaugeMasterOperation> defaults = gaugeMasterService.getDefaultOperationSequenceEntities(gm.getId());
             for (GaugeMasterOperation gmo : defaults) {
-                entries.add(new OperationSequenceEntry(gmo.getOperationMaster(), gmo.getSequenceOrder()));
+                entries.add(new OperationSequenceEntry(gmo.getOperationMaster(), gmo.getSequenceOrder(), null, gmo.getCycleTimeMins()));
             }
         }
 
@@ -403,5 +600,5 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
         return entries;
     }
 
-    private record OperationSequenceEntry(OperationMaster operationMaster, int sequenceOrder) {}
+    private record OperationSequenceEntry(OperationMaster operationMaster, int sequenceOrder, com.mes.factory.entity.postgres.MachineMaster machineMaster, java.math.BigDecimal cycleTimeMins) {}
 }

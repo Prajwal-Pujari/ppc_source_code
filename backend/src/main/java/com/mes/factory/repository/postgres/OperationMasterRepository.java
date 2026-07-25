@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -14,7 +15,7 @@ public interface OperationMasterRepository extends JpaRepository<OperationMaster
 
     Page<OperationMaster> findByFactoryIdAndIsActiveTrue(UUID factoryId, Pageable pageable);
 
-    Optional<OperationMaster> findByFactoryIdAndOperationCode(UUID factoryId, String operationCode);
-
+    List<OperationMaster> findByFactoryIdAndIsActiveTrueOrderByCreatedAtDesc(UUID factoryId);
+    
     Optional<OperationMaster> findFirstByFactoryIdAndOperationNameAndIsActiveTrue(UUID factoryId, String operationName);
 }

@@ -12,5 +12,7 @@ public interface GaugeMasterOperationRepository extends JpaRepository<GaugeMaste
 
     List<GaugeMasterOperation> findByGaugeMasterIdOrderBySequenceOrder(UUID gaugeMasterId);
 
+    java.util.Optional<GaugeMasterOperation> findFirstByGaugeMasterIdAndOperationMasterId(UUID gaugeMasterId, UUID operationMasterId);
+
     void deleteByGaugeMasterIdAndOperationMasterId(UUID gaugeMasterId, UUID operationMasterId);
 }

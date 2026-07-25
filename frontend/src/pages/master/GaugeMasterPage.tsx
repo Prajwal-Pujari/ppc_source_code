@@ -25,6 +25,7 @@ interface LinkedOp {
   operationMasterId?: string;  // from GaugeMasterOperationResponse
   operationName?: string;
   operationCode?: string;
+  cycleTimeMins?: number;
   operationMaster?: {
     id: string;
     operationName: string;
@@ -495,12 +496,15 @@ function ManageOperationsModal({ gauge, onClose }: { gauge: any; onClose: () => 
                       <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--charcoal)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {name}
                       </p>
-                      {(code || dept) && (
-                        <p style={{ fontSize: 11, color: 'var(--ash)', marginTop: 1 }}>
-                          {code && <span className="font-mono">{code}</span>}
-                          {code && dept && ' · '}{dept}
-                        </p>
-                      )}
+                      <p style={{ fontSize: 11, color: 'var(--ash)', marginTop: 1 }}>
+                        {code && <span className="font-mono">{code}</span>}
+                        {code && dept && ' • '}{dept}
+                        {op.cycleTimeMins != null && (
+                          <span style={{ marginLeft: 8, color: 'var(--copper-bronze)' }}>
+                            ⏱ {op.cycleTimeMins} mins
+                          </span>
+                        )}
+                      </p>
                     </div>
                     <button
                       onClick={() => handleRemove(op)}

@@ -10,7 +10,8 @@ export interface MachineMaster {
 
 export const machinesApi = {
   getAll: () => api.get<MachineMaster[]>('/machines'),
-  create: (data: MachineMaster) => api.post<MachineMaster>('/machines', data),
+  getEvents: () => api.get<any[]>('/machines/events'),
+  create: (data: Partial<MachineMaster>) => api.post<MachineMaster>('/machines', data),
   update: (id: string, data: MachineMaster) => api.put<MachineMaster>(`/machines/${id}`, data),
   delete: (id: string) => api.delete(`/machines/${id}`),
 };

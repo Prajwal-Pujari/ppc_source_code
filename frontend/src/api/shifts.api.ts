@@ -6,6 +6,7 @@ export interface FactoryShift {
   shiftName: string;
   startTime: string; // HH:mm:ss format
   endTime: string;   // HH:mm:ss format
+  breakDurationMins: number;
   isActive: boolean;
 }
 
@@ -13,6 +14,7 @@ export interface CreateShiftRequest {
   shiftName: string;
   startTime: string;
   endTime: string;
+  breakDurationMins: number;
 }
 
 export const shiftsApi = {

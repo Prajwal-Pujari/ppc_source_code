@@ -9,12 +9,13 @@ import { getOperationMasters } from '../../api/operation-master.api';
 import { getGaugeMasters } from '../../api/gauge-master.api';
 import type { PqcQuestionSet, OperationMaster, PqcQuestion, QuestionType, GaugeMaster } from '../../types/domain.types';
 import toast from 'react-hot-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ControlPlanCanvasModal from '../../components/ui/ControlPlanCanvasModal';
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function PqcQuestionSetMasterPage() {
+  const queryClient = useQueryClient();
   const [questionSets, setQuestionSets] = useState<PqcQuestionSet[]>([]);
   const [operations, setOperations] = useState<OperationMaster[]>([]);
   const [gaugeMasters, setGaugeMasters] = useState<GaugeMaster[]>([]);
@@ -63,6 +64,14 @@ export default function PqcQuestionSetMasterPage() {
       const res = await pqcApi.importQuestionSetsFromExcel(importingFile);
       setImportResult(res.data);
       toast.success('Successfully imported Control Plan!');
+      
+      // Invalidate all related caches so other pages reflect the imported data immediately
+      queryClient.invalidateQueries({ queryKey: ['gauge-masters'] });
+      queryClient.invalidateQueries({ queryKey: ['gauge-masters-list'] });
+      queryClient.invalidateQueries({ queryKey: ['operation-masters'] });
+      queryClient.invalidateQueries({ queryKey: ['gauge-master-ops'] });
+      queryClient.invalidateQueries({ queryKey: ['operation-masters-all'] });
+      
       fetchData();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to import Excel control plan');
@@ -132,18 +141,19 @@ export default function PqcQuestionSetMasterPage() {
             ) : (
               operations.map((op) => {
                 const sets = qsByOp[op.id] || [];
+                const isExpanded = expandedOpId === op.id;
                 return (
                   <React.Fragment key={op.id}>
                     <tr>
-                      <td>
+                      <td style={{ color: 'var(--slate)' }}>
                         <button
-                          onClick={() => setExpandedOpId(expandedOpId === op.id ? null : op.id)}
+                          onClick={() => setExpandedOpId(isExpanded ? null : op.id)}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ash)', padding: 2 }}
                         >
-                          {expandedOpId === op.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                         </button>
                       </td>
-                      <td style={{ fontWeight: 600, color: 'var(--charcoal)' }}>{op.operationName}</td>
+                      <td style={{ fontWeight: 500, color: 'var(--charcoal)' }}>{op.operationName}</td>
                       <td>
                         <span className="badge" style={{ background: 'var(--linen)', color: 'var(--copper-bronze)' }}>
                           {op.operationCode}
@@ -161,7 +171,7 @@ export default function PqcQuestionSetMasterPage() {
                         </button>
                       </td>
                     </tr>
-                    {expandedOpId === op.id && (
+                    {isExpanded && (
                       <tr>
                         <td colSpan={6} style={{ padding: '0 16px 16px 48px', background: 'var(--bone-white)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -185,7 +195,7 @@ export default function PqcQuestionSetMasterPage() {
                                         <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--charcoal)' }}>{qs.name}</p>
                                         {qs.gaugeMaster ? (
                                           <span style={{ fontSize: 10, background: '#f0fdf4', color: '#166534', padding: '2px 6px', borderRadius: 4, border: '1px solid #bbf7d0' }}>
-                                            Part: {qs.gaugeMaster.gaugeTypeName}
+                                            Gauge: {qs.gaugeMaster.gaugeTypeName}
                                           </span>
                                         ) : (
                                           <span style={{ fontSize: 10, background: '#f8fafc', color: '#475569', padding: '2px 6px', borderRadius: 4, border: '1px solid #e2e8f0' }}>
@@ -266,12 +276,6 @@ function ManageQuestionSetsModal({
   const [showLibrary, setShowLibrary] = useState(false);
   const [libSearch, setLibSearch] = useState('');
   const [libraryData, setLibraryData] = useState<PqcQuestionSet[]>([]);
-
-  const { data: gmModalData } = useQuery({
-    queryKey: ['gauge-masters-list'],
-    queryFn: () => getGaugeMasters({ size: 1000, isActive: true }),
-  });
-  const partsList = gmModalData?.data?.content || gaugeMasters || [];
 
   // Fetch ALL question sets fresh from API for the library
   useEffect(() => {
@@ -418,7 +422,8 @@ function ManageQuestionSetsModal({
               <span className="badge" style={{ background: 'var(--linen)', color: 'var(--copper-bronze)', marginRight: 6 }}>
                 {operation.operationCode}
               </span>
-              {operation.operationName}
+              <span style={{ fontWeight: 600 }}>{operation.operationName}</span>
+              {operation.department && <span style={{ marginLeft: 8, color: 'var(--ash)' }}>• Dep: {operation.department}</span>}
             </p>
           </div>
           <button onClick={editingSet ? () => setEditingSet(null) : onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ash)', padding: 4 }}>
@@ -450,7 +455,7 @@ function ManageQuestionSetsModal({
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Applies To Part (Optional)</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Gauge (Optional)</label>
                   <select
                     className="input"
                     value={editingSet.gaugeMaster?.id || ''}
@@ -459,14 +464,14 @@ function ManageQuestionSetsModal({
                       if (!gaugeId) {
                         setEditingSet({ ...editingSet, gaugeMaster: undefined });
                       } else {
-                        const gauge = partsList.find((g: any) => g.id === gaugeId);
-                        if (gauge) setEditingSet({ ...editingSet, gaugeMaster: gauge });
+                        const gm = gaugeMasters.find((g: any) => g.id === gaugeId);
+                        if (gm) setEditingSet({ ...editingSet, gaugeMaster: gm });
                       }
                     }}
                   >
-                    <option value="">Global / All Parts</option>
-                    {partsList.map((g: any) => (
-                      <option key={g.id} value={g.id}>{g.gaugeTypeName}</option>
+                    <option value="">Global / No Specific Gauge</option>
+                    {gaugeMasters.map((g: any) => (
+                      <option key={g.id} value={g.id}>{g.categoryCode} - {g.gaugeTypeName}</option>
                     ))}
                   </select>
                 </div>

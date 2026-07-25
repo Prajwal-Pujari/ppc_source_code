@@ -30,6 +30,7 @@ import PqcApprovalsDashboard from './pages/pqc/PqcApprovalsDashboard';
 import PqcDashboardPage from '@/pages/pqc/PqcDashboardPage';
 import PqcSettingsPage from '@/pages/pqc/PqcSettingsPage';
 import PqcPoTrackerPage from '@/pages/pqc/PqcPoTrackerPage';
+import MachineSchedulePage from '@/pages/pqc/MachineSchedulePage';
 import { LpaLayout } from '@/components/layout/LpaLayout';
 import { LpaDashboardPage } from '@/pages/lpa/LpaDashboardPage';
 import { LpaExecutePage } from '@/pages/lpa/LpaExecutePage';
@@ -83,10 +84,12 @@ export default function App() {
               <Route path="/inspection" element={<InspectorLiveEntryPage />} />
             </Route>
 
-            {/* ── PQC Module (/pqc/*) ── */}
+            {/* 💎 PQC Module (/pqc/*) 💎 */}
             <Route element={<PqcLayout />}>
               <Route path="/pqc/dashboard" element={<PqcDashboardPage />} />
               <Route path="/pqc/po-tracker" element={<PqcPoTrackerPage />} />
+              <Route path="/pqc/po-tracker/:id" element={<PurchaseOrderDetailPage isPqcMode={true} />} />
+              <Route path="/pqc/machine-schedule" element={<MachineSchedulePage />} />
               <Route path="/pqc/inspect" element={<InspectorLiveEntryPage />} />
               <Route path="/pqc/reports" element={<PqcReportDashboard />} />
               <Route path="/pqc/approvals" element={<PqcApprovalsDashboard />} />

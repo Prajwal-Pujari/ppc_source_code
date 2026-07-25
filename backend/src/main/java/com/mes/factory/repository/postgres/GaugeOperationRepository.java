@@ -15,6 +15,9 @@ import java.util.UUID;
 @Repository
 public interface GaugeOperationRepository extends JpaRepository<GaugeOperation, UUID> {
 
+    @Query("SELECT go FROM GaugeOperation go WHERE go.machineMaster.id = :machineId AND go.status = com.mes.factory.entity.postgres.OperationStatus.IN_PROGRESS ORDER BY go.actualStart DESC LIMIT 1")
+    Optional<GaugeOperation> findActiveOperationByMachineId(@Param("machineId") UUID machineId);
+
     List<GaugeOperation> findByGaugeIdOrderBySequenceOrder(UUID gaugeId);
 
     @Query("SELECT go FROM GaugeOperation go " +

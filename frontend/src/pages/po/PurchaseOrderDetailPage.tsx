@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useUiStore } from '@/store/uiStore';
-import { getPurchaseOrder, getPurchaseOrderGauges, getPurchaseOrderLineItems, confirmPurchaseOrder } from '@/api/purchase-orders.api';
+import { getPurchaseOrder, getPurchaseOrderGauges, getPurchaseOrderLineItems, confirmPurchaseOrder, updatePurchaseOrder, updateLineItem } from '@/api/purchase-orders.api';
 import { getGaugeMasters } from '@/api/gauge-master.api';
+import { machinesApi } from '@/api/machines.api';
+import { shiftsApi } from '@/api/shifts.api';
+import { updateLineItemOperation } from '@/api/purchase-orders.api';
 import api from '@/lib/axios';
 import type { PurchaseOrder, Gauge } from '@/types/domain.types';
-import { ArrowLeft, CheckCircle, Clock, AlertTriangle, Package, Plus, Edit3, Trash2, Layers } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, AlertTriangle, Package, Plus, Edit3, Trash2, Layers, ChevronDown, ChevronRight, Settings } from 'lucide-react';
 
 import PoProcessingLoader from '@/components/ui/loader/PoProcessingLoader';
 
@@ -19,12 +22,17 @@ const gaugeBadge: Record<string, string> = {
   COMPLETED: 'badge-completed', REJECTED: 'badge-rejected',
 };
 
-export default function PurchaseOrderDetailPage() {
+export default function PurchaseOrderDetailPage({ isPqcMode = false }: { isPqcMode?: boolean }) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const setPageTitle = useUiStore((s: any) => s.setPageTitle);
   const queryClient = useQueryClient();
   const [showAddItem, setShowAddItem] = useState(false);
+  const [expandedLineItemId, setExpandedLineItemId] = useState<string | null>(null);
+  const [localQuantities, setLocalQuantities] = useState<Record<string, number>>({});
+  const [localCycleTimes, setLocalCycleTimes] = useState<Record<string, number>>({});
+  const qtyTimeoutRef = useRef<any>(null);
+  const cycleTimeTimeoutRef = useRef<any>(null);
   const [newItem, setNewItem] = useState({ gaugeMasterId: '', nominalSize: '', quantity: '1', sizeUnit: 'mm', materialGradeOverride: '', lineNotes: '' });
 
   const { data: poData, isLoading: poLoading } = useQuery({
@@ -43,10 +51,20 @@ export default function PurchaseOrderDetailPage() {
     queryKey: ['gauge-masters-dropdown'], queryFn: () => getGaugeMasters({ size: 1000, isActive: true }), enabled: showAddItem,
   });
 
+  const { data: machinesData } = useQuery({
+    queryKey: ['machines-all'], queryFn: () => machinesApi.getAll(),
+  });
+
+  const { data: shiftsData } = useQuery({
+    queryKey: ['shifts-all'], queryFn: () => shiftsApi.getAll(),
+  });
+
   const po: PurchaseOrder | undefined = poData?.data;
   const gauges: Gauge[] = gaugesData?.data ?? [];
   const lineItems: any[] = lineItemsData?.data ?? [];
   const gaugeMasters = gaugeMastersData?.data?.content || [];
+  const machines = machinesData?.data || [];
+  const shifts = shiftsData?.data || [];
 
   useEffect(() => { if (po?.poNumber) setPageTitle(`PO: ${po.poNumber}`); }, [po, setPageTitle]);
 
@@ -56,6 +74,21 @@ export default function PurchaseOrderDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['po', id] });
       queryClient.invalidateQueries({ queryKey: ['po-gauges', id] });
       queryClient.invalidateQueries({ queryKey: ['po-line-items', id] });
+    },
+  });
+
+  const updatePoMut = useMutation({
+    mutationFn: (data: { orderDate?: string; expectedDeliveryDate?: string }) => updatePurchaseOrder(id!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['po', id] });
+    },
+  });
+
+  const updateLineItemMut = useMutation({
+    mutationFn: ({ lineItemId, quantity }: { lineItemId: string, quantity: number }) => updateLineItem(id!, lineItemId, { quantity }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['po-line-items', id] });
+      queryClient.invalidateQueries({ queryKey: ['po', id] });
     },
   });
 
@@ -73,6 +106,8 @@ export default function PurchaseOrderDetailPage() {
     },
   });
 
+
+
   const deleteLineItemMut = useMutation({
     mutationFn: async (lineItemId: string) => {
       const res = await api.delete(`/purchase-orders/${id}/line-items/${lineItemId}`);
@@ -83,6 +118,33 @@ export default function PurchaseOrderDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['po', id] });
     },
   });
+
+  const updateOperationMut = useMutation({
+    mutationFn: (data: { lineItemId: string; opId: string; machineMasterId: string | null; cycleTimeMins: number | null }) => 
+      updateLineItemOperation(id!, data.lineItemId, data.opId, { machineMasterId: data.machineMasterId, cycleTimeMins: data.cycleTimeMins }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['po-line-items', id] });
+    },
+  });
+
+  const handleQuantityChange = useCallback((lineItemId: string, valStr: string) => {
+    const newQty = parseInt(valStr, 10);
+    if (isNaN(newQty) || newQty <= 0) return;
+    setLocalQuantities(prev => ({ ...prev, [lineItemId]: newQty }));
+    if (qtyTimeoutRef.current) clearTimeout(qtyTimeoutRef.current);
+    qtyTimeoutRef.current = setTimeout(() => {
+      updateLineItemMut.mutate({ lineItemId, quantity: newQty });
+    }, 500);
+  }, [updateLineItemMut]);
+
+  const handleCycleTimeChange = useCallback((lineItemId: string, op: any, valStr: string) => {
+    const val = valStr ? parseFloat(valStr) : 0;
+    setLocalCycleTimes(prev => ({ ...prev, [op.id]: val }));
+    if (cycleTimeTimeoutRef.current) clearTimeout(cycleTimeTimeoutRef.current);
+    cycleTimeTimeoutRef.current = setTimeout(() => {
+      updateOperationMut.mutate({ lineItemId, opId: op.id, machineMasterId: op.machineMaster?.id || null, cycleTimeMins: val || null });
+    }, 500);
+  }, [updateOperationMut]);
 
   if (poLoading) {
     return <PoProcessingLoader />;
@@ -100,14 +162,24 @@ export default function PurchaseOrderDetailPage() {
   const progress = po.totalGauges > 0 ? Math.round((po.completedGauges / po.totalGauges) * 100) : 0;
   const inProgressCount = gauges.filter(g => g.status === 'IN_PRODUCTION').length;
   const isDraft = po.status === 'DRAFT';
+  
+  // Calculate available days for production
+  let daysAvailable = 1;
+  if (po.orderDate) {
+    const start = new Date(po.orderDate);
+    const end = po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate) : start;
+    let diffTime = end.getTime() - start.getTime();
+    if (diffTime < 0) diffTime = 0;
+    daysAvailable = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  }
 
   return (
     <div>
-      <button onClick={() => navigate('/purchase-orders')} style={{
+      <button onClick={() => navigate(isPqcMode ? '/pqc/po-tracker' : '/purchase-orders')} style={{
         display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer',
         color: 'var(--copper-bronze)', fontSize: 13, fontWeight: 500, marginBottom: 20,
       }}>
-        <ArrowLeft size={16} /> Back to Orders
+        <ArrowLeft size={16} /> {isPqcMode ? 'Back to PO Tracker' : 'Back to Orders'}
       </button>
 
       {/* Header Card */}
@@ -120,7 +192,7 @@ export default function PurchaseOrderDetailPage() {
             </div>
             <p style={{ fontSize: 15, color: 'var(--slate)' }}>{po.customer?.name ?? '—'}</p>
           </div>
-          {isDraft && lineItems.length > 0 && (
+          {!isPqcMode && isDraft && lineItems.length > 0 && (
             <button className="btn btn-primary" onClick={() => confirmMut.mutate()} disabled={confirmMut.isPending}>
               <CheckCircle size={16} style={{ marginRight: 6 }} />
               {confirmMut.isPending ? 'Confirming…' : 'Confirm PO'}
@@ -129,8 +201,36 @@ export default function PurchaseOrderDetailPage() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24, marginTop: 24 }}>
-          <InfoBlock label="Order Date" value={po.orderDate} mono />
-          <InfoBlock label="Delivery Date" value={po.expectedDeliveryDate || '—'} mono />
+          {isDraft && !isPqcMode ? (
+            <div>
+              <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--ash)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Order Date</span>
+              <input type="date" className="input" defaultValue={po.orderDate} 
+                onBlur={(e) => {
+                  if (e.target.value && e.target.value !== po.orderDate) {
+                    updatePoMut.mutate({ orderDate: e.target.value });
+                  }
+                }}
+                style={{ marginTop: 4, width: '100%', padding: '6px 12px', height: 32 }} />
+            </div>
+          ) : (
+            <InfoBlock label="Order Date" value={po.orderDate} mono />
+          )}
+          
+          {isDraft && !isPqcMode ? (
+            <div>
+              <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--ash)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Delivery Date</span>
+              <input type="date" className="input" defaultValue={po.expectedDeliveryDate || ''} 
+                onBlur={(e) => {
+                  if (e.target.value !== (po.expectedDeliveryDate || '')) {
+                    updatePoMut.mutate({ expectedDeliveryDate: e.target.value || undefined });
+                  }
+                }}
+                style={{ marginTop: 4, width: '100%', padding: '6px 12px', height: 32 }} />
+            </div>
+          ) : (
+            <InfoBlock label="Delivery Date" value={po.expectedDeliveryDate || '---'} mono />
+          )}
+          
           <InfoBlock label="Priority" value={po.priority}
             color={po.priority === 'URGENT' ? 'var(--status-rejected)' : po.priority === 'HIGH' ? 'var(--status-in-progress)' : 'var(--ash)'} />
           <div>
@@ -161,7 +261,7 @@ export default function PurchaseOrderDetailPage() {
       </div>
 
       {/* Draft Banner */}
-      {isDraft && (
+      {!isPqcMode && isDraft && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 10,
           background: 'rgba(139,105,20,0.06)', border: '1px solid rgba(139,105,20,0.2)', marginBottom: 16, fontSize: 13, color: 'var(--copper-bronze)',
@@ -179,7 +279,7 @@ export default function PurchaseOrderDetailPage() {
             <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--charcoal)' }}>Line Items</h3>
             {!lineItemsLoading && <span style={{ fontSize: 12, color: 'var(--ash)', background: 'var(--bone-white)', borderRadius: 10, padding: '1px 8px' }}>{lineItems.length}</span>}
           </div>
-          {isDraft && (
+          {!isPqcMode && isDraft && (
             <button className="btn btn-primary" style={{ minHeight: 34, fontSize: 12, padding: '0 14px' }} onClick={() => setShowAddItem(true)}>
               <Plus size={14} style={{ marginRight: 4 }} /> Add Item
             </button>
@@ -188,6 +288,7 @@ export default function PurchaseOrderDetailPage() {
         <table>
           <thead>
             <tr>
+              <th style={{ width: 40 }}></th>
               <th>Part / Product Name</th>
               <th>Nominal Size</th>
               <th>Unit</th>
@@ -200,34 +301,205 @@ export default function PurchaseOrderDetailPage() {
           <tbody>
             {lineItemsLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <tr key={i}>{Array.from({ length: isDraft ? 7 : 6 }).map((_, j) => (<td key={j}><div className="skeleton" style={{ height: 16, width: '80%' }} /></td>))}</tr>
+                <tr key={i}>{Array.from({ length: (!isPqcMode && isDraft) ? 8 : 7 }).map((_, j) => (<td key={j}><div className="skeleton" style={{ height: 16, width: '80%' }} /></td>))}</tr>
               ))
             ) : lineItems.length === 0 ? (
               <tr>
-                <td colSpan={isDraft ? 7 : 6} style={{ textAlign: 'center', padding: 40, color: 'var(--ash)' }}>
+                <td colSpan={(!isPqcMode && isDraft) ? 8 : 7} style={{ textAlign: 'center', padding: 40, color: 'var(--ash)' }}>
                   {isDraft ? 'No line items yet. Click "Add Item" above to Add Part / Products to this order.' : 'No line items found.'}
                 </td>
               </tr>
             ) : (
               lineItems.map((li: any) => {
-                console.log('line item:', li);
+                const isExpanded = expandedLineItemId === li.id;
+                const currentQuantity = localQuantities[li.id] ?? li.quantity;
+                
+                // Calculate Production Estimates
+                const totalCycleTimeMins = li.operations?.reduce((sum: number, op: any) => sum + (localCycleTimes[op.id] ?? op.cycleTimeMins ?? 0), 0) || 0;
+                const totalTimeForQtyMins = totalCycleTimeMins * currentQuantity;
+                const partsPerHour = totalCycleTimeMins > 0 ? (60 / totalCycleTimeMins) : 0;
+                
                 return (
-                  <tr key={li.id}>
-                    <td style={{ fontWeight: 500, color: 'var(--charcoal)' }}>{li.gaugeMaster?.gaugeTypeName || '—'}</td>
-                    <td className="font-mono">{li.nominalSize}</td>
-                    <td>{li.sizeUnit || 'mm'}</td>
-                    <td className="font-mono" style={{ fontWeight: 600 }}>{li.quantity}</td>
-                    <td style={{ fontSize: 13 }}>{li.materialGradeOverride || '—'}</td>
-                    <td style={{ fontSize: 13, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{li.lineNotes || '—'}</td>
-                    {isDraft && (
-                      <td>
-                        <button onClick={() => { if (confirm('Delete this line item?')) deleteLineItemMut.mutate(li.id); }}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--status-rejected)', padding: 4 }}>
-                          <Trash2 size={14} />
+                  <React.Fragment key={li.id}>
+                    <tr style={isExpanded ? { background: 'rgba(139,105,20,0.03)' } : {}}>
+                      <td style={{ paddingLeft: 20 }}>
+                        <button 
+                          onClick={() => setExpandedLineItemId(isExpanded ? null : li.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--copper-bronze)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4 }}
+                        >
+                          {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                         </button>
                       </td>
+                      <td style={{ fontWeight: 500, color: 'var(--charcoal)' }}>{li.gaugeMaster?.gaugeTypeName || '—'}</td>
+                      <td className="font-mono">{li.nominalSize}</td>
+                      <td>{li.sizeUnit || 'mm'}</td>
+                        <td className="font-mono" style={{ fontWeight: 600 }}>
+                          {!isPqcMode && isDraft ? (
+                            <input 
+                              type="number" 
+                              className="input font-mono" 
+                              value={localQuantities[li.id] ?? li.quantity}
+                              min={1}
+                              onChange={(e) => handleQuantityChange(li.id, e.target.value)}
+                              style={{ width: 80, padding: '4px 8px', height: 28, textAlign: 'right' }} 
+                            />
+                          ) : (
+                            currentQuantity
+                          )}
+                        </td>
+                      <td style={{ fontSize: 13 }}>{li.materialGradeOverride || '—'}</td>
+                      <td style={{ fontSize: 13, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{li.lineNotes || '—'}</td>
+                      {isDraft && (
+                        <td>
+                          <button onClick={() => { if (confirm('Delete this line item?')) deleteLineItemMut.mutate(li.id); }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--status-rejected)', padding: 4 }}>
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={(!isPqcMode && isDraft) ? 8 : 7} style={{ padding: 0, borderBottom: '2px solid var(--copper-bronze)' }}>
+                          <div style={{ padding: '20px 40px', background: 'rgba(139,105,20,0.02)', borderTop: '1px solid var(--silk)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                              <Settings size={16} color="var(--copper-bronze)" />
+                              <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--charcoal)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Production Settings & Time Estimates
+                              </h4>
+                            </div>
+                            
+                            {li.operations && li.operations.length > 0 ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <table style={{ background: 'white', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--silk)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                                  <thead style={{ background: 'var(--bone-white)' }}>
+                                    <tr>
+                                      <th style={{ fontSize: 11, padding: '10px 16px' }}>Seq</th>
+                                      <th style={{ fontSize: 11, padding: '10px 16px' }}>Operation Name</th>
+                                      <th style={{ fontSize: 11, padding: '10px 16px' }}>Cycle Time (Mins)</th>
+                                      <th style={{ fontSize: 11, padding: '10px 16px' }}>Estimated Time (Qty: {currentQuantity})</th>
+                                      <th style={{ fontSize: 11, padding: '10px 16px' }}>Machine Assignment</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {li.operations.map((op: any) => (
+                                      <tr key={op.id}>
+                                        <td style={{ padding: '10px 16px', fontSize: 13, color: 'var(--ash)' }}>{op.sequenceOrder}</td>
+                                        <td style={{ padding: '10px 16px', fontSize: 13, fontWeight: 500 }}>{op.operationName}</td>
+                                        <td style={{ padding: '10px 16px', fontSize: 13 }}>
+                                          {!isPqcMode && isDraft ? (
+                                            <input 
+                                              type="number" 
+                                              className="input" 
+                                              style={{ width: 80, padding: '4px 8px', minHeight: 30 }} 
+                                              value={localCycleTimes[op.id] ?? op.cycleTimeMins ?? ''}
+                                              onChange={(e) => handleCycleTimeChange(li.id, op, e.target.value)}
+                                            />
+                                          ) : (
+                                            <span className="font-mono">{(localCycleTimes[op.id] ?? op.cycleTimeMins)?.toFixed(2) || '-'}</span>
+                                          )}
+                                        </td>
+                                        <td style={{ padding: '10px 16px', fontSize: 13 }} className="font-mono">
+                                          {(localCycleTimes[op.id] ?? op.cycleTimeMins) ? (
+                                            ((localCycleTimes[op.id] ?? op.cycleTimeMins) * currentQuantity) > 60 
+                                              ? (((localCycleTimes[op.id] ?? op.cycleTimeMins) * currentQuantity) / 60).toFixed(2) + ' hrs'
+                                              : ((localCycleTimes[op.id] ?? op.cycleTimeMins) * currentQuantity).toFixed(2) + ' mins'
+                                          ) : '—'}
+                                        </td>
+                                        <td style={{ padding: '10px 16px', fontSize: 13 }}>
+                                          {!isPqcMode && isDraft ? (
+                                            <select 
+                                              className="input" 
+                                              style={{ padding: '4px 8px', minHeight: 30 }}
+                                              value={op.machineMaster?.id || ''}
+                                              onChange={(e) => updateOperationMut.mutate({ lineItemId: li.id, opId: op.id, machineMasterId: e.target.value || null, cycleTimeMins: localCycleTimes[op.id] ?? op.cycleTimeMins })}
+                                            >
+                                              <option value="">No Machine Assigned</option>
+                                              {machines.map((m: any) => {
+                                                const isBusy = m.currentStatus === 'IN_USE' || m.currentStatus === 'PLANNED';
+                                                const statusLabel = m.currentStatus === 'IN_USE' ? ' (In Use)' : (m.currentStatus === 'PLANNED' ? ' (Planned)' : '');
+                                                return (
+                                                  <option key={m.id} value={m.id} disabled={isBusy && op.machineMaster?.id !== m.id}>
+                                                    {m.machineName} ({m.machineCode}){statusLabel}
+                                                  </option>
+                                                );
+                                              })}
+                                            </select>
+                                          ) : (
+                                            <span>
+                                              {op.machineMaster ? `${op.machineMaster.machineName} (${op.machineMaster.machineCode})` : <span style={{color: 'var(--ash)'}}>Unassigned</span>}
+                                            </span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+
+                                {/* Production Summary */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 12 }}>
+                                  <div style={{ background: 'white', padding: '12px 16px', borderRadius: 8, border: '1px solid var(--silk)' }}>
+                                    <p style={{ fontSize: 11, color: 'var(--ash)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Total Cycle Time</p>
+                                    <p className="font-mono" style={{ fontSize: 16, fontWeight: 700, color: 'var(--charcoal)' }}>
+                                      {totalCycleTimeMins > 60 ? (totalCycleTimeMins / 60).toFixed(2) : totalCycleTimeMins.toFixed(2)} 
+                                      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--slate)' }}> {totalCycleTimeMins > 60 ? 'hrs/part' : 'mins/part'}</span>
+                                    </p>
+                                  </div>
+                                  <div style={{ background: 'white', padding: '12px 16px', borderRadius: 8, border: '1px solid var(--silk)' }}>
+                                    <p style={{ fontSize: 11, color: 'var(--ash)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Production Rate</p>
+                                    <p className="font-mono" style={{ fontSize: 16, fontWeight: 700, color: 'var(--charcoal)' }}>{partsPerHour.toFixed(1)} <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--slate)' }}>parts/hr</span></p>
+                                  </div>
+                                  <div style={{ background: 'var(--status-in-progress-bg)', padding: '12px 16px', borderRadius: 8, border: '1px solid var(--status-in-progress)' }}>
+                                    <p style={{ fontSize: 11, color: 'var(--status-in-progress)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Total Time for Order</p>
+                                    <p className="font-mono" style={{ fontSize: 16, fontWeight: 700, color: 'var(--status-in-progress)' }}>
+                                      {totalTimeForQtyMins > 60 ? `${(totalTimeForQtyMins / 60).toFixed(1)} hours` : `${totalTimeForQtyMins.toFixed(0)} mins`}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Shift Estimations */}
+                                <h4 style={{ fontSize: 12, fontWeight: 600, color: 'var(--charcoal)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 16, marginBottom: 8 }}>
+                                  Required Production Rate By Delivery ({daysAvailable} Days)
+                                </h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+                                  {shifts.map((s: any) => {
+                                    let requiredPartsPerHour = 0;
+                                    let meetsQuantity = false;
+                                    if (s.startTime && s.endTime) {
+                                      const startHours = parseInt(s.startTime.split(':')[0]) + parseInt(s.startTime.split(':')[1])/60;
+                                      const endHours = parseInt(s.endTime.split(':')[0]) + parseInt(s.endTime.split(':')[1])/60;
+                                      let durationHours = endHours - startHours;
+                                      if (durationHours < 0) durationHours += 24;
+                                      
+                                      const totalShiftHours = durationHours * daysAvailable;
+                                      requiredPartsPerHour = totalShiftHours > 0 ? currentQuantity / totalShiftHours : 0;
+                                      meetsQuantity = partsPerHour >= requiredPartsPerHour;
+                                    }
+                                    return (
+                                      <div key={s.id} style={{ background: meetsQuantity ? 'var(--status-completed-bg)' : 'var(--status-rejected-bg)', padding: '12px 16px', borderRadius: 8, border: `1px solid ${meetsQuantity ? 'var(--status-completed)' : 'var(--status-rejected)'}` }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                          <p style={{ fontSize: 11, color: meetsQuantity ? 'var(--status-completed)' : 'var(--status-rejected)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.shiftName}</p>
+                                          {meetsQuantity ? <CheckCircle size={12} color="var(--status-completed)" /> : <AlertTriangle size={12} color="var(--status-rejected)" />}
+                                        </div>
+                                        <p className="font-mono" style={{ fontSize: 16, fontWeight: 700, color: meetsQuantity ? 'var(--status-completed)' : 'var(--status-rejected)' }}>
+                                          {requiredPartsPerHour.toFixed(1)} <span style={{ fontSize: 12, fontWeight: 500 }}>req. parts/hr</span>
+                                        </p>
+                                        <p style={{ fontSize: 10, color: 'var(--ash)', marginTop: 4 }}>
+                                          Machine Cap: {partsPerHour.toFixed(1)} / hr
+                                        </p>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ) : (
+                              <p style={{ fontSize: 13, color: 'var(--ash)' }}>No default operations found for this part.</p>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </tr>
+                  </React.Fragment>
                 )
               })
             )}

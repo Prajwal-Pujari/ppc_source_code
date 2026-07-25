@@ -16,4 +16,5 @@ public class GaugeMasterOperationResponse {
     private UUID operationMasterId;
     private String operationName;
     private String operationCode;
+    private java.math.BigDecimal cycleTimeMins;
 }

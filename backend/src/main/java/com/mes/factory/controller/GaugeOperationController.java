@@ -48,7 +48,7 @@ public class GaugeOperationController {
             @PathVariable UUID id,
             @Valid @RequestBody AssignOperationRequest request,
             @AuthenticationPrincipal CustomUserDetails user) {
-        GaugeOperation op = gaugeOperationService.assignOperation(id, request.getWorkerId(), user.getUserId());
+        GaugeOperation op = gaugeOperationService.assignOperation(id, request.getWorkerId(), request.getMachineId(), user.getUserId());
         return ResponseEntity.ok(ApiResponse.success(op, "Operation assigned"));
     }
 

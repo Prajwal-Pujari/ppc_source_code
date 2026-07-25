@@ -12,6 +12,7 @@ import com.mes.factory.repository.postgres.GaugeOperationRepository;
 import com.mes.factory.repository.postgres.GaugeRepository;
 import com.mes.factory.repository.postgres.PurchaseOrderRepository;
 import com.mes.factory.repository.postgres.UserRepository;
+import com.mes.factory.repository.postgres.MachineMasterRepository;
 import com.mes.factory.websocket.MesEventPublisher;
 import com.mes.factory.websocket.WebSocketEvent;
 import org.slf4j.Logger;
@@ -33,27 +34,36 @@ public class GaugeOperationService {
     private final GaugeRepository gaugeRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final UserRepository userRepository;
+    private final MachineMasterRepository machineMasterRepository;
     private final MesEventPublisher eventPublisher;
 
     public GaugeOperationService(GaugeOperationRepository gaugeOperationRepository,
                                   GaugeRepository gaugeRepository,
                                   PurchaseOrderRepository purchaseOrderRepository,
                                   UserRepository userRepository,
+                                  MachineMasterRepository machineMasterRepository,
                                   MesEventPublisher eventPublisher) {
         this.gaugeOperationRepository = gaugeOperationRepository;
         this.gaugeRepository = gaugeRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.userRepository = userRepository;
+        this.machineMasterRepository = machineMasterRepository;
         this.eventPublisher = eventPublisher;
     }
 
     @Transactional
-    public GaugeOperation assignOperation(UUID operationId, UUID workerId, UUID assignedByUserId) {
+    public GaugeOperation assignOperation(UUID operationId, UUID workerId, UUID machineId, UUID assignedByUserId) {
         GaugeOperation operation = findOperation(operationId);
         User worker = userRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", workerId));
         User assignedBy = userRepository.findById(assignedByUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", assignedByUserId));
+
+        if (machineId != null) {
+            com.mes.factory.entity.postgres.MachineMaster machine = machineMasterRepository.findById(machineId)
+                    .orElseThrow(() -> new ResourceNotFoundException("MachineMaster", "id", machineId));
+            operation.setMachineMaster(machine);
+        }
 
         operation.setAssignedTo(worker);
         operation.setAssignedBy(assignedBy);
@@ -108,6 +118,12 @@ public class GaugeOperationService {
         operation.setActualStart(OffsetDateTime.now());
         operation = gaugeOperationRepository.save(operation);
 
+        // Update machine status
+        if (operation.getMachineMaster() != null) {
+            operation.getMachineMaster().setCurrentStatus(com.mes.factory.entity.postgres.MachineStatus.IN_USE);
+            machineMasterRepository.save(operation.getMachineMaster());
+        }
+
         // Update gauge current operation
         Gauge gauge = operation.getGauge();
         gauge.setCurrentOperationId(operation.getId());
@@ -138,6 +154,12 @@ public class GaugeOperationService {
         operation.setQualityParams(qualityParams);
         operation.setCompletedBy(worker);
         operation = gaugeOperationRepository.save(operation);
+
+        // Update machine status
+        if (operation.getMachineMaster() != null) {
+            operation.getMachineMaster().setCurrentStatus(com.mes.factory.entity.postgres.MachineStatus.AVAILABLE);
+            machineMasterRepository.save(operation.getMachineMaster());
+        }
 
         // Check and queue next operation
         checkAndQueueNextOperation(operation.getGauge().getId(), operation.getSequenceOrder());

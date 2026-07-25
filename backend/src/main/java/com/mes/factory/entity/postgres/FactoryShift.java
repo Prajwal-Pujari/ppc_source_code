@@ -38,6 +38,10 @@ public class FactoryShift {
     @com.fasterxml.jackson.annotation.JsonFormat(pattern = "HH:mm:ss")
     private LocalTime endTime;
 
+    @Column(name = "break_duration_mins", nullable = false)
+    @Builder.Default
+    private Integer breakDurationMins = 0;
+
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;

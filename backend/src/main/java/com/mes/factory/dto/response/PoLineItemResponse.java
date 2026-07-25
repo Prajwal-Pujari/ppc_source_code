@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import java.util.List;
 
 @Data
 @Builder
@@ -20,6 +21,8 @@ public class PoLineItemResponse {
     private Integer quantity;
     private String materialGradeOverride;
     private String lineNotes;
+
+    private List<PoLineItemOperationResponse> operations;
 
     private GaugeMasterInfo gaugeMaster;
 

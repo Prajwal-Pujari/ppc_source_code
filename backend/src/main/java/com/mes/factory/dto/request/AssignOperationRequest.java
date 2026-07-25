@@ -14,4 +14,6 @@ public class AssignOperationRequest {
 
     @NotNull(message = "Worker ID is required")
     private UUID workerId;
+
+    private UUID machineId;
 }

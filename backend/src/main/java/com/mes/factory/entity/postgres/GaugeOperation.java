@@ -52,6 +52,14 @@ public class GaugeOperation {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "gaugeMasterOperations", "factory"})
     private OperationMaster operationMaster;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "machine_master_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "factory"})
+    private MachineMaster machineMaster;
+
+    @Column(name = "cycle_time_mins")
+    private java.math.BigDecimal cycleTimeMins;
+
     @Column(name = "operation_name", nullable = false)
     private String operationName;
 

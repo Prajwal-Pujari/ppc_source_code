@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -96,6 +97,41 @@ public ResponseEntity<ApiResponse<List<PoLineItemResponse>>> getPOLineItems(@Pat
         return ResponseEntity.ok(ApiResponse.success(null, "Line item removed"));
     }
 
+    @PutMapping("/{id}/line-items/{lineItemId}/operations/{opId}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<ApiResponse<com.mes.factory.dto.response.PoLineItemOperationResponse>> updateLineItemOperation(
+            @PathVariable UUID id, @PathVariable UUID lineItemId, @PathVariable UUID opId, @RequestBody java.util.Map<String, Object> payload) {
+        UUID machineId = payload.get("machineMasterId") != null ? UUID.fromString((String)payload.get("machineMasterId")) : null;
+        java.math.BigDecimal cycleTimeMins = null;
+        if (payload.get("cycleTimeMins") != null) {
+            cycleTimeMins = new java.math.BigDecimal(payload.get("cycleTimeMins").toString());
+        }
+        return ResponseEntity.ok(ApiResponse.success(
+                purchaseOrderService.updateLineItemOperation(id, lineItemId, opId, machineId, cycleTimeMins),
+                "Line item operation updated"
+        ));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<ApiResponse<PurchaseOrder>> updatePurchaseOrder(
+            @PathVariable UUID id, @RequestBody com.mes.factory.dto.request.PurchaseOrderUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                purchaseOrderService.updatePurchaseOrder(id, request),
+                "Purchase order updated"
+        ));
+    }
+    
+    @PutMapping("/{id}/line-items/{lineItemId}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<ApiResponse<com.mes.factory.dto.response.PoLineItemResponse>> updateLineItem(
+            @PathVariable UUID id, @PathVariable UUID lineItemId, @RequestBody com.mes.factory.dto.request.LineItemUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                purchaseOrderService.updateLineItem(id, lineItemId, request),
+                "Line item updated"
+        ));
+    }
+    
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> cancelPO(@PathVariable UUID id) {

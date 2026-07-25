@@ -51,8 +51,8 @@ const navSections = [
   {
     title: 'Master Data',
     items: [
-      { label: 'Part / Product Master', path: '/master/gauges', icon: Database, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
-      { label: 'Operations', path: '/master/operations', icon: Wrench, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
+      { label: 'Gauge / Category Master', path: '/master/gauges', icon: Database, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
+      { label: 'Operations Library', path: '/master/operations', icon: Wrench, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
       { label: 'Customers', path: '/master/customers', icon: Users, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
       { label: 'Machine Master', path: '/master/machines', icon: Settings, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
       { label: 'Question Sets', path: '/master/pqc-question-sets', icon: CheckCheck, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },

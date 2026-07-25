@@ -49,4 +49,7 @@ public class GaugeMasterOperation {
     @Column(name = "is_mandatory")
     @Builder.Default
     private Boolean isMandatory = true;
+
+    @Column(name = "cycle_time_mins", precision = 10, scale = 2)
+    private java.math.BigDecimal cycleTimeMins;
 }

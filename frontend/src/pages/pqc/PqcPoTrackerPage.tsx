@@ -17,138 +17,6 @@ const getArray = (res: any): any[] => {
   return [];
 };
 
-// Realistic fallback/demo POs spanning June, July, August 2026 to ensure rich admin tracking
-const DEMO_POS = [
-  {
-    id: 'demo-po-1',
-    poNumber: 'PO-2026-0701',
-    customerName: 'Acme Aerospace Corp',
-    partName: 'Hydraulic Valve Housing #A4',
-    orderDate: '2026-07-02',
-    expectedDeliveryDate: '2026-07-28',
-    status: 'IN_PROGRESS',
-    priority: 'HIGH',
-    totalGauges: 1200,      // Planned
-    completedGauges: 850,   // Produced
-    rejectedGauges: 18,     // Rejected
-    scrappedGauges: 5,      // Scrapped
-    activeTrackStatus: 'ACTIVE_TRACK',
-    remarks: 'CNC line 2 active inspection; dimensional tolerance check nominal.'
-  },
-  {
-    id: 'demo-po-2',
-    poNumber: 'PO-2026-0705',
-    customerName: 'Honda Motors Global',
-    partName: 'Transmission Gear Shaft X-90',
-    orderDate: '2026-07-06',
-    expectedDeliveryDate: '2026-07-30',
-    status: 'DRAFT',
-    priority: 'NORMAL',
-    totalGauges: 5000,
-    completedGauges: 0,
-    rejectedGauges: 0,
-    scrappedGauges: 0,
-    activeTrackStatus: 'DRAFTED_NOT_STARTED',
-    remarks: 'Drafted in system. Awaiting raw material lot verification before shop floor release.'
-  },
-  {
-    id: 'demo-po-3',
-    poNumber: 'PO-2026-0710',
-    customerName: 'Toyota Powertrain',
-    partName: 'Cylinder Block Assembly V6',
-    orderDate: '2026-07-10',
-    expectedDeliveryDate: '2026-07-25',
-    status: 'IN_PROGRESS',
-    priority: 'URGENT',
-    totalGauges: 800,
-    completedGauges: 620,
-    rejectedGauges: 12,
-    scrappedGauges: 3,
-    activeTrackStatus: 'ACTIVE_TRACK',
-    remarks: 'High priority active run. Layered audit and poka-yoke checks running every shift.'
-  },
-  {
-    id: 'demo-po-4',
-    poNumber: 'PO-2026-0714',
-    customerName: 'Acme Aerospace Corp',
-    partName: 'Turbine Blade Root Clip #B2',
-    orderDate: '2026-07-14',
-    expectedDeliveryDate: '2026-07-31',
-    status: 'DRAFT',
-    priority: 'HIGH',
-    totalGauges: 2500,
-    completedGauges: 0,
-    rejectedGauges: 0,
-    scrappedGauges: 0,
-    activeTrackStatus: 'DRAFTED_NOT_STARTED',
-    remarks: 'Drafted order. Fixture calibration scheduled for tomorrow.'
-  },
-  {
-    id: 'demo-po-5',
-    poNumber: 'PO-2026-0718',
-    customerName: 'Bosch Industrial Systems',
-    partName: 'Servo Motor Flange M-400',
-    orderDate: '2026-07-18',
-    expectedDeliveryDate: '2026-07-29',
-    status: 'IN_PROGRESS',
-    priority: 'NORMAL',
-    totalGauges: 3000,
-    completedGauges: 2100,
-    rejectedGauges: 45,
-    scrappedGauges: 12,
-    activeTrackStatus: 'ACTIVE_TRACK',
-    remarks: 'Mid-batch inspection in progress. Surface roughness CPK at 1.45.'
-  },
-  {
-    id: 'demo-po-6',
-    poNumber: 'PO-2026-0722',
-    customerName: 'Siemens Energy',
-    partName: 'High-Pressure Connector Pin',
-    orderDate: '2026-07-20',
-    expectedDeliveryDate: '2026-07-26',
-    status: 'COMPLETED',
-    priority: 'NORMAL',
-    totalGauges: 1500,
-    completedGauges: 1485,
-    rejectedGauges: 15,
-    scrappedGauges: 4,
-    activeTrackStatus: 'COMPLETED',
-    remarks: 'Order completed and QA sign-off done. Shipped to customer warehouse.'
-  },
-  {
-    id: 'demo-po-7',
-    poNumber: 'PO-2026-0615',
-    customerName: 'Honda Motors Global',
-    partName: 'Brake Caliper Bracket #C1',
-    orderDate: '2026-06-15',
-    expectedDeliveryDate: '2026-06-28',
-    status: 'COMPLETED',
-    priority: 'HIGH',
-    totalGauges: 4000,
-    completedGauges: 3960,
-    rejectedGauges: 40,
-    scrappedGauges: 10,
-    activeTrackStatus: 'COMPLETED',
-    remarks: 'June production run completed. Full compliance audit certificate archived.'
-  },
-  {
-    id: 'demo-po-8',
-    poNumber: 'PO-2026-0802',
-    customerName: 'Toyota Powertrain',
-    partName: 'Exhaust Manifold Flange',
-    orderDate: '2026-08-02',
-    expectedDeliveryDate: '2026-08-20',
-    status: 'DRAFT',
-    priority: 'NORMAL',
-    totalGauges: 6000,
-    completedGauges: 0,
-    rejectedGauges: 0,
-    scrappedGauges: 0,
-    activeTrackStatus: 'DRAFTED_NOT_STARTED',
-    remarks: 'Upcoming August order. Tooling preparation in progress.'
-  }
-];
-
 const MONTH_NAMES = [
   'All Months', 'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
@@ -217,17 +85,16 @@ export default function PqcPoTrackerPage() {
         };
       });
 
-      // Combine real API data with DEMO_POS if API data is sparse so admin sees rich July tracking
-      const combined = mappedApi.length >= 4 ? mappedApi : [...mappedApi, ...DEMO_POS];
-      setOrders(combined);
+      // Set real API data
+      setOrders(mappedApi);
 
       if (isSync) {
         toast.success('Production & Quality tracker synced with live shop floor records!');
       }
     } catch (err) {
       console.error('Failed to fetch POs:', err);
-      setOrders(DEMO_POS);
-      if (isSync) toast.error('Using offline fallback production orders.');
+      setOrders([]);
+      if (isSync) toast.error('Failed to sync production orders.');
     } finally {
       setLoading(false);
       setSyncing(false);
@@ -832,7 +699,7 @@ export default function PqcPoTrackerPage() {
                             if (po.id && po.id.startsWith('demo-')) {
                               toast.success(`Viewing inspection details for ${po.poNumber} (${po.customerName})`);
                             } else {
-                              navigate(`/purchase-orders/${po.id}`);
+                              navigate(`/pqc/po-tracker/${po.id}`);
                             }
                           }}
                           style={{

@@ -76,7 +76,7 @@ export const pqcApi = {
     return response.data;
   },
 
-  commitExcelControlPlan: async (previewData: any): Promise<{ data: { questionSetsCreated: number; questionsCreated: number; operationsCreated: number; gaugesCreated: number } }> => {
+  commitExcelControlPlan: async (previewData: any): Promise<{ data: { questionSetsCreated: number; questionsCreated: number; operationsCreated: number; gaugesCreated: number; skippedSets: number } }> => {
     const response = await api.post('/pqc/question-sets/commit-import', previewData);
     return response.data;
   },

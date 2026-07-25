@@ -31,6 +31,11 @@ public class MachineMasterController {
         return ResponseEntity.ok(machineMasterService.getActiveMachines(user.getFactoryId()));
     }
 
+    @GetMapping("/events")
+    public ResponseEntity<List<com.mes.factory.dto.MachineScheduleEventDto>> getMachineScheduleEvents(@AuthenticationPrincipal CustomUserDetails user) {
+        return ResponseEntity.ok(machineMasterService.getMachineScheduleEvents(user.getFactoryId()));
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
     public ResponseEntity<MachineMasterDto> createMachine(@AuthenticationPrincipal CustomUserDetails user, @RequestBody MachineMasterDto dto) {

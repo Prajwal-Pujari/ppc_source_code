@@ -64,6 +64,7 @@ public class GaugeMasterService {
                 .operationMasterId(gmo.getOperationMaster() != null ? gmo.getOperationMaster().getId() : null)
                 .operationName(gmo.getOperationMaster() != null ? gmo.getOperationMaster().getOperationName() : null)
                 .operationCode(gmo.getOperationMaster() != null ? gmo.getOperationMaster().getOperationCode() : null)
+                .cycleTimeMins(gmo.getCycleTimeMins())
                 .build();
     }
 

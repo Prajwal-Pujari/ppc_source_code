@@ -7,7 +7,7 @@ export default function PqcSettingsPage() {
   const [shifts, setShifts] = useState<FactoryShift[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newShift, setNewShift] = useState({ shiftName: '', startTime: '', endTime: '' });
+  const [newShift, setNewShift] = useState({ shiftName: '', startTime: '', endTime: '', breakDurationMins: 0 });
 
   useEffect(() => {
     fetchShifts();
@@ -48,10 +48,11 @@ export default function PqcSettingsPage() {
       await shiftsApi.create({
         shiftName: newShift.shiftName,
         startTime: formatTime(newShift.startTime),
-        endTime: formatTime(newShift.endTime)
+        endTime: formatTime(newShift.endTime),
+        breakDurationMins: newShift.breakDurationMins
       });
       toast.success('Shift added successfully');
-      setNewShift({ shiftName: '', startTime: '', endTime: '' });
+      setNewShift({ shiftName: '', startTime: '', endTime: '', breakDurationMins: 0 });
       fetchShifts();
     } catch (error) {
       toast.error('Failed to add shift');
@@ -59,15 +60,20 @@ export default function PqcSettingsPage() {
   };
 
   return (
-    <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+    <div style={{ padding: '32px 40px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 32 }}>
       
       {/* ─── Header Bar ─── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--charcoal)', margin: 0 }}>System Settings & Report Layout</h2>
-          <p style={{ fontSize: 12, color: 'var(--ash)', marginTop: 4 }}>
-            Global Preferences, Shift Timings & Report Header Configuration for all P-Track Modules (PQC, LPA & General)
-          </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)' }}>
+            <Settings size={24} color="#f8fafc" />
+          </div>
+          <div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--charcoal)', margin: 0 }}>System Settings & Report Layout</h2>
+            <p style={{ fontSize: 12, color: 'var(--ash)', marginTop: 4 }}>
+              Global Preferences, Shift Timings & Report Header Configuration for all P-Track Modules (PQC, LPA & General)
+            </p>
+          </div>
         </div>
       </div>
 
@@ -90,17 +96,19 @@ export default function PqcSettingsPage() {
                   <th>Shift Name</th>
                   <th style={{ width: 80, textAlign: 'center' }}>Start</th>
                   <th style={{ width: 80, textAlign: 'center' }}>End</th>
+                  <th style={{ width: 80, textAlign: 'center' }}>Break (mins)</th>
                   <th style={{ width: 60, textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={4} style={{ textAlign: 'center', padding: 20, color: 'var(--ash)' }}>Loading shifts...</td></tr>
+                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: 20, color: 'var(--ash)' }}>Loading shifts...</td></tr>
                 ) : shifts.map((shift) => (
                   <tr key={shift.id}>
                     <td style={{ fontWeight: 500, color: 'var(--charcoal)' }}>{shift.shiftName}</td>
                     <td className="font-mono" style={{ textAlign: 'center', color: 'var(--slate)' }}>{shift.startTime.substring(0, 5)}</td>
                     <td className="font-mono" style={{ textAlign: 'center', color: 'var(--slate)' }}>{shift.endTime.substring(0, 5)}</td>
+                    <td className="font-mono" style={{ textAlign: 'center', color: 'var(--slate)' }}>{shift.breakDurationMins || 0}</td>
                     <td style={{ textAlign: 'right' }}>
                       <button onClick={() => handleDelete(shift.id!)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--status-rejected)' }} title="Remove Shift">
                         <Trash2 size={15} />
@@ -117,6 +125,9 @@ export default function PqcSettingsPage() {
                   </td>
                   <td style={{ padding: '8px 12px' }}>
                     <input type="time" value={newShift.endTime} onChange={e => setNewShift({...newShift, endTime: e.target.value})} className="input font-mono" style={{ minHeight: 32, fontSize: 12, padding: '0 8px' }} />
+                  </td>
+                  <td style={{ padding: '8px 12px' }}>
+                    <input type="number" min="0" placeholder="0" value={newShift.breakDurationMins || ''} onChange={e => setNewShift({...newShift, breakDurationMins: parseInt(e.target.value) || 0})} className="input font-mono" style={{ minHeight: 32, fontSize: 12, padding: '0 8px', width: 60 }} />
                   </td>
                   <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                     <button onClick={handleAddShift} className="btn btn-primary" style={{ minHeight: 32, padding: '0 12px', fontSize: 12 }} disabled={!newShift.shiftName || !newShift.startTime || !newShift.endTime}>

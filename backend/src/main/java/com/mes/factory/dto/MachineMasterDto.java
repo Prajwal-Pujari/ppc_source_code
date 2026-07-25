@@ -17,4 +17,8 @@ public class MachineMasterDto {
     private String machineCode;
     private String department;
     private Boolean isActive;
+    private String currentStatus;
+    private java.time.OffsetDateTime activeOperationEndsAt;
+    private String activeOperationName;
+    private String activeGaugeSerial;
 }

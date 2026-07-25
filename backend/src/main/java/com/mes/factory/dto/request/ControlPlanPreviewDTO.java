@@ -15,12 +15,16 @@ public class ControlPlanPreviewDTO {
     public static class PartPreview {
         private String partNo;
         private String partName;
+        private Boolean isExistingPart;
+        private UUID existingGaugeMasterId;
         private List<OperationPreview> operations;
 
         public PartPreview() {}
-        public PartPreview(String partNo, String partName, List<OperationPreview> operations) {
+        public PartPreview(String partNo, String partName, Boolean isExistingPart, UUID existingGaugeMasterId, List<OperationPreview> operations) {
             this.partNo = partNo;
             this.partName = partName;
+            this.isExistingPart = isExistingPart;
+            this.existingGaugeMasterId = existingGaugeMasterId;
             this.operations = operations;
         }
 
@@ -28,6 +32,10 @@ public class ControlPlanPreviewDTO {
         public void setPartNo(String partNo) { this.partNo = partNo; }
         public String getPartName() { return partName; }
         public void setPartName(String partName) { this.partName = partName; }
+        public Boolean getIsExistingPart() { return isExistingPart; }
+        public void setIsExistingPart(Boolean isExistingPart) { this.isExistingPart = isExistingPart; }
+        public UUID getExistingGaugeMasterId() { return existingGaugeMasterId; }
+        public void setExistingGaugeMasterId(UUID existingGaugeMasterId) { this.existingGaugeMasterId = existingGaugeMasterId; }
         public List<OperationPreview> getOperations() { return operations; }
         public void setOperations(List<OperationPreview> operations) { this.operations = operations; }
     }
@@ -35,14 +43,18 @@ public class ControlPlanPreviewDTO {
     public static class OperationPreview {
         private String operationName;
         private String operationCode;
+        private String department;
         private UUID existingOperationMasterId;
+        private Double cycleTimeMins;
         private List<QuestionPreview> questions;
 
         public OperationPreview() {}
-        public OperationPreview(String operationName, String operationCode, UUID existingOperationMasterId, List<QuestionPreview> questions) {
+        public OperationPreview(String operationName, String operationCode, String department, UUID existingOperationMasterId, Double cycleTimeMins, List<QuestionPreview> questions) {
             this.operationName = operationName;
             this.operationCode = operationCode;
+            this.department = department;
             this.existingOperationMasterId = existingOperationMasterId;
+            this.cycleTimeMins = cycleTimeMins;
             this.questions = questions;
         }
 
@@ -50,8 +62,12 @@ public class ControlPlanPreviewDTO {
         public void setOperationName(String operationName) { this.operationName = operationName; }
         public String getOperationCode() { return operationCode; }
         public void setOperationCode(String operationCode) { this.operationCode = operationCode; }
+        public String getDepartment() { return department; }
+        public void setDepartment(String department) { this.department = department; }
         public UUID getExistingOperationMasterId() { return existingOperationMasterId; }
         public void setExistingOperationMasterId(UUID existingOperationMasterId) { this.existingOperationMasterId = existingOperationMasterId; }
+        public Double getCycleTimeMins() { return cycleTimeMins; }
+        public void setCycleTimeMins(Double cycleTimeMins) { this.cycleTimeMins = cycleTimeMins; }
         public List<QuestionPreview> getQuestions() { return questions; }
         public void setQuestions(List<QuestionPreview> questions) { this.questions = questions; }
     }

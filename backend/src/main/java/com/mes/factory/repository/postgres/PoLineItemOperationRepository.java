@@ -11,4 +11,10 @@ import java.util.UUID;
 public interface PoLineItemOperationRepository extends JpaRepository<PoLineItemOperation, UUID> {
 
     List<PoLineItemOperation> findByPoLineItemIdOrderBySequenceOrder(UUID poLineItemId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT DISTINCT p.machineMaster.id FROM PoLineItemOperation p WHERE p.machineMaster IS NOT NULL AND p.poLineItem.purchaseOrder.status IN (com.mes.factory.entity.postgres.PoStatus.DRAFT, com.mes.factory.entity.postgres.PoStatus.IN_PROGRESS, com.mes.factory.entity.postgres.PoStatus.CONFIRMED)")
+    List<UUID> findPlannedMachineIds();
+
+    @org.springframework.data.jpa.repository.Query("SELECT p FROM PoLineItemOperation p WHERE p.machineMaster IS NOT NULL AND p.poLineItem.purchaseOrder.status IN (com.mes.factory.entity.postgres.PoStatus.DRAFT, com.mes.factory.entity.postgres.PoStatus.IN_PROGRESS, com.mes.factory.entity.postgres.PoStatus.CONFIRMED)")
+    List<PoLineItemOperation> findAllocatedOperations();
 }

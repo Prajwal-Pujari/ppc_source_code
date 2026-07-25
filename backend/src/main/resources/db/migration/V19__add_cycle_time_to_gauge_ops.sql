@@ -1,0 +1,1 @@
+ALTER TABLE gauge_master_operations ADD COLUMN cycle_time_mins NUMERIC(10, 2);
