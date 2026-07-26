@@ -1,6 +1,6 @@
 import api from '@/lib/axios';
 import type { ApiResponse } from '@/types/api.types';
-import type { PurchaseOrder, Gauge } from '@/types/domain.types';
+import type { PurchaseOrder, Gauge, PoLineItem } from '@/types/domain.types';
 
 export const getPurchaseOrders = async (params?: Record<string, any>) => {
   const res = await api.get<ApiResponse<any>>('/purchase-orders', { params });
