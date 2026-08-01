@@ -31,6 +31,7 @@ import PqcDashboardPage from '@/pages/pqc/PqcDashboardPage';
 import PqcSettingsPage from '@/pages/pqc/PqcSettingsPage';
 import PqcPoTrackerPage from '@/pages/pqc/PqcPoTrackerPage';
 import MachineSchedulePage from '@/pages/pqc/MachineSchedulePage';
+import PqcIotPage from '@/pages/pqc/PqcIotPage';
 import { LpaLayout } from '@/components/layout/LpaLayout';
 import { LpaDashboardPage } from '@/pages/lpa/LpaDashboardPage';
 import { LpaExecutePage } from '@/pages/lpa/LpaExecutePage';
@@ -100,6 +101,7 @@ export default function App() {
               <Route path="/pqc/machines" element={<MachineMasterPage />} />
               <Route path="/pqc/personnel" element={<PlaceholderPage title="Personnel" />} />
               <Route path="/pqc/analytics" element={<PlaceholderPage title="PQC Analytics" />} />
+              <Route path="/pqc/iot-devices" element={<PqcIotPage />} />
               <Route path="/pqc/settings" element={<PqcSettingsPage />} />
             </Route>
 

@@ -24,6 +24,7 @@ const pqcNavItems = [
   { label: 'Batch Records', path: '/pqc/batch-records', icon: 'layers' },
   { label: 'Personnel', path: '/pqc/personnel', icon: 'badge' },
   { label: 'Analytics', path: '/pqc/analytics', icon: 'bar_chart' },
+  { label: 'IoT Devices', path: '/pqc/iot-devices', icon: 'router' },
   { label: 'Settings', path: '/pqc/settings', icon: 'settings' },
 ];
 

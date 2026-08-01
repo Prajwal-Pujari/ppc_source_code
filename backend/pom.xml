@@ -137,6 +137,13 @@
     <groupId>com.fasterxml.jackson.datatype</groupId>
     <artifactId>jackson-datatype-hibernate6</artifactId>
 </dependency>
+
+        <!-- Jave2 for Audio Conversion (FFmpeg) -->
+        <dependency>
+            <groupId>ws.schild</groupId>
+            <artifactId>jave-all-deps</artifactId>
+            <version>3.3.1</version>
+        </dependency>
     </dependencies>
 
     <build>
