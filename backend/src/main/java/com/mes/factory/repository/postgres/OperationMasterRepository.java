@@ -18,4 +18,6 @@ public interface OperationMasterRepository extends JpaRepository<OperationMaster
     List<OperationMaster> findByFactoryIdAndIsActiveTrueOrderByCreatedAtDesc(UUID factoryId);
     
     Optional<OperationMaster> findFirstByFactoryIdAndOperationNameAndIsActiveTrue(UUID factoryId, String operationName);
+    
+    Optional<OperationMaster> findFirstByFactoryIdAndOperationCode(UUID factoryId, String operationCode);
 }

@@ -481,7 +481,7 @@ public class PqcQuestionSetService {
                         p.setExistingGaugeMasterId(gmOpt.get().getId());
                         
                         for (ControlPlanPreviewDTO.OperationPreview op : p.getOperations()) {
-                            Optional<OperationMaster> omOpt = operationMasterRepository.findFirstByFactoryIdAndOperationNameAndIsActiveTrue(factory.getId(), op.getOperationName());
+                            Optional<OperationMaster> omOpt = operationMasterRepository.findFirstByFactoryIdAndOperationCode(factory.getId(), op.getOperationCode());
                             op.setExistingOperationMasterId(omOpt.map(OperationMaster::getId).orElse(null));
                         }
                     } else {
@@ -564,7 +564,7 @@ public class PqcQuestionSetService {
                                         return operationMasterRepository.save(newOp);
                                     });
                         } else {
-                            Optional<OperationMaster> existingOpOpt = operationMasterRepository.findFirstByFactoryIdAndOperationNameAndIsActiveTrue(factory.getId(), finalOpName);
+                            Optional<OperationMaster> existingOpOpt = operationMasterRepository.findFirstByFactoryIdAndOperationCode(factory.getId(), finalOpCode);
                             
                             currentOpMaster = existingOpOpt.orElseGet(() -> {
                                         OperationMaster newOp = OperationMaster.builder()
