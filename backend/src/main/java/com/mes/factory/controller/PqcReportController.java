@@ -2,6 +2,7 @@ package com.mes.factory.controller;
 
 import com.mes.factory.dto.response.ApiResponse;
 import com.mes.factory.dto.response.QualityReportDto;
+import com.mes.factory.dto.response.DossierSummaryDto;
 import com.mes.factory.service.PqcReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -32,5 +33,12 @@ public class PqcReportController {
         
         QualityReportDto report = pqcReportService.generateReport(gaugeId, reportType, shiftId, operationId, filterDate);
         return ResponseEntity.ok(ApiResponse.success(report, "Report generated successfully"));
+    }
+
+    @GetMapping("/po/{poId}/ai-summary")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','QUALITY_INSPECTOR')")
+    public ResponseEntity<ApiResponse<DossierSummaryDto>> getDossierSummary(@PathVariable UUID poId) {
+        DossierSummaryDto summary = pqcReportService.generateDossierSummary(poId);
+        return ResponseEntity.ok(ApiResponse.success(summary, "AI Summary generated successfully"));
     }
 }

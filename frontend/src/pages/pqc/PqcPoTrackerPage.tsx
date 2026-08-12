@@ -53,10 +53,10 @@ export default function PqcPoTrackerPage() {
 
       // Map API POs into standardized tracker structure
       const mappedApi = apiList.map((po: any) => {
-        const planned = po.totalGauges || po.totalQuantity || po.targetQuantity || 0;
-        const produced = po.completedGauges || po.producedQuantity || po.completedQuantity || 0;
-        const rejected = po.rejectedGauges || po.rejectedQuantity || 0;
-        const scrapped = po.scrappedGauges || po.scrappedQuantity || Math.floor(rejected * 0.25) || 0;
+        const planned = po.targetQuantity ?? po.totalGauges ?? po.totalQuantity ?? 0;
+        const produced = po.producedQuantity ?? po.completedGauges ?? po.completedQuantity ?? 0;
+        const rejected = po.rejectedQuantity ?? po.rejectedGauges ?? 0;
+        const scrapped = po.scrappedQuantity ?? po.scrappedGauges ?? 0;
 
         let activeTrack = 'ACTIVE_TRACK';
         if (po.status === 'DRAFT' || po.status === 'PENDING') {
@@ -325,21 +325,47 @@ export default function PqcPoTrackerPage() {
         </div>
 
         {/* Quick Month Pills for easy supervisor clicking */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {['All Months', 'June', 'July', 'August'].map(m => (
-            <button
-              key={m}
-              onClick={() => setSelectedMonth(m)}
-              style={{
-                padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: selectedMonth === m ? 700 : 500,
-                background: selectedMonth === m ? 'var(--charcoal)' : 'var(--cream)',
-                color: selectedMonth === m ? '#fff' : 'var(--slate)',
-                border: '1px solid var(--silk)', cursor: 'pointer', transition: 'all 0.15s'
-              }}
-            >
-              {m}
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setSelectedMonth('All Months')}
+            style={{
+              padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: selectedMonth === 'All Months' ? 700 : 500,
+              background: selectedMonth === 'All Months' ? 'var(--charcoal)' : 'var(--cream)',
+              color: selectedMonth === 'All Months' ? '#fff' : 'var(--slate)',
+              border: '1px solid var(--silk)', cursor: 'pointer', transition: 'all 0.15s'
+            }}
+          >
+            All Months
+          </button>
+          
+          <div style={{ width: 1, height: 20, background: 'var(--silk)' }} />
+
+          <div style={{ display: 'flex', gap: 6 }}>
+            {(() => {
+              const currentMonthIdx = new Date().getMonth(); // 0-11
+              const prevIdx = currentMonthIdx === 0 ? 11 : currentMonthIdx - 1;
+              const nextIdx = currentMonthIdx === 11 ? 0 : currentMonthIdx + 1;
+              const quickMonths = [
+                MONTH_NAMES[prevIdx + 1],
+                MONTH_NAMES[currentMonthIdx + 1],
+                MONTH_NAMES[nextIdx + 1]
+              ];
+              return quickMonths.map(m => (
+                <button
+                  key={m}
+                  onClick={() => setSelectedMonth(m)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: selectedMonth === m ? 700 : 500,
+                    background: selectedMonth === m ? 'var(--charcoal)' : 'var(--cream)',
+                    color: selectedMonth === m ? '#fff' : 'var(--slate)',
+                    border: '1px solid var(--silk)', cursor: 'pointer', transition: 'all 0.15s'
+                  }}
+                >
+                  {m}
+                </button>
+              ));
+            })()}
+          </div>
         </div>
       </div>
 

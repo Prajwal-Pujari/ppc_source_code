@@ -18,6 +18,7 @@ public class PurchaseOrderResponse {
     private String poNumber;
     private String customerName;
     private UUID customerId;
+    private String partName;
     private LocalDate orderDate;
     private LocalDate expectedDeliveryDate;
     private String priority;
@@ -25,6 +26,10 @@ public class PurchaseOrderResponse {
     private Integer totalGauges;
     private Integer completedGauges;
     private Integer rejectedGauges;
+    private Integer targetQuantity;
+    private Integer producedQuantity;
+    private Integer rejectedQuantity;
+    private Integer scrappedQuantity;
     private String specialInstructions;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;

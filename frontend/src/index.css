@@ -272,7 +272,7 @@ td {
   color: var(--slate);
 }
 
-tr + tr {
+tr+tr {
   margin-top: 4px;
 }
 
@@ -293,8 +293,13 @@ tbody tr:hover {
 }
 
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* Scrollbar */
@@ -315,14 +320,24 @@ tbody tr:hover {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--warm-gray);
 }
+
 /* ── Print Styles for Job Card ── */
 @media print {
-  body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   /* Hide everything except the job card */
-  body > div > div > div:first-child, /* sidebar */
+  body>div>div>div:first-child,
+  /* sidebar */
   header,
   button,
-  .btn { display: none !important; }
+  .btn {
+    display: none !important;
+  }
+
   #job-card-printable {
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -342,13 +357,16 @@ tbody tr:hover {
     position: fixed !important;
     z-index: 50;
     height: 100vh;
-    box-shadow: 4px 0 24px rgba(0,0,0,0.1);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.1);
   }
-  
+
   .sidebar-overlay {
     display: block;
     position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: rgba(28, 26, 24, 0.4);
     z-index: 40;
     animation: fadeIn 0.3s ease;
@@ -357,7 +375,7 @@ tbody tr:hover {
   .responsive-main {
     padding: 12px !important;
   }
-  
+
   .responsive-header {
     padding: 0 12px !important;
   }
@@ -370,20 +388,20 @@ tbody tr:hover {
   .mobile-stack {
     flex-direction: column !important;
   }
-  
+
   /* Full width items on mobile */
   .mobile-w-full {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
   }
-  
+
   /* Flex wrap on mobile */
   .mobile-flex-wrap {
     flex-wrap: wrap !important;
     gap: 16px !important;
   }
-  
+
   .mobile-p-16 {
     padding: 16px !important;
   }
@@ -404,6 +422,11 @@ tbody tr:hover {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }

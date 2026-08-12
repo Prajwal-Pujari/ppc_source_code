@@ -92,6 +92,7 @@ public class AuthService {
         }
     }
 
+    @Transactional(readOnly = true)
     public AuthResponse refreshToken(String refreshToken) {
         String userId = tokenProvider.validateRefreshTokenAndGetUserId(refreshToken);
         if (userId == null) {

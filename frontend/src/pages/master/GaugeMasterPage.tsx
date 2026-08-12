@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useUiStore } from '@/store/uiStore';
+import { useAuthStore } from '@/store/authStore';
 import {
   getGaugeMasters,
   createGaugeMaster,
@@ -26,6 +27,7 @@ interface LinkedOp {
   operationName?: string;
   operationCode?: string;
   cycleTimeMins?: number;
+  setupTimeMins?: number;
   operationMaster?: {
     id: string;
     operationName: string;
@@ -59,9 +61,19 @@ export default function GaugeMasterPage() {
 
   useEffect(() => { setPageTitle('Part / Product Master'); }, [setPageTitle]);
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['gauge-masters'],
-    queryFn: () => getGaugeMasters({ size: 50 }),
+    queryKey: ['gauge-masters', debouncedSearch],
+    queryFn: () => getGaugeMasters({ size: 50, search: debouncedSearch }),
   });
   const gauges = data?.data?.content || [];
 
@@ -102,9 +114,25 @@ export default function GaugeMasterPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)' }}>Part / Product Names</h2>
-        <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true); }}>
-          <Plus size={16} style={{ marginRight: 6 }} /> Add Part / Product Name
-        </button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ position: 'relative' }}>
+            <Search size={16} color="var(--ash)" style={{ position: 'absolute', left: 12, top: 10 }} />
+            <input
+              type="text"
+              placeholder="Search part name or code..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: 250, padding: '8px 12px 8px 36px',
+                borderRadius: 6, border: '1px solid var(--stone)', fontSize: 13,
+                outline: 'none',
+              }}
+            />
+          </div>
+          <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true); }}>
+            <Plus size={16} style={{ marginRight: 6 }} /> Add Part / Product Name
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -375,6 +403,39 @@ function ManageOperationsModal({ gauge, onClose }: { gauge: any; onClose: () => 
     reorderMut.mutate(orderedIds);
   };
 
+  const accessToken = useAuthStore((state: any) => state.accessToken);
+  const updateOpMut = useMutation({
+    mutationFn: ({ operationMasterId, setupTimeMins, cycleTimeMins }: { operationMasterId: string, setupTimeMins: number, cycleTimeMins: number }) => 
+      fetch(`/api/v1/gauge-masters/${gauge.id}/operations/${operationMasterId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ setupTimeMins, cycleTimeMins })
+      }).then(res => res.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gauge-master-ops', gauge.id] });
+    }
+  });
+
+  const handleUpdateOp = (opMasterId: string, field: 'setupTimeMins' | 'cycleTimeMins', val: number) => {
+    const op = localOps.find(o => getOpMasterId(o) === opMasterId);
+    if (op) {
+      const setupTimeMins = field === 'setupTimeMins' ? val : (op.setupTimeMins || 0);
+      const cycleTimeMins = field === 'cycleTimeMins' ? val : (op.cycleTimeMins || 0);
+      updateOpMut.mutate({ operationMasterId: opMasterId, setupTimeMins, cycleTimeMins });
+      
+      // Optimistic update
+      setLocalOps(prev => prev.map(o => {
+        if (getOpMasterId(o) === opMasterId) {
+          return { ...o, [field]: val };
+        }
+        return o;
+      }));
+    }
+  };
+
   // ── Drag handlers ─────────────────────────────────────────────────────────────
   const handleDragStart = (idx: number) => setDragIdx(idx);
 
@@ -499,12 +560,31 @@ function ManageOperationsModal({ gauge, onClose }: { gauge: any; onClose: () => 
                       <p style={{ fontSize: 11, color: 'var(--ash)', marginTop: 1 }}>
                         {code && <span className="font-mono">{code}</span>}
                         {code && dept && ' • '}{dept}
-                        {op.cycleTimeMins != null && (
-                          <span style={{ marginLeft: 8, color: 'var(--copper-bronze)' }}>
-                            ⏱ {op.cycleTimeMins} mins
-                          </span>
-                        )}
                       </p>
+                      <div style={{ display: 'flex', gap: 12, marginTop: 4, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span style={{ fontSize: 11, color: 'var(--copper-bronze)' }}>Setup (m):</span>
+                          <input 
+                            type="number" 
+                            min="0"
+                            className="input" 
+                            style={{ width: 50, padding: '2px 6px', fontSize: 11, height: 22 }}
+                            value={op.setupTimeMins || 0}
+                            onChange={(e) => handleUpdateOp(getOpMasterId(op), 'setupTimeMins', parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span style={{ fontSize: 11, color: 'var(--copper-bronze)' }}>Cycle (m):</span>
+                          <input 
+                            type="number" 
+                            min="0"
+                            className="input" 
+                            style={{ width: 50, padding: '2px 6px', fontSize: 11, height: 22 }}
+                            value={op.cycleTimeMins || 0}
+                            onChange={(e) => handleUpdateOp(getOpMasterId(op), 'cycleTimeMins', parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                      </div>
                     </div>
                     <button
                       onClick={() => handleRemove(op)}

@@ -3,6 +3,7 @@ package com.mes.factory.controller;
 import com.mes.factory.dto.request.PqcInspectionLogRequest;
 import com.mes.factory.dto.response.ApiResponse;
 import com.mes.factory.entity.postgres.PqcInspectionLog;
+import com.mes.factory.repository.postgres.GaugeOperationRepository;
 import com.mes.factory.repository.postgres.PqcInspectionLogRepository;
 import com.mes.factory.security.CustomUserDetails;
 import com.mes.factory.service.PqcInspectionService;
@@ -24,11 +25,14 @@ public class PqcController {
 
     private final PqcInspectionService pqcInspectionService;
     private final PqcInspectionLogRepository inspectionLogRepository;
+    private final GaugeOperationRepository gaugeOperationRepository;
 
     public PqcController(PqcInspectionService pqcInspectionService,
-                         PqcInspectionLogRepository inspectionLogRepository) {
+                         PqcInspectionLogRepository inspectionLogRepository,
+                         GaugeOperationRepository gaugeOperationRepository) {
         this.pqcInspectionService = pqcInspectionService;
         this.inspectionLogRepository = inspectionLogRepository;
+        this.gaugeOperationRepository = gaugeOperationRepository;
     }
 
     @PostMapping("/inspections")
@@ -49,6 +53,26 @@ public class PqcController {
         return ResponseEntity.ok(ApiResponse.success(progress, "Progress retrieved"));
     }
 
+    @GetMapping("/scrap-report")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','QUALITY_INSPECTOR','WORKER')")
+    public ResponseEntity<ApiResponse<List<PqcInspectionLog>>> getScrapReport(
+            @AuthenticationPrincipal CustomUserDetails user) {
+        List<PqcInspectionLog> logs = inspectionLogRepository.findScrapLogsWithDetails(user.getFactoryId(), 0);
+        return ResponseEntity.ok(ApiResponse.success(logs));
+    }
+
+    @PutMapping("/scrap-report/{id}/remarks")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<ApiResponse<PqcInspectionLog>> updateScrapRemarks(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> request) {
+        PqcInspectionLog log = inspectionLogRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Log not found"));
+        log.setReviewerRemarks(request.get("remarks"));
+        inspectionLogRepository.save(log);
+        return ResponseEntity.ok(ApiResponse.success(log, "Remarks updated successfully"));
+    }
+
     /**
      * PQC Dashboard — returns all stats in a single call.
      */
@@ -59,34 +83,43 @@ public class PqcController {
             @RequestParam(defaultValue = "today") String period) {
 
         UUID factoryId = user.getFactoryId();
+        java.time.ZoneId istZone = java.time.ZoneId.of("Asia/Kolkata");
         OffsetDateTime since;
 
         switch (period) {
             case "week":
-                since = LocalDate.now().minusDays(7).atStartOfDay().atOffset(ZoneOffset.UTC);
+                since = LocalDate.now(istZone).minusDays(7).atStartOfDay(istZone).toOffsetDateTime();
                 break;
             case "month":
-                since = LocalDate.now().minusDays(30).atStartOfDay().atOffset(ZoneOffset.UTC);
+                since = LocalDate.now(istZone).minusDays(30).atStartOfDay(istZone).toOffsetDateTime();
                 break;
             default: // "today"
-                since = LocalDate.now().atStartOfDay().atOffset(ZoneOffset.UTC);
+                since = LocalDate.now(istZone).atStartOfDay(istZone).toOffsetDateTime();
                 break;
         }
 
         // ── Summary stats ──
         long planned = inspectionLogRepository.sumPlannedSince(factoryId, since);
         long produced = inspectionLogRepository.sumActualSince(factoryId, since);
-        long passed = inspectionLogRepository.sumPassedSince(factoryId, since);
         long rejected = inspectionLogRepository.sumRejectedSince(factoryId, since);
         long rework = inspectionLogRepository.sumReworkSince(factoryId, since);
         long scrap = inspectionLogRepository.sumScrapSince(factoryId, since);
         long batchCount = inspectionLogRepository.countLogsSince(factoryId, since);
+        
+        // Calculate Passed dynamically to ensure perfect mathematical balance across operations
+        long passed = produced - (rejected + rework + scrap);
+        if (passed < 0) passed = 0;
 
         // All-time for yield comparison
         long allTimeProduced = inspectionLogRepository.sumActualAllTime(factoryId);
-        long allTimePassed = inspectionLogRepository.sumPassedAllTime(factoryId);
+        long allTimeRejected = inspectionLogRepository.sumRejectedAllTime(factoryId);
+        long allTimePassed = allTimeProduced - allTimeRejected; // Simplified for all-time
+        if (allTimePassed < 0) allTimePassed = 0;
+        
         double allTimeYield = allTimeProduced > 0 ? (double) allTimePassed / allTimeProduced * 100 : 0;
         double periodYield = produced > 0 ? (double) passed / produced * 100 : 0;
+        
+        long ppm = produced > 0 ? (rejected * 1000000L) / produced : 0;
 
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("planned", planned);
@@ -98,40 +131,68 @@ public class PqcController {
         summary.put("batchCount", batchCount);
         summary.put("yieldRate", Math.round(periodYield * 10.0) / 10.0);
         summary.put("allTimeYield", Math.round(allTimeYield * 10.0) / 10.0);
+        summary.put("ppm", ppm);
 
         // ── Hourly breakdown (for bar chart) ──
         List<PqcInspectionLog> logs = inspectionLogRepository.findAllSince(factoryId, since);
-        Map<Integer, Map<String, Long>> hourlyMap = new TreeMap<>();
+        List<UUID> finalOpIds = gaugeOperationRepository.findFinalOperationIdsByFactory(factoryId);
+        Map<String, Map<String, Object>> chartMap = new LinkedHashMap<>();
 
         for (PqcInspectionLog l : logs) {
-            int hour = l.getLogTime().getHour();
-            Map<String, Long> bucket = hourlyMap.computeIfAbsent(hour, h -> {
-                Map<String, Long> m = new LinkedHashMap<>();
-                m.put("hour", (long) h);
+            java.time.ZonedDateTime istTime = l.getLogTime().atZoneSameInstant(istZone);
+            String groupKey;
+            String label;
+
+            if (period.equals("today")) {
+                int hour = istTime.getHour();
+                groupKey = String.valueOf(hour);
+                label = String.format("%02d:00", hour);
+            } else {
+                java.time.LocalDate date = istTime.toLocalDate();
+                groupKey = date.toString();
+                label = istTime.format(java.time.format.DateTimeFormatter.ofPattern("MMM dd"));
+            }
+
+            Map<String, Object> bucket = chartMap.computeIfAbsent(groupKey, k -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("label", label);
                 m.put("produced", 0L);
                 m.put("passed", 0L);
                 m.put("rejected", 0L);
+                m.put("rework", 0L);
+                m.put("scrap", 0L);
                 return m;
             });
-            bucket.put("produced", bucket.get("produced") + l.getActualQty());
-            bucket.put("passed", bucket.get("passed") + l.getPassedQty());
-            bucket.put("rejected", bucket.get("rejected") + l.getRejectedQty());
+            
+            // Count all operations for the hourly inspection chart (matches summary cards)
+            bucket.put("produced", (Long) bucket.get("produced") + l.getActualQty());
+            bucket.put("passed", (Long) bucket.get("passed") + l.getPassedQty());
+            bucket.put("rejected", (Long) bucket.get("rejected") + l.getRejectedQty());
+            bucket.put("rework", (Long) bucket.get("rework") + (l.getReworkQty() != null ? l.getReworkQty() : 0L));
+            bucket.put("scrap", (Long) bucket.get("scrap") + (l.getScrapQty() != null ? l.getScrapQty() : 0L));
         }
-        List<Map<String, Long>> hourly = new ArrayList<>(hourlyMap.values());
+        List<Map<String, Object>> hourly = new ArrayList<>(chartMap.values());
 
         // ── Rejection reasons breakdown (for pie chart) ──
         Map<String, Long> reasonCounts = new LinkedHashMap<>();
         for (PqcInspectionLog l : logs) {
-            if (l.getRejectionReasons() != null) {
+            boolean hasReasons = false;
+            if (l.getRejectionReasons() != null && !l.getRejectionReasons().isEmpty()) {
+                hasReasons = true;
                 for (Map<String, Object> r : l.getRejectionReasons()) {
                     String reason = String.valueOf(r.getOrDefault("reason", "Unknown"));
                     long count = 1;
                     Object countObj = r.getOrDefault("count", r.getOrDefault("qty", 1));
                     if (countObj instanceof Number) {
                         count = ((Number) countObj).longValue();
+                    } else if (countObj instanceof String) {
+                        try { count = Long.parseLong((String) countObj); } catch (Exception ignored) {}
                     }
-                    reasonCounts.merge(reason, count, Long::sum);
+                    reasonCounts.put(reason, reasonCounts.getOrDefault(reason, 0L) + count);
                 }
+            }
+            if (!hasReasons && l.getRejectedQty() != null && l.getRejectedQty() > 0) {
+                reasonCounts.put("Unspecified Reason", reasonCounts.getOrDefault("Unspecified Reason", 0L) + l.getRejectedQty());
             }
         }
         List<Map<String, Object>> rejectionBreakdown = new ArrayList<>();

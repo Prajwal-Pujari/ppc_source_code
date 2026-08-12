@@ -85,6 +85,9 @@ public interface GaugeOperationRepository extends JpaRepository<GaugeOperation, 
            "JOIN FETCH g.purchaseOrder po " +
            "LEFT JOIN FETCH po.customer c " +
            "LEFT JOIN FETCH g.poLineItem li " +
+           "LEFT JOIN FETCH li.operations poOps " +
+           "LEFT JOIN FETCH poOps.machineMaster pm " +
+           "LEFT JOIN FETCH poOps.operationMaster pom " +
            "LEFT JOIN FETCH g.gaugeMaster gm " +
            "LEFT JOIN FETCH go.operationMaster om " +
            "WHERE go.assignedTo.id = :workerId AND go.status IN :statuses " +
@@ -96,6 +99,9 @@ public interface GaugeOperationRepository extends JpaRepository<GaugeOperation, 
            "JOIN FETCH g.purchaseOrder po " +
            "LEFT JOIN FETCH po.customer c " +
            "LEFT JOIN FETCH g.poLineItem li " +
+           "LEFT JOIN FETCH li.operations poOps " +
+           "LEFT JOIN FETCH poOps.machineMaster pm " +
+           "LEFT JOIN FETCH poOps.operationMaster pom " +
            "LEFT JOIN FETCH g.gaugeMaster gm " +
            "LEFT JOIN FETCH go.operationMaster om " +
            "WHERE g.factory.id = :factoryId " +
@@ -105,5 +111,11 @@ public interface GaugeOperationRepository extends JpaRepository<GaugeOperation, 
     List<GaugeOperation> findByFactoryAndStatusesForConfirmedPOs(
             @Param("factoryId") UUID factoryId,
             @Param("statuses") List<OperationStatus> statuses);
+
+    @Query("SELECT DISTINCT go.machineMaster.id FROM GaugeOperation go WHERE go.gauge.factory.id = :factoryId AND go.machineMaster IS NOT NULL AND go.status IN ('PENDING', 'QUEUED', 'SCHEDULED')")
+    List<UUID> findPlannedMachineIdsForActivePOs(@Param("factoryId") UUID factoryId);
+
+    @Query(value = "SELECT go.id FROM gauge_operations go JOIN gauges g ON go.gauge_id = g.id WHERE g.factory_id = cast(:factoryId as uuid) AND go.sequence_order = (SELECT MAX(sequence_order) FROM gauge_operations WHERE gauge_id = g.id)", nativeQuery = true)
+    List<UUID> findFinalOperationIdsByFactory(@Param("factoryId") UUID factoryId);
 }
 // End of Repository Interface

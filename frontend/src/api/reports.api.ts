@@ -13,5 +13,13 @@ export const reportsApi = {
   approveShift: async (gaugeId: string, shiftId: string, inspectionDate: string): Promise<any> => {
     const response = await api.post('/pqc/approvals/shift', { gaugeId, shiftId, inspectionDate });
     return response.data;
+  },
+  getSetupReport: async (gaugeId: string): Promise<{ data: any }> => {
+    const response = await api.get(`/machine-setup/report/gauge/${gaugeId}`);
+    return response.data;
+  },
+  getDossierSummary: async (poId: string): Promise<{ data: any }> => {
+    const response = await api.get(`/pqc/reports/po/${poId}/ai-summary`);
+    return response.data;
   }
 };

@@ -407,24 +407,30 @@ export default function PurchaseOrderDetailPage({ isPqcMode = false }: { isPqcMo
                                           ) : '—'}
                                         </td>
                                         <td style={{ padding: '10px 16px', fontSize: 13 }}>
-                                          {!isPqcMode && isDraft ? (
-                                            <select 
-                                              className="input" 
-                                              style={{ padding: '4px 8px', minHeight: 30 }}
-                                              value={op.machineMaster?.id || ''}
-                                              onChange={(e) => updateOperationMut.mutate({ lineItemId: li.id, opId: op.id, machineMasterId: e.target.value || null, cycleTimeMins: localCycleTimes[op.id] ?? op.cycleTimeMins })}
-                                            >
-                                              <option value="">No Machine Assigned</option>
-                                              {machines.map((m: any) => {
-                                                const isBusy = m.currentStatus === 'IN_USE' || m.currentStatus === 'PLANNED';
-                                                const statusLabel = m.currentStatus === 'IN_USE' ? ' (In Use)' : (m.currentStatus === 'PLANNED' ? ' (Planned)' : '');
-                                                return (
-                                                  <option key={m.id} value={m.id} disabled={isBusy && op.machineMaster?.id !== m.id}>
-                                                    {m.machineName} ({m.machineCode}){statusLabel}
-                                                  </option>
-                                                );
-                                              })}
-                                            </select>
+                                          {!isPqcMode ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                              <select 
+                                                className="input" 
+                                                style={{ padding: '4px 8px', minHeight: 30 }}
+                                                value={op.machineMaster?.id || ''}
+                                                onChange={(e) => updateOperationMut.mutate({ lineItemId: li.id, opId: op.id, machineMasterId: e.target.value || null, cycleTimeMins: localCycleTimes[op.id] ?? op.cycleTimeMins })}
+                                              >
+                                                <option value="">No Machine Assigned</option>
+                                                {machines.map((m: any) => {
+                                                  const statusLabel = m.currentStatus === 'IN_USE' ? ' (In Use)' : (m.currentStatus === 'PLANNED' ? ' (Planned)' : '');
+                                                  return (
+                                                    <option key={m.id} value={m.id}>
+                                                      {m.machineName} ({m.machineCode}){statusLabel}
+                                                    </option>
+                                                  );
+                                                })}
+                                              </select>
+                                              {op.machineMaster && machines.find((m: any) => m.id === op.machineMaster.id)?.currentStatus === 'IN_USE' && (
+                                                <div style={{ fontSize: 10, color: 'var(--rust)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                  <AlertTriangle size={12} /> Machine currently in use. Selecting a different one is recommended to avoid collision.
+                                                </div>
+                                              )}
+                                            </div>
                                           ) : (
                                             <span>
                                               {op.machineMaster ? `${op.machineMaster.machineName} (${op.machineMaster.machineCode})` : <span style={{color: 'var(--ash)'}}>Unassigned</span>}

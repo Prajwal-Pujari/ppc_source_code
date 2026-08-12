@@ -30,9 +30,10 @@ public class GaugeMasterController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<GaugeMasterResponse>>> getGaugeMasters(
             @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam(required = false) String search,
             Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
-                gaugeMasterService.getGaugeMasters(user.getFactoryId(), pageable)));
+                gaugeMasterService.getGaugeMasters(user.getFactoryId(), search, pageable)));
     }
 
     @GetMapping("/{id}")
@@ -89,6 +90,17 @@ public class GaugeMasterController {
             @PathVariable UUID gmId, @PathVariable UUID opId) {
         gaugeMasterService.removeOperation(gmId, opId);
         return ResponseEntity.ok(ApiResponse.success(null, "Operation removed from sequence"));
+    }
+
+    @PutMapping("/{gmId}/operations/{opId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<GaugeMasterOperationResponse>> updateOperation(
+            @PathVariable UUID gmId, @PathVariable UUID opId,
+            @RequestBody Map<String, Object> body) {
+        java.math.BigDecimal setupTimeMins = body.get("setupTimeMins") != null ? new java.math.BigDecimal(body.get("setupTimeMins").toString()) : null;
+        java.math.BigDecimal cycleTimeMins = body.get("cycleTimeMins") != null ? new java.math.BigDecimal(body.get("cycleTimeMins").toString()) : null;
+        return ResponseEntity.ok(ApiResponse.success(
+                gaugeMasterService.updateOperation(gmId, opId, setupTimeMins, cycleTimeMins), "Operation updated"));
     }
 
     @PutMapping("/{id}/operations/reorder")

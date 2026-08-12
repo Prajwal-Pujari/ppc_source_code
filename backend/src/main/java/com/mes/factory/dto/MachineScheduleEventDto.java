@@ -20,4 +20,6 @@ public class MachineScheduleEventDto {
     private String operationName;
     private LocalDate startDate;
     private LocalDate endDate;
+    private boolean isCompleted;
+    private String poStatus;
 }

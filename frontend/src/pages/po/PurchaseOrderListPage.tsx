@@ -19,7 +19,7 @@ const priorityStyle: Record<string, { color: string }> = {
   URGENT: { color: 'var(--priority-urgent)' },
 };
 
-export default function PurchaseOrderListPage() {
+export default function PurchaseOrderListPage({ isPqcMode }: { isPqcMode?: boolean }) {
   const setPageTitle = useUiStore((s) => s.setPageTitle);
   const navigate = useNavigate();
 
@@ -36,7 +36,7 @@ export default function PurchaseOrderListPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)' }}>All Orders</h2>
-        <button className="btn btn-primary" onClick={() => navigate('/purchase-orders/new')}>
+        <button className="btn btn-primary" onClick={() => navigate(isPqcMode ? '/pqc/po/create' : '/purchase-orders/new')}>
           <Plus size={16} style={{ marginRight: 6 }} /> New PO
         </button>
       </div>
@@ -74,7 +74,7 @@ export default function PurchaseOrderListPage() {
               orders.map((po: any) => (
                 <tr
                   key={po.id}
-                  onClick={() => navigate(`/purchase-orders/${po.id}`)}
+                  onClick={() => navigate(isPqcMode ? `/pqc/po/${po.id}` : `/purchase-orders/${po.id}`)}
                   style={{ cursor: 'pointer' }}
                 >
                   <td className="font-mono" style={{ fontWeight: 600, color: 'var(--copper-bronze)' }}>

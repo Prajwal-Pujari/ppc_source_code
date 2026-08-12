@@ -6,6 +6,7 @@ export interface MachineMaster {
   machineCode: string;
   department: string;
   isActive?: boolean;
+  currentStatus?: string;
 }
 
 export const machinesApi = {

@@ -23,6 +23,8 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -120,4 +122,64 @@ public class GaugeOperation {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
+
+    @JsonProperty("setupInfo")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public Map<String, Object> getSetupInfo() {
+        if (org.hibernate.Hibernate.isInitialized(gauge) && gauge != null 
+            && org.hibernate.Hibernate.isInitialized(gauge.getPoLineItem()) && gauge.getPoLineItem() != null 
+            && org.hibernate.Hibernate.isInitialized(gauge.getPoLineItem().getOperations()) && gauge.getPoLineItem().getOperations() != null 
+            && operationMaster != null) {
+            for (PoLineItemOperation poOp : gauge.getPoLineItem().getOperations()) {
+                if (poOp.getOperationMaster() != null && poOp.getOperationMaster().getId().equals(operationMaster.getId())) {
+                    Map<String, Object> info = new java.util.HashMap<>();
+                    info.put("setupStatus", poOp.getSetupStatus() != null ? poOp.getSetupStatus() : "PENDING");
+                    info.put("setupTimeMins", poOp.getSetupTimeMins());
+                    info.put("setupCompletedAt", poOp.getSetupCompletedAt());
+                    info.put("setupCompletedBy", poOp.getSetupCompletedBy());
+                    info.put("poLineItemOperationId", poOp.getId());
+                    return info;
+                }
+            }
+        }
+        return null;
+    }
+
+    @JsonProperty("gaugeMasterId")
+    public UUID getGaugeMasterId() {
+        if (org.hibernate.Hibernate.isInitialized(gauge) && gauge != null) {
+            if (org.hibernate.Hibernate.isInitialized(gauge.getGaugeMaster()) && gauge.getGaugeMaster() != null) {
+                return gauge.getGaugeMaster().getId();
+            }
+        }
+        return null;
+    }
+
+    @JsonProperty("operationMasterId")
+    public UUID getOperationMasterId() {
+        if (operationMaster != null) {
+            return operationMaster.getId();
+        }
+        return null;
+    }
+
+    @JsonProperty("machineMasterId")
+    public UUID getMachineMasterId() {
+        if (org.hibernate.Hibernate.isInitialized(machineMaster) && machineMaster != null) {
+            return machineMaster.getId();
+        }
+        if (org.hibernate.Hibernate.isInitialized(gauge) && gauge != null 
+            && org.hibernate.Hibernate.isInitialized(gauge.getPoLineItem()) && gauge.getPoLineItem() != null 
+            && org.hibernate.Hibernate.isInitialized(gauge.getPoLineItem().getOperations()) && gauge.getPoLineItem().getOperations() != null 
+            && operationMaster != null) {
+            for (PoLineItemOperation poOp : gauge.getPoLineItem().getOperations()) {
+                if (poOp.getOperationMaster() != null && poOp.getOperationMaster().getId().equals(operationMaster.getId())) {
+                    if (org.hibernate.Hibernate.isInitialized(poOp.getMachineMaster()) && poOp.getMachineMaster() != null) {
+                        return poOp.getMachineMaster().getId();
+                    }
+                }
+            }
+        }
+        return null;
+    }
 }

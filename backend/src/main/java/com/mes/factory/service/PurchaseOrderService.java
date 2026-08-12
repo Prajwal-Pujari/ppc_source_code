@@ -33,6 +33,7 @@ import com.mes.factory.repository.postgres.MachineMasterRepository;
 import com.mes.factory.repository.postgres.PoLineItemRepository;
 import com.mes.factory.repository.postgres.PurchaseOrderRepository;
 import com.mes.factory.repository.postgres.UserRepository;
+import com.mes.factory.repository.postgres.PqcInspectionLogRepository;
 import com.mes.factory.websocket.MesEventPublisher;
 import com.mes.factory.websocket.WebSocketEvent;
 import org.slf4j.Logger;
@@ -71,6 +72,7 @@ public class PurchaseOrderService {
     private final MesEventPublisher eventPublisher;
     private final ReportConfigurationRepository reportConfigRepo;
     private final MachineMasterRepository machineMasterRepository;
+    private final PqcInspectionLogRepository inspectionLogRepository;
 
     public PurchaseOrderService(PurchaseOrderRepository purchaseOrderRepository,
                                  PoLineItemRepository poLineItemRepository,
@@ -85,6 +87,7 @@ public class PurchaseOrderService {
                                  QrCodeService qrCodeService,
                                  ReportConfigurationRepository reportConfigRepo,
                                  MachineMasterRepository machineMasterRepository,
+                                 PqcInspectionLogRepository inspectionLogRepository,
                                  MesEventPublisher eventPublisher) {
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.poLineItemRepository = poLineItemRepository;
@@ -99,6 +102,7 @@ public class PurchaseOrderService {
         this.qrCodeService = qrCodeService;
         this.reportConfigRepo = reportConfigRepo;
         this.machineMasterRepository = machineMasterRepository;
+        this.inspectionLogRepository = inspectionLogRepository;
         this.eventPublisher = eventPublisher;
     }
 
@@ -114,11 +118,26 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
         page = purchaseOrderRepository.findByFactoryId(factoryId, pageable);
     }
 
-    return page.map(po -> PurchaseOrderResponse.builder()
+    return page.map(po -> {
+        long produced = inspectionLogRepository.sumProducedByPoId(po.getId());
+        long rejected = inspectionLogRepository.sumRejectedByPoId(po.getId());
+        long scrapped = inspectionLogRepository.sumScrappedByPoId(po.getId());
+        
+        String partName = null;
+        if (po.getLineItems() != null && !po.getLineItems().isEmpty()) {
+            partName = po.getLineItems().stream()
+                    .map(li -> li.getGaugeMaster() != null ? li.getGaugeMaster().getGaugeTypeName() : "")
+                    .filter(name -> !name.isEmpty())
+                    .distinct()
+                    .collect(java.util.stream.Collectors.joining(", "));
+        }
+
+        return PurchaseOrderResponse.builder()
             .id(po.getId())
             .poNumber(po.getPoNumber())
             .customerName(po.getCustomer() != null ? po.getCustomer().getName() : null)
             .customerId(po.getCustomer() != null ? po.getCustomer().getId() : null)
+            .partName(partName)
             .orderDate(po.getOrderDate())
             .expectedDeliveryDate(po.getExpectedDeliveryDate())
             .priority(po.getPriority() != null ? po.getPriority().name() : null)
@@ -126,10 +145,15 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
             .totalGauges(po.getTotalGauges())
             .completedGauges(po.getCompletedGauges())
             .rejectedGauges(po.getRejectedGauges())
+            .targetQuantity(po.getLineItems() != null ? po.getLineItems().stream().mapToInt(li -> li.getQuantity() != null ? li.getQuantity() : 0).sum() : po.getTotalGauges())
+            .producedQuantity((int) produced)
+            .rejectedQuantity((int) rejected)
+            .scrappedQuantity((int) scrapped)
             .specialInstructions(po.getSpecialInstructions())
             .createdAt(po.getCreatedAt())
             .updatedAt(po.getUpdatedAt())
-            .build());
+            .build();
+    });
 }
 
     @Transactional(readOnly = true)
@@ -201,6 +225,7 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
                                 .sequenceOrder(gmo.getSequenceOrder())
                                 .isMandatory(gmo.getIsMandatory() != null ? gmo.getIsMandatory() : true)
                                 .cycleTimeMins(gmo.getCycleTimeMins())
+                                .setupTimeMins(gmo.getSetupTimeMins() != null ? gmo.getSetupTimeMins() : java.math.BigDecimal.ZERO)
                                 .build();
                         lineItem.getOperations().add(plio);
                     }
@@ -447,9 +472,6 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
     @Transactional
     public PurchaseOrder updatePurchaseOrder(UUID poId, com.mes.factory.dto.request.PurchaseOrderUpdateRequest request) {
         PurchaseOrder po = getPurchaseOrder(poId);
-        if (po.getStatus() != PoStatus.DRAFT) {
-            throw new BusinessException("Only DRAFT POs can be edited", "INVALID_STATUS");
-        }
         
         if (request.getOrderDate() != null) {
             po.setOrderDate(request.getOrderDate());
@@ -457,7 +479,6 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
         if (request.getExpectedDeliveryDate() != null) {
             po.setExpectedDeliveryDate(request.getExpectedDeliveryDate());
         }
-        
         return purchaseOrderRepository.save(po);
     }
 
@@ -527,9 +548,7 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
     @Transactional
     public PoLineItemOperationResponse updateLineItemOperation(UUID poId, UUID lineItemId, UUID opId, UUID machineId, java.math.BigDecimal cycleTimeMins) {
         PurchaseOrder po = getPurchaseOrder(poId);
-        if (po.getStatus() != PoStatus.DRAFT) {
-            throw new BusinessException("Operations can only be modified on DRAFT POs", "INVALID_STATUS");
-        }
+        // Removed DRAFT check to allow changing machine assignments even if the PO is running
         
         PoLineItem lineItem = poLineItemRepository.findById(lineItemId)
                 .orElseThrow(() -> new ResourceNotFoundException("PoLineItem", "id", lineItemId));
@@ -552,6 +571,19 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
         }
         
         poLineItemRepository.save(lineItem);
+        
+        // Also update any generated GaugeOperations
+        if (!lineItem.getGauges().isEmpty()) {
+            for (Gauge gauge : lineItem.getGauges()) {
+                List<GaugeOperation> gaugeOps = gaugeOperationRepository.findByGaugeIdOrderBySequenceOrder(gauge.getId());
+                for (GaugeOperation go : gaugeOps) {
+                    if (go.getOperationMaster().getId().equals(operation.getOperationMaster().getId())) {
+                        go.setMachineMaster(operation.getMachineMaster());
+                        gaugeOperationRepository.save(go);
+                    }
+                }
+            }
+        }
         
         PoLineItemOperationResponse.MachineMasterInfo mInfo = null;
         if (operation.getMachineMaster() != null) {

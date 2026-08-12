@@ -99,4 +99,7 @@ public class PqcInspectionLog {
 
     @Column(columnDefinition = "TEXT")
     private String remarks;
+
+    @Column(name = "reviewer_remarks", columnDefinition = "TEXT")
+    private String reviewerRemarks;
 }

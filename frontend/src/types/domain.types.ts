@@ -5,6 +5,8 @@ export type OperationStatus = 'PENDING' | 'QUEUED' | 'IN_PROGRESS' | 'COMPLETED'
 export type RejectionCategory = 'DIMENSIONAL_ERROR' | 'SURFACE_DEFECT' | 'MATERIAL_DEFECT' | 'OPERATOR_ERROR' | 'MACHINE_ISSUE' | 'TOOLING_WEAR' | 'OTHER';
 export type ActionTaken = 'REWORK' | 'SCRAP' | 'ACCEPT_WITH_DEVIATION';
 export type UserRole = 'ADMIN' | 'SUPERVISOR' | 'WORKER' | 'QUALITY_INSPECTOR' | 'VIEWER';
+export type WorkerStatus = 'AVAILABLE' | 'ON_BREAK' | 'WORKING' | 'OFF_SHIFT';
+export type ReportType = 'IN_PROCESS' | 'PDIR' | 'LAYOUT' | 'FAI' | 'FAR' | 'INCOMING' | 'SETUP';
 
 export interface User {
   id: string;
@@ -96,6 +98,23 @@ export interface GaugeOperation {
     poLineItem?: { lineNotes?: string };
     purchaseOrder?: any;
   };
+  machineMaster?: {
+    id: string;
+    machineCode: string;
+    name: string;
+  };
+  setupInfo?: {
+    setupStatus: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+    setupTimeMins?: number;
+    setupCompletedAt?: string;
+    setupCompletedBy?: { id: string; fullName: string };
+    poLineItemOperationId?: string;
+  };
+  machineMaster?: any;
+  machineMasterId?: string;
+  operationMaster?: any;
+  operationMasterId?: string;
+  gaugeMasterId?: string;
 }
 
 export interface NcRecord {

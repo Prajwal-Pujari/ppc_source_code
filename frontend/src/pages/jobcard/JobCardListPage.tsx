@@ -21,7 +21,7 @@ const ACCENTS = ['#8B6914','#4A6FA5','#6B5A8B','#3A6B4A','#8B3A3A','#C68B2F','#2
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-export default function JobCardListPage() {
+export default function JobCardListPage({ isPqcMode }: { isPqcMode?: boolean }) {
   const setPageTitle = useUiStore((s) => s.setPageTitle);
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -359,7 +359,7 @@ export default function JobCardListPage() {
                     return (
                       <div
                         key={g.id}
-                        onClick={() => navigate(`/job-cards/${g.id}`)}
+                        onClick={() => navigate(isPqcMode ? `/pqc/jobcards/${g.id}` : `/job-cards/${g.id}`)}
                         onMouseEnter={e => {
                           const el = e.currentTarget as HTMLDivElement;
                           el.style.transform = 'translateY(-3px)';

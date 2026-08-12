@@ -52,4 +52,8 @@ public class GaugeMasterOperation {
 
     @Column(name = "cycle_time_mins", precision = 10, scale = 2)
     private java.math.BigDecimal cycleTimeMins;
+
+    @Column(name = "setup_time_mins", precision = 10, scale = 2)
+    @Builder.Default
+    private java.math.BigDecimal setupTimeMins = java.math.BigDecimal.ZERO;
 }

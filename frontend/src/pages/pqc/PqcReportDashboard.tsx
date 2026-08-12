@@ -548,10 +548,8 @@ export default function PqcReportDashboard() {
                   </div>
                 )}
 
-                <div ref={reportRef} className="print-document mobile-p-16" style={{
-                  background: 'white', padding: 40, borderRadius: 10,
-                  boxShadow: '0 6px 24px rgba(28,26,24,0.07)', border: '1px solid var(--silk)',
-                  minHeight: 800, width: 'max-content', minWidth: '100%',
+                <div ref={reportRef} className="print-document mobile-p-16 card glass-panel" style={{
+                  padding: 40, minHeight: 800, width: 'max-content', minWidth: '100%',
                 }}>
                   {reportLoading ? (
                     <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--slate)' }}>

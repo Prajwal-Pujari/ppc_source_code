@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useUiStore } from '@/store/uiStore';
 import { getOperationMasters, createOperationMaster, updateOperationMaster, deleteOperationMaster } from '@/api/operation-master.api';
-import { Plus, Edit2, Trash2, ExternalLink } from 'lucide-react';
+import { Plus, Edit2, Trash2, ExternalLink, Search } from 'lucide-react';
 
 export default function OperationMasterPage() {
   const setPageTitle = useUiStore((s: any) => s.setPageTitle);
@@ -12,7 +12,20 @@ export default function OperationMasterPage() {
 
   useEffect(() => { setPageTitle('Operations Master'); }, [setPageTitle]);
 
-  const { data, isLoading } = useQuery({ queryKey: ['operation-masters'], queryFn: () => getOperationMasters({ size: 50 }) });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  const { data, isLoading } = useQuery({ 
+    queryKey: ['operation-masters', debouncedSearch], 
+    queryFn: () => getOperationMasters({ size: 50, search: debouncedSearch }) 
+  });
   const operations = data?.data?.content || [];
 
   const createMut = useMutation({
@@ -47,9 +60,25 @@ export default function OperationMasterPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)' }}>All Operations</h2>
-        <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true); }}>
-          <Plus size={16} style={{ marginRight: 6 }} /> Add Operation
-        </button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ position: 'relative' }}>
+            <Search size={16} color="var(--ash)" style={{ position: 'absolute', left: 12, top: 10 }} />
+            <input
+              type="text"
+              placeholder="Search operation name or code..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: 250, padding: '8px 12px 8px 36px',
+                borderRadius: 6, border: '1px solid var(--stone)', fontSize: 13,
+                outline: 'none',
+              }}
+            />
+          </div>
+          <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true); }}>
+            <Plus size={16} style={{ marginRight: 6 }} /> Add Operation
+          </button>
+        </div>
       </div>
 
       {showForm && (

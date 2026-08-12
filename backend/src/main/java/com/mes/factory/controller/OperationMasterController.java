@@ -26,9 +26,10 @@ public class OperationMasterController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<OperationMaster>>> getOperations(
             @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam(required = false) String search,
             Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(
-                operationMasterService.getOperations(user.getFactoryId(), pageable)));
+                operationMasterService.getOperations(user.getFactoryId(), search, pageable)));
     }
 
     @GetMapping("/{id}")

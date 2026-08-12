@@ -15,6 +15,16 @@ import java.util.UUID;
 public interface PqcInspectionLogRepository extends JpaRepository<PqcInspectionLog, UUID> {
     List<PqcInspectionLog> findByGaugeOperationIdOrderByLogTimeDesc(UUID gaugeOperationId);
     List<PqcInspectionLog> findByGaugeOperationIdOrderByLogTimeAsc(UUID gaugeOperationId);
+    @Query("SELECT l FROM PqcInspectionLog l " +
+           "JOIN FETCH l.gauge g " +
+           "LEFT JOIN FETCH g.purchaseOrder po " +
+           "LEFT JOIN FETCH po.customer " +
+           "JOIN FETCH l.gaugeOperation go " +
+           "LEFT JOIN FETCH l.machine m " +
+           "JOIN FETCH l.inspector i " +
+           "WHERE g.factory.id = :factoryId AND l.scrapQty > :scrapQty " +
+           "ORDER BY l.logTime DESC")
+    List<PqcInspectionLog> findScrapLogsWithDetails(@Param("factoryId") UUID factoryId, @Param("scrapQty") Integer scrapQty);
 
     @Query("SELECT COALESCE(SUM(l.passedQty), 0) FROM PqcInspectionLog l WHERE l.gaugeOperation.id = :operationId")
     int sumPassedQtyByOperationId(UUID operationId);
@@ -22,18 +32,25 @@ public interface PqcInspectionLogRepository extends JpaRepository<PqcInspectionL
     @Query("SELECT COALESCE(SUM(l.actualQty), 0) FROM PqcInspectionLog l WHERE l.gaugeOperation.id = :operationId")
     int sumActualQtyByOperationId(UUID operationId);
 
+    // ── PO quantities ──
+    @Query(value = "SELECT COALESCE(SUM(l.passed_qty), 0) FROM pqc_inspection_logs l JOIN gauge_operations go ON l.gauge_operation_id = go.id JOIN gauges g ON l.gauge_id = g.id WHERE g.purchase_order_id = cast(:poId as uuid) AND go.sequence_order = (SELECT MAX(sequence_order) FROM gauge_operations WHERE gauge_id = g.id)", nativeQuery = true)
+    long sumProducedByPoId(@Param("poId") UUID poId);
+
+    @Query("SELECT COALESCE(SUM(l.rejectedQty), 0) FROM PqcInspectionLog l WHERE l.gauge.purchaseOrder.id = :poId")
+    long sumRejectedByPoId(@Param("poId") UUID poId);
+
+    @Query("SELECT COALESCE(SUM(l.scrapQty), 0) FROM PqcInspectionLog l WHERE l.gauge.purchaseOrder.id = :poId")
+    long sumScrappedByPoId(@Param("poId") UUID poId);
+
     // ── Dashboard queries ──
 
-    @Query("SELECT COALESCE(SUM(l.plannedQty), 0) FROM PqcInspectionLog l " +
-           "WHERE l.gauge.factory.id = :factoryId AND l.logTime >= :since")
+    @Query(value = "SELECT COALESCE(SUM(max_planned), 0) FROM (SELECT MAX(l.planned_qty) as max_planned FROM pqc_inspection_logs l JOIN gauges g ON l.gauge_id = g.id WHERE g.factory_id = cast(:factoryId as uuid) AND l.log_time >= :since GROUP BY l.gauge_id) as sub", nativeQuery = true)
     long sumPlannedSince(@Param("factoryId") UUID factoryId, @Param("since") OffsetDateTime since);
 
-    @Query("SELECT COALESCE(SUM(l.actualQty), 0) FROM PqcInspectionLog l " +
-           "WHERE l.gauge.factory.id = :factoryId AND l.logTime >= :since")
+    @Query(value = "SELECT COALESCE(SUM(max_op_actual), 0) FROM (SELECT MAX(op_actual) as max_op_actual FROM (SELECT l.gauge_id, l.gauge_operation_id, SUM(l.actual_qty) as op_actual FROM pqc_inspection_logs l JOIN gauges g ON l.gauge_id = g.id WHERE g.factory_id = cast(:factoryId as uuid) AND l.log_time >= :since GROUP BY l.gauge_id, l.gauge_operation_id) as op_sums GROUP BY gauge_id) as gauge_max", nativeQuery = true)
     long sumActualSince(@Param("factoryId") UUID factoryId, @Param("since") OffsetDateTime since);
 
-    @Query("SELECT COALESCE(SUM(l.passedQty), 0) FROM PqcInspectionLog l " +
-           "WHERE l.gauge.factory.id = :factoryId AND l.logTime >= :since")
+    @Query(value = "SELECT COALESCE(SUM(max_op_passed), 0) FROM (SELECT MAX(op_passed) as max_op_passed FROM (SELECT l.gauge_id, l.gauge_operation_id, SUM(l.passed_qty) as op_passed FROM pqc_inspection_logs l JOIN gauges g ON l.gauge_id = g.id WHERE g.factory_id = cast(:factoryId as uuid) AND l.log_time >= :since GROUP BY l.gauge_id, l.gauge_operation_id) as op_sums GROUP BY gauge_id) as gauge_max", nativeQuery = true)
     long sumPassedSince(@Param("factoryId") UUID factoryId, @Param("since") OffsetDateTime since);
 
     @Query("SELECT COALESCE(SUM(l.rejectedQty), 0) FROM PqcInspectionLog l " +
@@ -70,12 +87,10 @@ public interface PqcInspectionLogRepository extends JpaRepository<PqcInspectionL
     List<PqcInspectionLog> findAllSince(@Param("factoryId") UUID factoryId, @Param("since") OffsetDateTime since);
 
     // All-time totals (for overall stats)
-    @Query("SELECT COALESCE(SUM(l.actualQty), 0) FROM PqcInspectionLog l " +
-           "WHERE l.gauge.factory.id = :factoryId")
+    @Query(value = "SELECT COALESCE(SUM(max_op_actual), 0) FROM (SELECT MAX(op_actual) as max_op_actual FROM (SELECT l.gauge_id, l.gauge_operation_id, SUM(l.actual_qty) as op_actual FROM pqc_inspection_logs l JOIN gauges g ON l.gauge_id = g.id WHERE g.factory_id = cast(:factoryId as uuid) GROUP BY l.gauge_id, l.gauge_operation_id) as op_sums GROUP BY gauge_id) as gauge_max", nativeQuery = true)
     long sumActualAllTime(@Param("factoryId") UUID factoryId);
 
-    @Query("SELECT COALESCE(SUM(l.passedQty), 0) FROM PqcInspectionLog l " +
-           "WHERE l.gauge.factory.id = :factoryId")
+    @Query(value = "SELECT COALESCE(SUM(max_op_passed), 0) FROM (SELECT MAX(op_passed) as max_op_passed FROM (SELECT l.gauge_id, l.gauge_operation_id, SUM(l.passed_qty) as op_passed FROM pqc_inspection_logs l JOIN gauges g ON l.gauge_id = g.id WHERE g.factory_id = cast(:factoryId as uuid) GROUP BY l.gauge_id, l.gauge_operation_id) as op_sums GROUP BY gauge_id) as gauge_max", nativeQuery = true)
     long sumPassedAllTime(@Param("factoryId") UUID factoryId);
 
     @Query("SELECT COALESCE(SUM(l.rejectedQty), 0) FROM PqcInspectionLog l " +

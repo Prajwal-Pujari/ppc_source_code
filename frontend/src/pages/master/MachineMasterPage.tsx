@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Plus, Pencil, Trash2, Search, Target, Monitor } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Settings, Plus, Pencil, Trash2, Search, Target, Monitor, FileSpreadsheet } from 'lucide-react';
 import { machinesApi, type MachineMaster } from '@/api/machines.api';
 import toast from 'react-hot-toast';
-
 export default function MachineMasterPage() {
+  const navigate = useNavigate();
   const [machines, setMachines] = useState<MachineMaster[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -156,7 +157,17 @@ export default function MachineMasterPage() {
                 </td>
                 <td style={{ color: 'var(--slate)' }}>{machine.department || '—'}</td>
                 <td style={{ textAlign: 'right' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
+                    <button 
+                      onClick={() => {
+                        const basePath = window.location.pathname.split('/').slice(0, -1).join('/');
+                        navigate(`${basePath}/machine-setup`);
+                      }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--copper-bronze)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 500 }} 
+                      title="Manage Checklists"
+                    >
+                      <Settings size={14} /> Setup
+                    </button>
                     <button onClick={() => handleOpenModal(machine)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ash)' }} title="Edit">
                       <Pencil size={15} />
                     </button>

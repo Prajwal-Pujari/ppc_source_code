@@ -4,7 +4,7 @@ import { useUiStore } from '@/store/uiStore';
 import api from '@/lib/axios';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell,
+  PieChart, Pie, Cell, ComposedChart, Line
 } from 'recharts';
 import {
   Target, Factory, CheckCircle2, XCircle, Wrench, Trash2,
@@ -53,19 +53,22 @@ export default function PqcDashboardPage() {
   const periodLabel = period === 'today' ? 'Today' : period === 'week' ? 'Last 7 Days' : 'Last 30 Days';
 
   /* ── hourly chart formatting ── */
-  const hourlyData = hourly.map((h: any) => ({
-    ...h,
-    label: `${String(h.hour).padStart(2, '0')}:00`,
-  }));
+  const hourlyData = data?.hourly?.map((h: any) => ({
+    label: h.label || `${String(h.hour).padStart(2, '0')}:00`,
+    passed: h.passed,
+    rework: h.rework,
+    scrap: h.scrap,
+    rejected: h.rejected,
+    yieldRate: h.produced > 0 ? Number(((h.passed / h.produced) * 100).toFixed(1)) : 0
+  })) || [];
 
   /* ── stat cards config ── */
   const stats = [
-    { key: 'planned',  label: 'PARTS PLANNED', value: summary.planned ?? 0,  sub: `${summary.batchCount ?? 0} batches`, color: COLORS.planned,  icon: Target },
-    { key: 'produced', label: 'PRODUCED',      value: summary.produced ?? 0, sub: `${periodLabel}`,                      color: COLORS.produced, icon: Factory },
-    { key: 'passed',   label: 'PASSED',        value: summary.passed ?? 0,   sub: `Yield: ${summary.yieldRate ?? 0}%`,   color: COLORS.passed,   icon: CheckCircle2 },
-    { key: 'rejected', label: 'REJECTED',      value: summary.rejected ?? 0, sub: `of ${summary.produced ?? 0} produced`,color: COLORS.rejected, icon: XCircle },
-    { key: 'rework',   label: 'REWORK',        value: summary.rework ?? 0,   sub: `can be salvaged`,                     color: COLORS.rework,   icon: Wrench },
-    { key: 'scrap',    label: 'SCRAPPED',      value: summary.scrap ?? 0,    sub: `permanent loss`,                      color: COLORS.scrap,    icon: Trash2 },
+    { key: 'planned',  label: 'PARTS PLANNED',      value: summary.planned ?? 0,  sub: `${summary.batchCount ?? 0} batches`, color: COLORS.planned,  icon: Target },
+    { key: 'rejected', label: 'SUSPECTED QUANTITY', value: summary.rejected ?? 0, sub: `under review`,                       color: COLORS.rejected, icon: AlertTriangle },
+    { key: 'rework',   label: 'REWORK',             value: summary.rework ?? 0,   sub: `can be salvaged`,                    color: COLORS.rework,   icon: Wrench },
+    { key: 'scrap',    label: 'REJECT QUANTITY',    value: summary.scrap ?? 0,    sub: `permanent loss`,                     color: COLORS.scrap,    icon: Trash2 },
+    { key: 'ppm',      label: 'PPM (DEFECTIVE)',    value: summary.ppm ?? 0,      sub: `Parts Per Million`,                  color: COLORS.produced, icon: TrendingUp },
   ];
 
   return (
@@ -106,8 +109,8 @@ export default function PqcDashboardPage() {
 
       {/* ── Loading / Error ── */}
       {isLoading && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 16, marginBottom: 24 }}>
-          {[...Array(6)].map((_, i) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24 }}>
+          {[...Array(5)].map((_, i) => (
             <div key={i} className="skeleton" style={{ height: 110, borderRadius: 8 }} />
           ))}
         </div>
@@ -122,19 +125,13 @@ export default function PqcDashboardPage() {
       {!isLoading && !isError && (
         <>
           {/* ── Stat Cards Row ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 16, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24 }}>
             {stats.map(card => {
               const Icon = card.icon;
               return (
-                <div key={card.key} style={{
-                  background: 'white', border: '1px solid var(--silk)', borderRadius: 8,
+                <div key={card.key} className="card glass-panel" style={{
                   padding: '16px 18px', borderTop: `3px solid ${card.color}`,
-                  boxShadow: '0 1px 3px rgba(28,26,24,0.04)',
-                  transition: 'transform 0.15s, box-shadow 0.15s',
-                }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(28,26,24,0.08)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'none'; (e.currentTarget as HTMLElement).style.boxShadow = '0 1px 3px rgba(28,26,24,0.04)'; }}
-                >
+                }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                     <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ash)' }}>
                       {card.label}
@@ -154,10 +151,7 @@ export default function PqcDashboardPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 24 }}>
 
             {/* Hourly Production Bar Chart */}
-            <div style={{
-              background: 'white', border: '1px solid var(--silk)', borderRadius: 8,
-              padding: 24, boxShadow: '0 1px 3px rgba(28,26,24,0.04)',
-            }}>
+            <div className="card glass-panel" style={{ padding: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Activity size={18} color="var(--copper-bronze)" />
@@ -171,27 +165,28 @@ export default function PqcDashboardPage() {
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={hourlyData} barCategoryGap="20%">
+                  <ComposedChart data={hourlyData} barCategoryGap="20%">
                     <CartesianGrid strokeDasharray="3 3" stroke="#E8E2D9" />
                     <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#8C857D' }} />
-                    <YAxis tick={{ fontSize: 11, fill: '#8C857D' }} />
+                    <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#8C857D' }} />
+                    <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--copper-bronze)' }} tickFormatter={(val) => `${val}%`} />
                     <Tooltip
                       contentStyle={{ borderRadius: 8, border: '1px solid #E8E2D9', fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
                       labelFormatter={v => `Hour: ${v}`}
                     />
                     <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                    <Bar dataKey="passed" name="Passed" fill={COLORS.passed} radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="rejected" name="Rejected" fill={COLORS.rejected} radius={[3, 3, 0, 0]} />
-                  </BarChart>
+                    <Bar yAxisId="left" dataKey="passed" name="Passed" stackId="a" fill={COLORS.passed} />
+                    <Bar yAxisId="left" dataKey="rework" name="Rework" stackId="a" fill={COLORS.rework} />
+                    <Bar yAxisId="left" dataKey="scrap" name="Scrapped" stackId="a" fill={COLORS.scrap} />
+                    <Bar yAxisId="left" dataKey="rejected" name="Rejected" stackId="a" fill={COLORS.rejected} radius={[3, 3, 0, 0]} />
+                    <Line yAxisId="right" type="monotone" dataKey="yieldRate" name="Yield %" stroke="var(--copper-bronze)" strokeWidth={2} dot={{ r: 3, fill: 'var(--copper-bronze)' }} />
+                  </ComposedChart>
                 </ResponsiveContainer>
               )}
             </div>
 
             {/* Rejection Reasons Pie Chart */}
-            <div style={{
-              background: 'white', border: '1px solid var(--silk)', borderRadius: 8,
-              padding: 24, boxShadow: '0 1px 3px rgba(28,26,24,0.04)',
-            }}>
+            <div className="card glass-panel" style={{ padding: 24 }}>
               <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <AlertTriangle size={18} color="#ba1a1a" />
                 Rejection Breakdown
@@ -210,7 +205,7 @@ export default function PqcDashboardPage() {
                         dataKey="count"
                         nameKey="reason"
                         cx="50%" cy="50%"
-                        innerRadius={45} outerRadius={80}
+                        innerRadius={55} outerRadius={80}
                         paddingAngle={3}
                         stroke="none"
                       >
@@ -221,15 +216,18 @@ export default function PqcDashboardPage() {
                       <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
                     </PieChart>
                   </ResponsiveContainer>
-                  {/* Legend */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-                    {rejectionBreakdown.map((r: any, i: number) => (
+                    {rejectionBreakdown.map((r: any, i: number) => {
+                      const total = rejectionBreakdown.reduce((acc, curr) => acc + curr.count, 0);
+                      const percentage = total > 0 ? Math.round((r.count / total) * 100) : 0;
+                      return (
                       <div key={r.reason} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
                         <span style={{ width: 10, height: 10, borderRadius: 2, background: PIE_PALETTE[i % PIE_PALETTE.length], flexShrink: 0 }} />
                         <span style={{ flex: 1, color: 'var(--charcoal)' }}>{r.reason}</span>
+                        <span style={{ color: 'var(--ash)', fontSize: 11 }}>{percentage}%</span>
                         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, color: 'var(--charcoal)' }}>{r.count}</span>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 </div>
               )}
@@ -240,10 +238,7 @@ export default function PqcDashboardPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
 
             {/* Yield Gauge */}
-            <div style={{
-              background: 'white', border: '1px solid var(--silk)', borderRadius: 8,
-              padding: 24, boxShadow: '0 1px 3px rgba(28,26,24,0.04)',
-            }}>
+            <div className="card glass-panel" style={{ padding: 24 }}>
               <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)', margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <TrendingUp size={18} color="var(--copper-bronze)" />
                 Quality Yield
@@ -263,10 +258,7 @@ export default function PqcDashboardPage() {
             </div>
 
             {/* Recent Inspections */}
-            <div style={{
-              background: 'white', border: '1px solid var(--silk)', borderRadius: 8,
-              padding: 24, boxShadow: '0 1px 3px rgba(28,26,24,0.04)',
-            }}>
+            <div className="card glass-panel" style={{ padding: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Clock size={18} color="var(--copper-bronze)" />
@@ -288,20 +280,40 @@ export default function PqcDashboardPage() {
                         <th style={thS}>Operation</th>
                         <th style={{ ...thS, textAlign: 'center' }}>Qty</th>
                         <th style={{ ...thS, textAlign: 'center' }}>Pass</th>
+                        <th style={{ ...thS, textAlign: 'center' }}>Rwk</th>
+                        <th style={{ ...thS, textAlign: 'center' }}>Scr</th>
                         <th style={{ ...thS, textAlign: 'center' }}>Rej</th>
+                        <th style={{ ...thS, textAlign: 'center' }}>Yield</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {recentInspections.map((r: any) => (
-                        <tr key={r.id} style={{ borderBottom: '1px solid var(--silk)' }}>
+                      {recentInspections.map((r: any) => {
+                        const yieldRate = r.actualQty > 0 ? ((r.passedQty / r.actualQty) * 100).toFixed(1) : 0;
+                        const isPerfect = r.rejectedQty === 0 && r.reworkQty === 0 && r.scrapQty === 0;
+                        return (
+                        <tr key={r.id} style={{ borderBottom: '1px solid var(--silk)', background: isPerfect ? 'transparent' : 'var(--status-rejected-bg)' }}>
                           <td style={tdS}>{new Date(r.logTime).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                           <td style={tdS}>{r.inspectorName}</td>
-                          <td style={tdS}>{r.operationName}</td>
+                          <td style={tdS}>
+                            <div style={{ fontWeight: 500 }}>{r.operationName}</div>
+                            <div style={{ fontSize: 10, color: 'var(--ash)' }}>{r.gaugeType}</div>
+                          </td>
                           <td style={{ ...tdS, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{r.actualQty}</td>
-                          <td style={{ ...tdS, textAlign: 'center', color: '#3A6B4A', fontWeight: 600 }}>{r.passedQty}</td>
-                          <td style={{ ...tdS, textAlign: 'center', color: r.rejectedQty > 0 ? '#ba1a1a' : 'inherit', fontWeight: r.rejectedQty > 0 ? 600 : 400 }}>{r.rejectedQty}</td>
+                          <td style={{ ...tdS, textAlign: 'center', color: 'var(--status-completed)', fontWeight: 600 }}>{r.passedQty}</td>
+                          <td style={{ ...tdS, textAlign: 'center', color: r.reworkQty > 0 ? 'var(--status-rework)' : 'inherit', fontWeight: r.reworkQty > 0 ? 600 : 400 }}>{r.reworkQty || 0}</td>
+                          <td style={{ ...tdS, textAlign: 'center', color: r.scrapQty > 0 ? 'var(--status-in-progress)' : 'inherit', fontWeight: r.scrapQty > 0 ? 600 : 400 }}>{r.scrapQty || 0}</td>
+                          <td style={{ ...tdS, textAlign: 'center', color: r.rejectedQty > 0 ? 'var(--status-rejected)' : 'inherit', fontWeight: r.rejectedQty > 0 ? 600 : 400 }}>{r.rejectedQty}</td>
+                          <td style={{ ...tdS, textAlign: 'center' }}>
+                            <span style={{
+                              padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 700,
+                              background: Number(yieldRate) >= 95 ? 'var(--status-completed-bg)' : Number(yieldRate) >= 80 ? 'var(--status-in-progress-bg)' : 'var(--status-rejected-bg)',
+                              color: Number(yieldRate) >= 95 ? 'var(--status-completed)' : Number(yieldRate) >= 80 ? 'var(--status-in-progress)' : 'var(--status-rejected)'
+                            }}>
+                              {yieldRate}%
+                            </span>
+                          </td>
                         </tr>
-                      ))}
+                      )})}
                     </tbody>
                   </table>
                 </div>

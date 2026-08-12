@@ -65,11 +65,17 @@ public class GaugeMasterService {
                 .operationName(gmo.getOperationMaster() != null ? gmo.getOperationMaster().getOperationName() : null)
                 .operationCode(gmo.getOperationMaster() != null ? gmo.getOperationMaster().getOperationCode() : null)
                 .cycleTimeMins(gmo.getCycleTimeMins())
+                .setupTimeMins(gmo.getSetupTimeMins())
                 .build();
     }
 
     @Transactional(readOnly = true)
-    public Page<GaugeMasterResponse> getGaugeMasters(UUID factoryId, Pageable pageable) {
+    public Page<GaugeMasterResponse> getGaugeMasters(UUID factoryId, String search, Pageable pageable) {
+        if (search != null && !search.trim().isEmpty()) {
+            return gaugeMasterRepository
+                    .findByFactoryIdAndIsActiveTrueAndSearchTerm(factoryId, search.trim(), pageable)
+                    .map(this::toResponse);
+        }
         return gaugeMasterRepository
                 .findByFactoryIdAndIsActiveTrue(factoryId, pageable)
                 .map(this::toResponse);
@@ -143,6 +149,17 @@ public class GaugeMasterService {
     @Transactional
     public void removeOperation(UUID gaugeMasterId, UUID operationMasterId) {
         gaugeMasterOperationRepository.deleteByGaugeMasterIdAndOperationMasterId(gaugeMasterId, operationMasterId);
+    }
+
+    @Transactional
+    public GaugeMasterOperationResponse updateOperation(UUID gaugeMasterId, UUID operationMasterId, java.math.BigDecimal setupTimeMins, java.math.BigDecimal cycleTimeMins) {
+        GaugeMasterOperation gmo = gaugeMasterOperationRepository.findByGaugeMasterIdOrderBySequenceOrder(gaugeMasterId).stream()
+                .filter(op -> op.getOperationMaster().getId().equals(operationMasterId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("GaugeMasterOperation", "gaugeMasterId", gaugeMasterId));
+        gmo.setSetupTimeMins(setupTimeMins);
+        gmo.setCycleTimeMins(cycleTimeMins);
+        return toOperationResponse(gaugeMasterOperationRepository.save(gmo));
     }
 
     @Transactional

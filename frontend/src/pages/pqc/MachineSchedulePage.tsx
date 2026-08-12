@@ -16,6 +16,19 @@ export default function MachineSchedulePage() {
   // Calendar State (show current month on front)
   const [viewMode, setViewMode] = useState<'LIVE' | 'CALENDAR'>('CALENDAR');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
+
+  const toggleDayExpansion = (dayIndex: number) => {
+    setExpandedDays(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(dayIndex)) {
+        newSet.delete(dayIndex);
+      } else {
+        newSet.add(dayIndex);
+      }
+      return newSet;
+    });
+  };
 
   useEffect(() => {
     fetchMachines();
@@ -187,23 +200,119 @@ export default function MachineSchedulePage() {
             {days.map((day, i) => {
               const dayEvents = day ? getEventsForDay(day) : [];
               const isToday = day && day.toDateString() === new Date().toDateString();
+              const isExpanded = expandedDays.has(i);
+              
+              const poGroups = dayEvents.reduce((acc: any, event: any) => {
+                if (!acc[event.poNumber]) acc[event.poNumber] = [];
+                acc[event.poNumber].push(event);
+                return acc;
+              }, {});
+              
+              const poEntries = Object.entries(poGroups);
+              const visiblePOs = isExpanded ? poEntries : poEntries.slice(0, 3);
+              const hiddenCount = poEntries.length - 3;
+              
               return (
                 <div key={i} style={{ 
                   minHeight: 120, padding: 8, background: day ? '#fff' : 'var(--warm-white)',
-                  borderTop: day && isToday ? '2px solid var(--copper-bronze)' : 'none'
+                  borderTop: day && isToday ? '2px solid var(--copper-bronze)' : 'none',
+                  display: 'flex', flexDirection: 'column'
                 }}>
                   {day && (
                     <>
-                      <div style={{ fontSize: 14, fontWeight: isToday ? 700 : 500, color: isToday ? 'var(--copper-bronze)' : 'var(--charcoal)', marginBottom: 8, textAlign: 'right' }}>
+                      <div style={{ fontSize: 14, fontWeight: isToday ? 700 : 500, color: isToday ? 'var(--copper-bronze)' : 'var(--charcoal)', marginBottom: 8, textAlign: 'right', flexShrink: 0 }}>
                         {day.getDate()}
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {dayEvents.map((e: any, idx: number) => (
-                          <div key={idx} style={{ padding: '4px 6px', background: '#3B82F615', borderRadius: 4, borderLeft: '2px solid #3B82F6', fontSize: 11, color: 'var(--charcoal)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${e.machineName} - ${e.poNumber} (${e.operationName})`}>
-                            <strong>{e.machineName}</strong>
-                            <div style={{ fontSize: 10, color: 'var(--slate)' }}>{e.poNumber}</div>
-                          </div>
-                        ))}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                        {visiblePOs.map(([poNumber, poEvents]: [string, any]) => {
+                          const key = `${i}-${poNumber}`;
+                          const isPoExpanded = expandedDays.has(key as any) || expandedDays.has(i); // Reuse expandedDays or we can just manage a specific state. Let's use expandedDays for both day expansion and PO expansion by allowing string keys.
+
+                          return (
+                            <div key={poNumber} style={{ marginBottom: 2 }}>
+                              <div 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedDays(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(key as any)) next.delete(key as any);
+                                    else next.add(key as any);
+                                    return next;
+                                  });
+                                }}
+                                style={{ 
+                                  padding: '4px 6px', 
+                                  background: 'var(--warm-white)', 
+                                  borderRadius: 4, 
+                                  borderLeft: `2px solid var(--charcoal)`, 
+                                  fontSize: 11, 
+                                  color: 'var(--charcoal)', 
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                                }}
+                              >
+                                <strong>{poNumber}</strong>
+                                {poEvents[0]?.poStatus && (
+                                  <span style={{ fontSize: 10, marginLeft: 6, padding: '2px 6px', borderRadius: 4, background: poEvents[0].poStatus === 'DRAFT' ? '#F59E0B20' : '#10B98120', color: poEvents[0].poStatus === 'DRAFT' ? '#D97706' : '#059669', fontWeight: 700 }}>
+                                    {poEvents[0].poStatus}
+                                  </span>
+                                )}
+                                <span style={{ fontSize: 10, color: 'var(--slate)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  {poEvents.length} mch {isPoExpanded ? '▼' : '▶'}
+                                </span>
+                              </div>
+                              
+                              {isPoExpanded && (
+                                <div style={{ paddingLeft: 6, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                  {poEvents.map((e: any, idx: number) => {
+                                    const m = machines.find((mach: any) => mach.id === e.machineId || mach.machineName === e.machineName);
+                                    const isMachineInUse = m?.currentStatus === 'IN_USE';
+                                    
+                                    let bgColor = '#3B82F615'; // Default blue
+                                    let borderColor = '#3B82F6';
+                                    let textColor = 'var(--charcoal)';
+                                    
+                                    if (e.completed) {
+                                      bgColor = 'rgba(16, 185, 129, 0.15)'; // Green for completed
+                                      borderColor = '#10B981'; // Green
+                                      textColor = '#047857'; // Dark green
+                                    } else if (isMachineInUse) {
+                                      bgColor = '#EF444415'; // Red for in use
+                                      borderColor = '#EF4444';
+                                    }
+                                    
+                                    return (
+                                      <div key={idx} style={{ padding: '3px 6px', background: bgColor, borderRadius: 4, borderLeft: `2px solid ${borderColor}`, fontSize: 10, color: textColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }} title={`${e.machineName} (${e.operationName})`}>
+                                        <strong>{e.machineName}</strong> {e.completed && <span style={{fontSize: 9, fontWeight: 600, color: '#047857'}}>(Completed)</span>} <span style={{color: e.completed ? '#10B981' : 'var(--slate)'}}>{e.partName}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        
+                        {hiddenCount > 0 && !isExpanded && (
+                          <button 
+                            onClick={() => toggleDayExpansion(i)}
+                            style={{ background: 'none', border: 'none', color: 'var(--copper-bronze)', fontSize: 11, fontWeight: 600, cursor: 'pointer', textAlign: 'left', padding: '4px 2px', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}
+                          >
+                            + {hiddenCount} more POs
+                          </button>
+                        )}
+                        
+                        {isExpanded && poEntries.length > 3 && (
+                          <button 
+                            onClick={() => toggleDayExpansion(i)}
+                            style={{ background: 'none', border: 'none', color: 'var(--ash)', fontSize: 11, fontWeight: 600, cursor: 'pointer', textAlign: 'left', padding: '4px 2px', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}
+                          >
+                            Show less
+                          </button>
+                        )}
                       </div>
                     </>
                   )}

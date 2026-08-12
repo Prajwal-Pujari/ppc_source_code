@@ -46,6 +46,8 @@ const navSections = [
     items: [
       { label: 'Analytics', path: '/analytics', icon: BarChart3, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
       { label: 'Reports', path: '/reports', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
+      { label: 'Setup Report', path: '/pqc/setup-report', icon: Settings, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
+      { label: 'Master Quality Dossier', path: '/pqc/dossier', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
     ],
   },
   {
@@ -56,6 +58,7 @@ const navSections = [
       { label: 'Customers', path: '/master/customers', icon: Users, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
       { label: 'Machine Master', path: '/master/machines', icon: Settings, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
       { label: 'Question Sets', path: '/master/pqc-question-sets', icon: CheckCheck, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
+      { label: 'Machine Setup Checklists', path: '/master/machine-setup', icon: Wrench, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
     ],
   },
   {
@@ -105,7 +108,7 @@ export default function AppLayout() {
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bone-white)' }}>
       {/* Overlay for mobile sidebar */}
       {sidebarOpen && (
-        <div 
+        <div
           className="sidebar-overlay"
           onClick={toggleSidebar}
         />
@@ -232,15 +235,15 @@ export default function AppLayout() {
       {/* Main Content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
-        <header 
+        <header
           className="responsive-header"
           style={{
-          height: 'var(--header-height)', minHeight: 'var(--header-height)',
-          background: 'var(--bone-white)',
-          borderBottom: '1px solid rgba(212, 204, 191, 0.3)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0 24px',
-        }}>
+            height: 'var(--header-height)', minHeight: 'var(--header-height)',
+            background: 'var(--bone-white)',
+            borderBottom: '1px solid rgba(212, 204, 191, 0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '0 24px',
+          }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <button
               onClick={toggleSidebar}
@@ -256,12 +259,12 @@ export default function AppLayout() {
 
             {/* Notification Bell */}
             <div ref={notifRef} style={{ position: 'relative' }}>
-              <button 
+              <button
                 onClick={() => setNotifOpen(!isNotifOpen)}
                 style={{
                   background: isNotifOpen ? 'rgba(139,105,20,0.08)' : 'none',
                   border: 'none', cursor: 'pointer',
-                  color: isNotifOpen ? 'var(--copper-bronze)' : 'var(--ash)', 
+                  color: isNotifOpen ? 'var(--copper-bronze)' : 'var(--ash)',
                   position: 'relative', padding: 8, borderRadius: '50%',
                   transition: 'background 0.2s, color 0.2s'
                 }}
@@ -304,7 +307,7 @@ export default function AppLayout() {
                       )}
                     </div>
                   </div>
-                  
+
                   <div style={{ maxHeight: 400, overflowY: 'auto' }}>
                     {notifications.length === 0 ? (
                       <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--ash)' }}>
@@ -321,7 +324,7 @@ export default function AppLayout() {
                         }}>
                           {!notif.isRead && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'var(--copper-bronze)' }} />}
                           <div style={{ display: 'flex', gap: 12 }}>
-                            <div style={{ 
+                            <div style={{
                               width: 32, height: 32, borderRadius: 8, flexShrink: 0,
                               background: notif.type === 'error' ? 'var(--status-rejected-bg)' : notif.type === 'success' ? 'var(--status-completed-bg)' : 'rgba(139,105,20,0.08)',
                               color: notif.type === 'error' ? 'var(--status-rejected)' : notif.type === 'success' ? 'var(--status-completed)' : 'var(--copper-bronze)',
@@ -359,7 +362,7 @@ export default function AppLayout() {
         </header>
 
         {/* Page Content */}
-        <main 
+        <main
           className="responsive-main"
           style={{
             flex: 1, overflow: 'auto', padding: 24,

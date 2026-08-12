@@ -165,8 +165,13 @@ export function InspectorLiveEntryPage() {
       setActualQty(0); setPassedQty(0); setReworkQty(0); setScrapQty(0);
       setSelectedReasons([]); setRemarks('');
       setQuestionAnswers({});
+      
+      // Auto-select the planned machine
+      if (selectedOp.machineMaster?.id) {
+        setSelectedMachineId(selectedOp.machineMaster.id);
+      }
     }
-  }, [selectedOpId]);
+  }, [selectedOpId, selectedOp]);
 
   const rejectedQty = reworkQty + scrapQty;
   const calculatedVariance = actualQty - (passedQty + rejectedQty);

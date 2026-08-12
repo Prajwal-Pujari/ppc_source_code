@@ -28,6 +28,16 @@ export const pqcApi = {
     return response.data;
   },
 
+  getScrapReport: async (): Promise<{ data: any[] }> => {
+    const response = await api.get('/pqc/scrap-report');
+    return response.data;
+  },
+
+  updateScrapRemarks: async (logId: string, remarks: string): Promise<{ data: any }> => {
+    const response = await api.put(`/pqc/scrap-report/${logId}/remarks`, { remarks });
+    return response.data;
+  },
+
   // Question Sets
   getAllQuestionSets: async (): Promise<{ data: PqcQuestionSet[] }> => {
     const response = await api.get('/pqc/question-sets');

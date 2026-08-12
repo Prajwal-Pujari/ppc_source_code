@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -53,4 +54,19 @@ public class PoLineItemOperation {
 
     @Column(name = "cycle_time_mins", precision = 10, scale = 2)
     private java.math.BigDecimal cycleTimeMins;
+
+    @Column(name = "setup_time_mins", precision = 10, scale = 2)
+    @Builder.Default
+    private java.math.BigDecimal setupTimeMins = java.math.BigDecimal.ZERO;
+
+    @Column(name = "setup_status", length = 30)
+    @Builder.Default
+    private String setupStatus = "PENDING"; // PENDING, IN_PROGRESS, COMPLETED
+
+    @Column(name = "setup_completed_at")
+    private OffsetDateTime setupCompletedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "setup_completed_by")
+    private User setupCompletedBy;
 }

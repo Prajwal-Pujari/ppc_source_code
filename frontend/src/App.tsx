@@ -25,8 +25,12 @@ import NcRecordsPage from '@/pages/nc/NcRecordsPage';
 import UserManagementPage from '@/pages/settings/UserManagementPage';
 import { InspectorLiveEntryPage } from '@/pages/pqc/InspectorLiveEntryPage';
 import PqcQuestionSetMasterPage from '@/pages/master/PqcQuestionSetMasterPage';
+import MachineSetupMasterPage from '@/pages/master/MachineSetupMasterPage';
 import PqcReportDashboard from './pages/pqc/PqcReportDashboard';
 import PqcApprovalsDashboard from './pages/pqc/PqcApprovalsDashboard';
+import PqcScrapReportPage from './pages/pqc/PqcScrapReportPage';
+import PqcSetupReportDashboard from './pages/pqc/PqcSetupReportDashboard';
+import PqcMasterDossierPage from './pages/pqc/PqcMasterDossierPage';
 import PqcDashboardPage from '@/pages/pqc/PqcDashboardPage';
 import PqcSettingsPage from '@/pages/pqc/PqcSettingsPage';
 import PqcPoTrackerPage from '@/pages/pqc/PqcPoTrackerPage';
@@ -79,6 +83,7 @@ export default function App() {
               <Route path="/master/customers" element={<CustomerMasterPage />} />
               <Route path="/master/machines" element={<MachineMasterPage />} />
               <Route path="/master/pqc-question-sets" element={<PqcQuestionSetMasterPage />} />
+              <Route path="/master/machine-setup" element={<MachineSetupMasterPage />} />
               <Route path="/settings/users" element={<UserManagementPage />} />
               <Route path="/settings/modules" element={<ModuleSettingsPage />} />
               <Route path="/settings/reports" element={<PqcSettingsPage />} />
@@ -90,15 +95,25 @@ export default function App() {
               <Route path="/pqc/dashboard" element={<PqcDashboardPage />} />
               <Route path="/pqc/po-tracker" element={<PqcPoTrackerPage />} />
               <Route path="/pqc/po-tracker/:id" element={<PurchaseOrderDetailPage isPqcMode={true} />} />
+              <Route path="/pqc/po" element={<PurchaseOrderListPage isPqcMode={true} />} />
+              <Route path="/pqc/po/create" element={<PurchaseOrderCreatePage />} />
+              <Route path="/pqc/po/:id" element={<PurchaseOrderDetailPage isPqcMode={true} />} />
+              <Route path="/pqc/jobcards" element={<JobCardListPage isPqcMode={true} />} />
+              <Route path="/pqc/jobcards/:id" element={<JobCardDetailPage />} />
+              <Route path="/pqc/jobcards/:id/verify" element={<JobCardVerificationPage />} />
               <Route path="/pqc/machine-schedule" element={<MachineSchedulePage />} />
               <Route path="/pqc/inspect" element={<InspectorLiveEntryPage />} />
               <Route path="/pqc/reports" element={<PqcReportDashboard />} />
+              <Route path="/pqc/scrap-report" element={<PqcScrapReportPage />} />
+              <Route path="/pqc/setup-report" element={<PqcSetupReportDashboard />} />
+              <Route path="/pqc/dossier" element={<PqcMasterDossierPage />} />
               <Route path="/pqc/approvals" element={<PqcApprovalsDashboard />} />
               <Route path="/pqc/batch-records" element={<PlaceholderPage title="Batch Records" />} />
               <Route path="/pqc/question-sets" element={<PqcQuestionSetMasterPage />} />
               <Route path="/pqc/gauges" element={<GaugeMasterPage />} />
               <Route path="/pqc/operations" element={<OperationMasterPage />} />
               <Route path="/pqc/machines" element={<MachineMasterPage />} />
+              <Route path="/pqc/machine-setup" element={<MachineSetupMasterPage />} />
               <Route path="/pqc/personnel" element={<PlaceholderPage title="Personnel" />} />
               <Route path="/pqc/analytics" element={<PlaceholderPage title="PQC Analytics" />} />
               <Route path="/pqc/iot-devices" element={<PqcIotPage />} />

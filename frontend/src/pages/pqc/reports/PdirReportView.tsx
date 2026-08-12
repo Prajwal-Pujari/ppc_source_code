@@ -98,13 +98,18 @@ export default function PdirReportView({ data, config }: { data: QualityReportDt
   const docNo = data.docNo || config?.docNo || 'Format no :- OP/QA-05 C5';
 
   return (
-    <div className="pdir-report-container" style={{ color: 'black', fontFamily: 'Arial, sans-serif', fontSize: '11px', background: 'white', padding: '16px' }}>
+    <div className="pdf-page pdir-report-container" style={{ color: 'black', fontFamily: 'Arial, sans-serif', fontSize: '11px', background: 'white', padding: '16px' }}>
       <style>
         {`
           @media print {
             @page { size: A4 landscape; margin: 8mm; }
             body { background: #fff; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .pdir-report-container { padding: 0 !important; width: 100% !important; }
+          }
+          .pdir-report-container {
+            width: 1123px; /* A4 landscape width at 96dpi */
+            min-height: 794px; /* Minimum height for A4 landscape */
+            box-sizing: border-box;
           }
           .pdir-table {
             width: 100%;

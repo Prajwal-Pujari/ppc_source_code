@@ -28,7 +28,10 @@ public class OperationMasterService {
     }
 
     @Transactional(readOnly = true)
-    public Page<OperationMaster> getOperations(UUID factoryId, Pageable pageable) {
+    public Page<OperationMaster> getOperations(UUID factoryId, String search, Pageable pageable) {
+        if (search != null && !search.trim().isEmpty()) {
+            return operationMasterRepository.findByFactoryIdAndIsActiveTrueAndSearchTerm(factoryId, search.trim(), pageable);
+        }
         return operationMasterRepository.findByFactoryIdAndIsActiveTrue(factoryId, pageable);
     }
 
