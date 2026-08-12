@@ -422,6 +422,211 @@ tbody tr:hover {
 }
 
 @keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.badge-rejected {
+  background: var(--status-rejected-bg);
+  color: var(--status-rejected);
+}
+
+.badge-on-hold {
+  background: var(--status-on-hold-bg);
+  color: var(--status-on-hold);
+}
+
+.badge-rework {
+  background: var(--status-rework-bg);
+  color: var(--status-rework);
+}
+
+/* Table Styles */
+.table-container {
+  overflow-x: auto;
+  border-radius: var(--radius);
+  background: var(--warm-white);
+  box-shadow: var(--shadow-card);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  background: var(--linen);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ash);
+}
+
+td {
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--slate);
+}
+
+tr+tr {
+  margin-top: 4px;
+}
+
+tbody tr {
+  transition: background 0.15s ease;
+}
+
+tbody tr:hover {
+  background: var(--silk);
+}
+
+/* Skeleton Loader */
+.skeleton {
+  background: linear-gradient(90deg, var(--linen) 25%, var(--silk) 50%, var(--linen) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--stone);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--warm-gray);
+}
+
+/* ── Print Styles for Job Card ── */
+@media print {
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide everything except the job card */
+  body>div>div>div:first-child,
+  /* sidebar */
+  header,
+  button,
+  .btn {
+    display: none !important;
+  }
+
+  #job-card-printable {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ========================================
+   Responsive Overhaul Utilities
+   ======================================== */
+
+/* Sidebar Overlay on Mobile and Tablets (up to 1024px) */
+@media (max-width: 1024px) {
+  .responsive-sidebar {
+    position: fixed !important;
+    z-index: 50;
+    height: 100vh;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.1);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(28, 26, 24, 0.4);
+    z-index: 40;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .responsive-main {
+    padding: 12px !important;
+  }
+
+  .responsive-header {
+    padding: 0 12px !important;
+  }
+
+  .responsive-header h1 {
+    font-size: 16px !important;
+  }
+
+  /* Force stack flex layouts */
+  .mobile-stack {
+    flex-direction: column !important;
+  }
+
+  /* Full width items on mobile */
+  .mobile-w-full {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Flex wrap on mobile */
+  .mobile-flex-wrap {
+    flex-wrap: wrap !important;
+    gap: 16px !important;
+  }
+
+  .mobile-p-16 {
+    padding: 16px !important;
+  }
+}
+
+@media (min-width: 1025px) {
+  .sidebar-overlay {
+    display: none !important;
+  }
+}
+
+/* Touch-safe hover for sidebar links (only on mouse devices, never absorbs touch taps on iPad/mobile) */
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-nav-link:hover:not(.active) {
+    background: rgba(235, 230, 224, 0.5) !important;
+    color: var(--charcoal) !important;
+  }
+}
+
+@keyframes fadeIn {
   from {
     opacity: 0;
   }
@@ -429,4 +634,16 @@ tbody tr:hover {
   to {
     opacity: 1;
   }
+}
+
+/* Calendar Grid Responsive */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: var(--silk);
+  border: 1px solid var(--silk);
+  border-radius: 8px;
+  overflow: hidden;
+  width: 100%;
 }

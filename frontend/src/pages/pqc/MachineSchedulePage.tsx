@@ -3,7 +3,7 @@ import { machinesApi } from '@/api/machines.api';
 import { 
   Factory, Activity, CheckCircle, Clock, AlertTriangle, 
   Settings, Zap, Monitor, Cpu, ShieldCheck,
-  ChevronLeft, ChevronRight, Calendar as CalendarIcon, List as ListIcon
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon, List as ListIcon, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -17,6 +17,7 @@ export default function MachineSchedulePage() {
   const [viewMode, setViewMode] = useState<'LIVE' | 'CALENDAR'>('CALENDAR');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
+  const [selectedPOModal, setSelectedPOModal] = useState<{ poNumber: string, events: any[] } | null>(null);
 
   const toggleDayExpansion = (dayIndex: number) => {
     setExpandedDays(prev => {
@@ -191,10 +192,10 @@ export default function MachineSchedulePage() {
             </div>
           </div>
           
-          <div style={{ width: '100%', overflowX: 'auto' }}>
-            <div style={{ minWidth: 800, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: 'var(--silk)', border: '1px solid var(--silk)', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ width: '100%' }}>
+            <div className="calendar-grid">
               {weekDays.map(wd => (
-                <div key={wd} style={{ padding: '12px 8px', background: 'var(--warm-white)', textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--slate)' }}>
+                <div key={wd} className="calendar-day-header" style={{ padding: '12px 8px', background: 'var(--warm-white)', textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--slate)' }}>
                   {wd}
                 </div>
               ))}
@@ -214,17 +215,17 @@ export default function MachineSchedulePage() {
                 const hiddenCount = poEntries.length - 3;
                 
                 return (
-                  <div key={i} style={{ 
+                  <div key={i} className={`calendar-day-cell ${!day ? 'calendar-day-empty' : ''}`} style={{ 
                     minHeight: 120, padding: 8, background: day ? '#fff' : 'var(--warm-white)',
                     borderTop: day && isToday ? '2px solid var(--copper-bronze)' : 'none',
-                    display: 'flex', flexDirection: 'column'
+                    display: 'flex', flexDirection: 'column', minWidth: 0
                   }}>
                     {day && (
                       <>
                         <div style={{ fontSize: 14, fontWeight: isToday ? 700 : 500, color: isToday ? 'var(--copper-bronze)' : 'var(--charcoal)', marginBottom: 8, textAlign: 'right', flexShrink: 0 }}>
                           {day.getDate()}
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
                           {visiblePOs.map(([poNumber, poEvents]: [string, any]) => {
                             const key = `${i}-${poNumber}`;
                             const isPoExpanded = expandedDays.has(key as any) || expandedDays.has(i);
@@ -234,12 +235,16 @@ export default function MachineSchedulePage() {
                                 <div 
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setExpandedDays(prev => {
-                                      const next = new Set(prev);
-                                      if (next.has(key as any)) next.delete(key as any);
-                                      else next.add(key as any);
-                                      return next;
-                                    });
+                                    if (window.innerWidth <= 900) {
+                                      setSelectedPOModal({ poNumber, events: poEvents });
+                                    } else {
+                                      setExpandedDays(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(key as any)) next.delete(key as any);
+                                        else next.add(key as any);
+                                        return next;
+                                      });
+                                    }
                                   }}
                                   style={{ 
                                     padding: '4px 6px', 
@@ -250,18 +255,21 @@ export default function MachineSchedulePage() {
                                     color: 'var(--charcoal)', 
                                     cursor: 'pointer',
                                     display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: 4,
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
-                                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                                    minWidth: 0
                                   }}
                                 >
-                                  <strong>{poNumber}</strong>
+                                  <strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{poNumber}</strong>
                                   {poEvents[0]?.poStatus && (
-                                    <span style={{ fontSize: 10, marginLeft: 6, padding: '2px 6px', borderRadius: 4, background: poEvents[0].poStatus === 'DRAFT' ? '#F59E0B20' : '#10B98120', color: poEvents[0].poStatus === 'DRAFT' ? '#D97706' : '#059669', fontWeight: 700 }}>
+                                    <span style={{ flexShrink: 0, fontSize: 10, padding: '2px 6px', borderRadius: 4, background: poEvents[0].poStatus === 'DRAFT' ? '#F59E0B20' : '#10B98120', color: poEvents[0].poStatus === 'DRAFT' ? '#D97706' : '#059669', fontWeight: 700 }}>
                                       {poEvents[0].poStatus}
                                     </span>
                                   )}
-                                  <span style={{ fontSize: 10, color: 'var(--slate)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <span style={{ flexShrink: 0, fontSize: 10, color: 'var(--slate)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                     {poEvents.length} mch {isPoExpanded ? '▼' : '▶'}
                                   </span>
                                 </div>
@@ -421,6 +429,73 @@ export default function MachineSchedulePage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {selectedPOModal && (
+        <div className="sidebar-overlay" style={{ display: 'block', zIndex: 100 }} onClick={() => setSelectedPOModal(null)}>
+          <div 
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'fixed', bottom: 0, left: 0, right: 0, 
+              background: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16,
+              padding: '24px 20px', zIndex: 101, boxShadow: '0 -10px 40px rgba(0,0,0,0.1)',
+              maxHeight: '85vh', display: 'flex', flexDirection: 'column'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--charcoal)' }}>{selectedPOModal.poNumber}</h3>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--slate)', marginTop: 4 }}>
+                  {selectedPOModal.events.length} machine{selectedPOModal.events.length !== 1 ? 's' : ''} planned
+                </p>
+              </div>
+              <button 
+                onClick={() => setSelectedPOModal(null)}
+                style={{ background: 'var(--warm-white)', border: 'none', borderRadius: '50%', padding: 8, cursor: 'pointer', display: 'flex' }}
+              >
+                <X size={20} color="var(--charcoal)" />
+              </button>
+            </div>
+            
+            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4 }}>
+              {selectedPOModal.events.map((e: any, idx: number) => {
+                const m = machines.find((mach: any) => mach.id === e.machineId || mach.machineName === e.machineName);
+                const isMachineInUse = m?.currentStatus === 'IN_USE';
+                
+                let bgColor = '#3B82F615';
+                let borderColor = '#3B82F6';
+                let textColor = 'var(--charcoal)';
+                
+                if (e.completed) {
+                  bgColor = 'rgba(16, 185, 129, 0.15)';
+                  borderColor = '#10B981';
+                  textColor = '#047857';
+                } else if (isMachineInUse) {
+                  bgColor = '#EF444415';
+                  borderColor = '#EF4444';
+                }
+                
+                return (
+                  <div key={idx} style={{ 
+                    padding: '12px 16px', background: bgColor, borderRadius: 8, 
+                    borderLeft: `4px solid ${borderColor}`, display: 'flex', flexDirection: 'column', gap: 4 
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <strong style={{ fontSize: 14, color: textColor }}>{e.machineName}</strong>
+                      {e.completed && <span style={{fontSize: 11, fontWeight: 600, color: '#047857', background: '#fff', padding: '2px 6px', borderRadius: 12}}>Completed</span>}
+                    </div>
+                    <div style={{ fontSize: 13, color: e.completed ? '#10B981' : 'var(--slate)' }}>
+                      <strong>Part:</strong> {e.partName}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--ash)' }}>
+                      <strong>Op:</strong> {e.operationName}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
