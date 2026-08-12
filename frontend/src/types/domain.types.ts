@@ -110,11 +110,17 @@ export interface GaugeOperation {
     setupCompletedBy?: { id: string; fullName: string };
     poLineItemOperationId?: string;
   };
-  machineMaster?: any;
   machineMasterId?: string;
   operationMaster?: any;
   operationMasterId?: string;
   gaugeMasterId?: string;
+}
+
+export interface MachineMaster {
+  id: string;
+  machineCode: string;
+  name: string;
+  isActive: boolean;
 }
 
 export interface NcRecord {

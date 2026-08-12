@@ -1,6 +1,6 @@
 import api from '@/lib/axios';
 import type { ApiResponse } from '@/types/api.types';
-import type { OperationMaster, MachineMaster } from '@/types/domain.types';
+import type { OperationMaster, MachineMaster, GaugeMaster } from '@/types/domain.types';
 
 export interface MachineSetupQuestion {
   id?: string;
@@ -20,9 +20,9 @@ export interface MachineSetupQuestion {
 export interface MachineSetupQuestionSet {
   id: string;
   name: string;
-  machineMaster?: { id: string; machineName: string };
-  operationMaster?: { id: string; name: string };
-  gaugeMaster?: { id: string; name: string };
+  machineMaster?: MachineMaster;
+  operationMaster?: OperationMaster;
+  gaugeMaster?: GaugeMaster;
   questions: MachineSetupQuestion[];
   isActive: boolean;
 }

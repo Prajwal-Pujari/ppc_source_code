@@ -6,14 +6,12 @@ import { jsPDF } from 'jspdf';
 import { getPurchaseOrders, getPurchaseOrderGauges } from '@/api/purchase-orders.api';
 import { reportsApi } from '@/api/reports.api';
 import toast from 'react-hot-toast';
-import type { QualityReportDto, GaugeOperation } from '@/types/domain.types';
+import type { QualityReportDto, GaugeOperation, ReportType } from '@/types/domain.types';
 import SetupReportView from './reports/SetupReportView';
 
 import { reportConfigApi, type ReportConfiguration } from '@/api/reportConfig.api';
 import { shiftsApi, type FactoryShift } from '@/api/shifts.api';
 import { getGaugeOperations } from '@/api/gauges.api';
-
-type ReportType = 'IN_PROCESS' | 'PDIR' | 'LAYOUT' | 'FAI' | 'FAR' | 'INCOMING';
 
 const reportTypes: { id: ReportType; label: string }[] = [
   { id: 'IN_PROCESS', label: 'In-Process Report' },

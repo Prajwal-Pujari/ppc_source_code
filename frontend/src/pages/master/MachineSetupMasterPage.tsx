@@ -236,7 +236,7 @@ function ManageMachineSetupModal({
             id: o.operationMasterId,
             operationName: o.operationName,
             operationCode: o.operationCode,
-          })) || [];
+          })) as OperationMaster[] || [];
           setLinkedOperations(ops);
         })
         .catch(console.error);
