@@ -16,7 +16,7 @@ fi
 
 echo ""
 echo "[1/3] Clearing PostgreSQL Data..."
-sudo docker exec -i pqc-mes-postgres psql -U pqc_mes_user -d pqc_mes << 'EOF'
+cat << 'EOF' > /tmp/wipe_db.sql
 DO $$ 
 DECLARE 
     stmt text; 
@@ -32,6 +32,10 @@ BEGIN
 END $$; 
 DELETE FROM users WHERE username != 'admin';
 EOF
+
+sudo docker cp /tmp/wipe_db.sql pqc-mes-postgres:/tmp/wipe_db.sql
+sudo docker exec pqc-mes-postgres psql -U pqc_mes_user -d pqc_mes -f /tmp/wipe_db.sql
+rm /tmp/wipe_db.sql
 
 echo ""
 echo "[2/3] Clearing MySQL Analytics Data..."
