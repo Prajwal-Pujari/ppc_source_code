@@ -14,8 +14,17 @@ if [[ "$CONTINUE" != "Y" && "$CONTINUE" != "y" ]]; then
     exit 0
 fi
 
+PG_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -i postgres | head -n 1)
+MYSQL_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -i mysql | head -n 1)
+REDIS_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -i redis | head -n 1)
+
+if [ -z "$PG_CONTAINER" ]; then
+    echo "Error: PostgreSQL container is not running!"
+    exit 1
+fi
+
 echo ""
-echo "[1/3] Clearing PostgreSQL Data..."
+echo "[1/3] Clearing PostgreSQL Data in container: $PG_CONTAINER..."
 cat << 'EOF' > /tmp/wipe_db.sql
 DO $$ 
 DECLARE 
@@ -33,17 +42,25 @@ END $$;
 DELETE FROM users WHERE username != 'admin';
 EOF
 
-sudo docker cp /tmp/wipe_db.sql pqc-mes-postgres:/tmp/wipe_db.sql
-sudo docker exec pqc-mes-postgres psql -U pqc_mes_user -d pqc_mes -f /tmp/wipe_db.sql
+sudo docker cp /tmp/wipe_db.sql ${PG_CONTAINER}:/tmp/wipe_db.sql
+sudo docker exec ${PG_CONTAINER} psql -U pqc_mes_user -d pqc_mes -f /tmp/wipe_db.sql
 rm /tmp/wipe_db.sql
 
 echo ""
-echo "[2/3] Clearing MySQL Analytics Data..."
-sudo docker exec pqc-mes-mysql mysql -u root -proot -D pqc_mes_analytics -e "DELETE FROM daily_production_summary; DELETE FROM operation_performance_stats; DELETE FROM po_status_snapshots; DELETE FROM rejection_analysis_summary; DELETE FROM worker_performance_monthly;"
+echo "[2/3] Clearing MySQL Analytics Data in container: $MYSQL_CONTAINER..."
+if [ -n "$MYSQL_CONTAINER" ]; then
+    sudo docker exec ${MYSQL_CONTAINER} mysql -u root -proot -D pqc_mes_analytics -e "DELETE FROM daily_production_summary; DELETE FROM operation_performance_stats; DELETE FROM po_status_snapshots; DELETE FROM rejection_analysis_summary; DELETE FROM worker_performance_monthly;"
+else
+    echo "MySQL container not found, skipping."
+fi
 
 echo ""
-echo "[3/3] Clearing Redis Cache..."
-sudo docker exec pqc-mes-redis redis-cli FLUSHALL
+echo "[3/3] Clearing Redis Cache in container: $REDIS_CONTAINER..."
+if [ -n "$REDIS_CONTAINER" ]; then
+    sudo docker exec ${REDIS_CONTAINER} redis-cli FLUSHALL
+else
+    echo "Redis container not found, skipping."
+fi
 
 echo ""
 echo "==================================================="
