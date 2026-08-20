@@ -39,13 +39,13 @@ public class MachineSetupController {
     }
 
     @GetMapping("/config")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','QUALITY_INSPECTOR')")
     public ResponseEntity<ApiResponse<java.util.List<MachineSetupQuestionSet>>> getAllConfigs() {
         return ResponseEntity.ok(ApiResponse.success(machineSetupService.getAllQuestionSets()));
     }
 
     @PostMapping("/config")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','QUALITY_INSPECTOR')")
     public ResponseEntity<ApiResponse<MachineSetupQuestionSet>> createConfig(
             @AuthenticationPrincipal CustomUserDetails user,
             @Valid @RequestBody CreateMachineSetupConfig request) {
@@ -54,7 +54,7 @@ public class MachineSetupController {
     }
 
     @PostMapping(value = "/bulk-upload/{machineId}", consumes = "multipart/form-data")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','QUALITY_INSPECTOR')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> bulkUpload(
             @PathVariable UUID machineId,
             @AuthenticationPrincipal CustomUserDetails user,
@@ -73,7 +73,7 @@ public class MachineSetupController {
     }
 
     @PutMapping("/config/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','QUALITY_INSPECTOR')")
     public ResponseEntity<ApiResponse<MachineSetupQuestionSet>> updateConfig(
             @AuthenticationPrincipal CustomUserDetails user,
             @PathVariable UUID id,
@@ -83,7 +83,7 @@ public class MachineSetupController {
     }
 
     @DeleteMapping("/config/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','QUALITY_INSPECTOR')")
     public ResponseEntity<ApiResponse<Void>> deleteConfig(@PathVariable UUID id) {
         machineSetupService.deleteQuestionSet(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Setup config deleted"));

@@ -44,4 +44,13 @@ public class PqcShiftApproval {
     @CreationTimestamp
     @Column(name = "approved_at", nullable = false, updatable = false)
     private OffsetDateTime approvedAt;
+
+    @Column(name = "quality_remark", columnDefinition = "TEXT")
+    private String qualityRemark;
+
+    @Column(name = "additional_note", columnDefinition = "TEXT")
+    private String additionalNote;
+
+    @Column(name = "approver_designation", length = 100)
+    private String approverDesignation;
 }

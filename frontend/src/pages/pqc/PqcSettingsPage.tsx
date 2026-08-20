@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings, Plus, Pencil, Trash2, Clock, Check, X } from 'lucide-react';
 import { shiftsApi, type FactoryShift } from '../../api/shifts.api';
 import toast from 'react-hot-toast';
+import EmailSettingsPage from '../settings/EmailSettingsPage';
 
 export default function PqcSettingsPage() {
   const [shifts, setShifts] = useState<FactoryShift[]>([]);
@@ -77,9 +78,11 @@ export default function PqcSettingsPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24, alignItems: 'flex-start' }}>
         
-        {/* ─── Shift Management ─── */}
+        {/* Left Column */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* ─── Shift Management ─── */}
         <div className="card" style={{ padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -138,9 +141,15 @@ export default function PqcSettingsPage() {
               </tbody>
             </table>
           </div>
+          </div>
+          
+          {/* ─── Email Configuration Section ─── */}
+          <EmailSettingsPage />
         </div>
 
-        {/* ─── Report Configuration Section ─── */}
+        {/* Right Column */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* ─── Report Configuration Section ─── */}
         <div className="card" style={{ padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
             <Settings size={18} color="var(--copper-bronze)" />
@@ -149,8 +158,9 @@ export default function PqcSettingsPage() {
               <p style={{ fontSize: 11, color: 'var(--ash)', margin: 0, marginTop: 2 }}>Applies to PQC In-Process reports, PDIRs, and LPA Product Audit reports.</p>
             </div>
           </div>
-          
-          <ReportConfigEditor />
+            
+            <ReportConfigEditor />
+          </div>
         </div>
 
       </div>
@@ -162,6 +172,7 @@ export default function PqcSettingsPage() {
 function ReportConfigEditor() {
   const [config, setConfig] = React.useState<any>({
     customerLogo: '',
+    customerName: '',
     docNo: '',
     revNo: '',
     issueDate: ''
@@ -197,6 +208,32 @@ function ReportConfigEditor() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const renderDocConfig = (title: string, prefix: string) => {
+    const docKey = prefix ? `${prefix}DocNo` : 'docNo';
+    const revKey = prefix ? `${prefix}RevNo` : 'revNo';
+    const dateKey = prefix ? `${prefix}IssueDate` : 'issueDate';
+    
+    return (
+      <div style={{ marginTop: 8, padding: 16, background: 'var(--bone-white)', borderRadius: 8, border: '1px solid var(--dust)' }}>
+        <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--charcoal)', margin: '0 0 12px 0' }}>{title}</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--slate)', marginBottom: 4 }}>Doc. No.</label>
+            <input type="text" placeholder="e.g. QMS/F/01" value={config[docKey] || ''} onChange={e => setConfig({...config, [docKey]: e.target.value})} className="input" style={{ fontSize: 12, padding: '6px 10px', minHeight: 32 }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--slate)', marginBottom: 4 }}>Rev.No./Date</label>
+            <input type="text" placeholder="e.g. 00 / 01.01.2024" value={config[revKey] || ''} onChange={e => setConfig({...config, [revKey]: e.target.value})} className="input" style={{ fontSize: 12, padding: '6px 10px', minHeight: 32 }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--slate)', marginBottom: 4 }}>Issue Date</label>
+            <input type="text" placeholder="e.g. 01.01.2024" value={config[dateKey] || ''} onChange={e => setConfig({...config, [dateKey]: e.target.value})} className="input" style={{ fontSize: 12, padding: '6px 10px', minHeight: 32 }} />
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -257,26 +294,28 @@ function ReportConfigEditor() {
         </div>
       </div>
 
-      {/* Doc Config Fields */}
+      {/* Customer Name */}
       <div>
         <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--charcoal)', marginBottom: 6 }}>
-          Doc. No.
+          Customer Name (Used in reports)
         </label>
-        <input type="text" placeholder="e.g. QMS/F/01" value={config.docNo || ''} onChange={e => setConfig({...config, docNo: e.target.value})} className="input" />
+        <input type="text" placeholder="e.g. Aarush Quality Services" value={config.customerName || ''} onChange={e => setConfig({...config, customerName: e.target.value})} className="input" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--charcoal)', marginBottom: 6 }}>
-            Rev.No./Date
-          </label>
-          <input type="text" placeholder="e.g. 00 / 01.01.2024" value={config.revNo || ''} onChange={e => setConfig({...config, revNo: e.target.value})} className="input" />
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--charcoal)', marginBottom: 6 }}>
-            Issue Date
-          </label>
-          <input type="text" placeholder="e.g. 01.01.2024" value={config.issueDate || ''} onChange={e => setConfig({...config, issueDate: e.target.value})} className="input" />
+      {/* Specific Report Configs */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {renderDocConfig('In-Process Report Layout', 'inProcess')}
+        {renderDocConfig('PDIR Report Layout', 'pdir')}
+        {renderDocConfig('Machine Setup Report Layout', 'setup')}
+        {renderDocConfig('First Article Inspection (FAI)', 'fai')}
+        {renderDocConfig('Layout Inspection', 'layout')}
+        
+        {/* Legacy fallback */}
+        <div style={{ marginTop: 8 }}>
+          <details>
+            <summary style={{ fontSize: 12, color: 'var(--ash)', cursor: 'pointer', outline: 'none' }}>Show Legacy/Default Document Settings</summary>
+            {renderDocConfig('Default Layout (Fallback)', '')}
+          </details>
         </div>
       </div>
 

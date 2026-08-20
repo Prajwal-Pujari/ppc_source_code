@@ -185,13 +185,14 @@ export default function PurchaseOrderDetailPage({ isPqcMode = false }: { isPqcMo
       {/* Header Card */}
       <div className="card" style={{ padding: 24, marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-              <h2 className="font-mono" style={{ fontSize: 22, fontWeight: 700, color: 'var(--charcoal)' }}>{po.poNumber}</h2>
-              <span className={`badge ${statusBadge[po.status] || 'badge-pending'}`}>{po.status?.replace(/_/g, ' ')}</span>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                <h2 className="font-mono" style={{ fontSize: 22, fontWeight: 700, color: 'var(--charcoal)' }}>{po.poNumber}</h2>
+                <span style={{ fontSize: 16, color: 'var(--slate)', fontWeight: 500 }}>(WO: {po.workOrderNo || 'N/A'})</span>
+                <span className={`badge ${statusBadge[po.status] || 'badge-pending'}`}>{po.status?.replace(/_/g, ' ')}</span>
+              </div>
+              <p style={{ fontSize: 15, color: 'var(--slate)' }}>{po.customer?.name ?? '?'}</p>
             </div>
-            <p style={{ fontSize: 15, color: 'var(--slate)' }}>{po.customer?.name ?? '—'}</p>
-          </div>
           {!isPqcMode && isDraft && lineItems.length > 0 && (
             <button className="btn btn-primary" onClick={() => confirmMut.mutate()} disabled={confirmMut.isPending}>
               <CheckCircle size={16} style={{ marginRight: 6 }} />

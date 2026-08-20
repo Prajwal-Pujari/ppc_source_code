@@ -4,12 +4,20 @@ import { Search, FileCheck, Package, ChevronRight, ChevronDown, CheckCircle2, Sh
 import { getPurchaseOrders, getPurchaseOrderGauges } from '@/api/purchase-orders.api';
 import { reportsApi } from '@/api/reports.api';
 import { shiftsApi } from '@/api/shifts.api';
+import InProcessReportView from './reports/InProcessReportView';
+import type { QualityReportDto } from '@/types/domain.types';
 import toast from 'react-hot-toast';
 
 export default function PqcApprovalsDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedPoId, setExpandedPoId] = useState<string | null>(null);
   const [selectedGaugeId, setSelectedGaugeId] = useState<string | null>(null);
+
+  const [viewReportFor, setViewReportFor] = useState<{ date: string, shiftName: string } | null>(null);
+  const [approvalModalFor, setApprovalModalFor] = useState<{ date: string, shiftName: string } | null>(null);
+  const [qualityRemark, setQualityRemark] = useState('');
+  const [additionalNote, setAdditionalNote] = useState('');
+  const [approverDesignation, setApproverDesignation] = useState('Quality Head');
 
   // Fetch all POs
   const { data: pos = [], isLoading: posLoading } = useQuery({
@@ -48,6 +56,29 @@ export default function PqcApprovalsDashboard() {
     enabled: !!selectedGaugeId,
   });
 
+  const filteredReportData = React.useMemo(() => {
+    if (!reportData || !viewReportFor) return null;
+    
+    const filterDate = viewReportFor.date;
+    const filterShift = viewReportFor.shiftName;
+    const dataClone = JSON.parse(JSON.stringify(reportData)) as QualityReportDto;
+
+    let matchedApproval = undefined;
+    if (dataClone.approvals) {
+      matchedApproval = dataClone.approvals.find((a: any) => a.inspectionDate === filterDate && a.shiftName === filterShift);
+    }
+
+    dataClone.operations = dataClone.operations.map((op: any) => {
+      op.batches = (op.batches || []).filter((b: any) => {
+        const d = new Date(b.logTime).toLocaleDateString();
+        return d === filterDate && b.shiftName === filterShift;
+      });
+      return op;
+    }).filter((op: any) => op.batches.length > 0);
+    
+    return { data: dataClone, matchedApproval };
+  }, [reportData, viewReportFor]);
+
   const subReports = React.useMemo(() => {
     if (!reportData?.operations) return [];
     const map = new Map<string, { date: string, shiftName: string }>();
@@ -72,17 +103,22 @@ export default function PqcApprovalsDashboard() {
     }
   };
 
-  const handleApprove = async (date: string, shiftName: string) => {
+  const submitApproval = async () => {
+    if (!approvalModalFor) return;
     try {
       // Find shift ID from shift name
-      const shift = shifts.find(s => s.shiftName === shiftName);
+      const shift = shifts.find(s => s.shiftName === approvalModalFor.shiftName);
       if (!shift) {
         toast.error("Shift not found in system.");
         return;
       }
 
-      await reportsApi.approveShift(selectedGaugeId!, shift.id, date);
+      await reportsApi.approveShift(selectedGaugeId!, shift.id, approvalModalFor.date, qualityRemark, additionalNote, approverDesignation);
       toast.success("Shift approved successfully!");
+      setApprovalModalFor(null);
+      setQualityRemark('');
+      setAdditionalNote('');
+      setApproverDesignation('Quality Head');
       refetch();
     } catch (e: any) {
       toast.error(e.response?.data?.message || "Failed to approve shift.");
@@ -325,15 +361,27 @@ export default function PqcApprovalsDashboard() {
                         </div>
                       </div>
 
-                      <div>
+                      <div style={{ display: 'flex', gap: 10 }}>
+                        <button
+                          onClick={() => setViewReportFor({ date: sub.date, shiftName: sub.shiftName })}
+                          className="btn btn-outline"
+                          style={{ padding: '8px 16px', borderRadius: 20, fontWeight: 600 }}
+                        >
+                          View Report
+                        </button>
                         {isApproved ? (
-                          <div style={{ textAlign: 'right' }}>
+                          <div style={{ textAlign: 'right', marginLeft: 16 }}>
                             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--status-completed)' }}>Approved</div>
                             <div style={{ fontSize: 11, color: 'var(--ash)' }}>By {isApproved.inspectorName}</div>
                           </div>
                         ) : (
                           <button
-                            onClick={() => handleApprove(sub.date, sub.shiftName)}
+                            onClick={() => {
+                              setApprovalModalFor({ date: sub.date, shiftName: sub.shiftName });
+                              setQualityRemark('');
+                              setAdditionalNote('');
+                              setApproverDesignation('Quality Head');
+                            }}
                             className="btn btn-primary"
                             style={{ padding: '8px 24px', borderRadius: 20, fontWeight: 600 }}
                           >
@@ -349,6 +397,61 @@ export default function PqcApprovalsDashboard() {
           )}
         </div>
       </div>
+
+      {/* ─── Approval Modal ─── */}
+      {approvalModalFor && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{ background: 'white', padding: 24, borderRadius: 12, width: 400, maxWidth: '90%' }}>
+            <h3 style={{ margin: '0 0 16px', color: 'var(--charcoal)', fontSize: 18 }}>Approve Report</h3>
+            
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--charcoal)', marginBottom: 6 }}>Approver Designation</label>
+              <input type="text" value={approverDesignation} onChange={e => setApproverDesignation(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--stone)' }} />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--charcoal)', marginBottom: 6 }}>Quality Remark</label>
+              <textarea value={qualityRemark} onChange={e => setQualityRemark(e.target.value)} rows={3}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--stone)', resize: 'none' }} placeholder="Optional remarks..."></textarea>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--charcoal)', marginBottom: 6 }}>Additional Note</label>
+              <textarea value={additionalNote} onChange={e => setAdditionalNote(e.target.value)} rows={3}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--stone)', resize: 'none' }} placeholder="Optional notes..."></textarea>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button onClick={() => setApprovalModalFor(null)} className="btn btn-outline" style={{ padding: '8px 16px', borderRadius: 6 }}>Cancel</button>
+              <button onClick={submitApproval} className="btn btn-primary" style={{ padding: '8px 16px', borderRadius: 6 }}>Confirm Approval</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Report Modal ─── */}
+      {viewReportFor && filteredReportData?.data && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000,
+          display: 'flex', flexDirection: 'column'
+        }}>
+          <div style={{ background: 'white', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--silk)' }}>
+            <h3 style={{ margin: 0, color: 'var(--charcoal)' }}>Report Preview: {viewReportFor.date} ({viewReportFor.shiftName} Shift)</h3>
+            <button onClick={() => setViewReportFor(null)} className="btn btn-outline" style={{ padding: '6px 16px', borderRadius: 6 }}>Close</button>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', justifyContent: 'center' }}>
+            <div style={{ transform: 'scale(0.9)', transformOrigin: 'top center' }}>
+              <InProcessReportView data={filteredReportData.data} config={{ activeApproval: filteredReportData.matchedApproval }} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

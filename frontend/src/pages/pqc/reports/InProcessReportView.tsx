@@ -128,19 +128,6 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
     pages.push({ isFirst: true, isLast: true, rows: [] });
   }
 
-  // Only pad intermediate pages with empty rows; do not pad the last page of an operation so the footer appears right below Scrap
-  pages.forEach(page => {
-    if (!page.isLast) {
-      const targetRows = limit;
-      const currentRows = page.rows.length;
-      if (currentRows < targetRows) {
-        for (let i = 0; i < targetRows - currentRows; i++) {
-          page.rows.push({ type: 'empty' });
-        }
-      }
-    }
-  });
-
   let globalSlNo = 1;
 
   return (
@@ -221,9 +208,9 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                 </td>
                 <td rowSpan={2} colSpan={3} style={{ width: '65%', fontSize: '18px', fontWeight: 'bold' }}>IN-PROCESS INSPECTION REPORT</td>
                 <td colSpan={2} className="left-align" style={{ width: '25%', fontSize: '10px', verticalAlign: 'top', padding: '4px' }}>
-                  <div><strong>Doc. No:-</strong> {data.docNo || config?.docNo || ''}</div>
-                  <div><strong>Rev.No./Date:-</strong> {data.revNo || config?.revNo || ''}</div>
-                  <div><strong>Issue Date:-</strong> {data.issueDate || config?.issueDate || ''}</div>
+                  <div><strong>Doc. No:-</strong> {data.docNo || config?.inProcessDocNo || config?.docNo || ''}</div>
+                  <div><strong>Rev.No./Date:-</strong> {data.revNo || config?.inProcessRevNo || config?.revNo || ''}</div>
+                  <div><strong>Issue Date:-</strong> {data.issueDate || config?.inProcessIssueDate || config?.issueDate || ''}</div>
                 </td>
               </tr>
               <tr>
@@ -265,24 +252,30 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                           </td>
                         </tr>
                         <tr style={{ backgroundColor: '#e9e7df' }}>
-                          <th rowSpan={2} style={{ width: '5%', whiteSpace: 'nowrap' }}>Sl. No</th>
-                          <th rowSpan={2} style={{ width: '22%' }}>Parameter</th>
-                          <th rowSpan={2} style={{ width: '12%' }}>Specification</th>
-                          <th rowSpan={2} style={{ width: '10%' }}>Tolerance</th>
-                          <th rowSpan={2} style={{ width: '8%' }}>Measuring Instrument/Gauge</th>
-                          <th colSpan={obsCount}>Observations</th>
-                          <th rowSpan={2} style={{ width: '6%' }}>Total</th>
+                          <th style={{ width: '5%', whiteSpace: 'nowrap', color: '#000', fontSize: '12px', fontWeight: 'bold', borderBottom: 'none', paddingBottom: 0 }}>Sl. No</th>
+                          <th style={{ width: '22%', color: '#000', fontSize: '12px', fontWeight: 'bold', borderBottom: 'none', paddingBottom: 0 }}>Parameter</th>
+                          <th style={{ width: '12%', color: '#000', fontSize: '12px', fontWeight: 'bold', borderBottom: 'none', paddingBottom: 0 }}>Specification</th>
+                          <th style={{ width: '10%', color: '#000', fontSize: '12px', fontWeight: 'bold', borderBottom: 'none', paddingBottom: 0 }}>Tolerance</th>
+                          <th style={{ width: '8%', color: '#000', fontSize: '11px', fontWeight: 'bold', borderBottom: 'none', paddingBottom: 0 }}>Inst/Gauge</th>
+                          <th colSpan={obsCount} style={{ color: '#000', fontSize: '12px', fontWeight: 'bold', padding: '4px 0' }}>Observations</th>
+                          <th style={{ width: '6%', color: '#000', fontSize: '12px', fontWeight: 'bold', borderBottom: 'none', paddingBottom: 0 }}>Total</th>
                         </tr>
                         <tr style={{ backgroundColor: '#e9e7df' }}>
+                          <th style={{ borderTop: 'none', paddingTop: 0 }}></th>
+                          <th style={{ borderTop: 'none', paddingTop: 0 }}></th>
+                          <th style={{ borderTop: 'none', paddingTop: 0 }}></th>
+                          <th style={{ borderTop: 'none', paddingTop: 0 }}></th>
+                          <th style={{ borderTop: 'none', paddingTop: 0 }}></th>
                           {[...Array(obsCount)].map((_, i) => {
                             const batch = row.op.batches?.[i];
-                            const headerVal = batch ? new Date(batch.logTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : String(i + 1);
+                            const headerVal = batch ? new Date(batch.logTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : String(i + 1);
                             return (
-                              <th key={`obs-th-${rIdx}-${i}`} style={{ width: obsColWidth, height: '24px', fontSize: batch ? '12.5px' : '13px', fontWeight: 'bold', color: '#000' }}>
+                              <th key={`obs-th-${rIdx}-${i}`} style={{ width: obsColWidth, height: '24px', fontSize: batch ? '11px' : '13px', fontWeight: 'bold', color: '#000', whiteSpace: 'nowrap' }}>
                                 {headerVal}
                               </th>
                             );
                           })}
+                          <th style={{ borderTop: 'none', paddingTop: 0 }}></th>
                         </tr>
                       </React.Fragment>
                     );
@@ -365,7 +358,7 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
           )}
           {/* FOOTER SECTION (On last page of every operation) */}
           {page.isLast && (
-            <table className="cert-table" style={{ borderTop: 'none', marginTop: page.rows.length === 0 ? 0 : 'auto' }}>
+            <table className="cert-table" style={{ borderTop: 'none', marginTop: 0 }}>
               <tbody>
                 <tr>
                   <td colSpan={1} rowSpan={3} className="left-align" style={{ verticalAlign: 'top', width: '60%', borderTop: 'none' }}>
@@ -373,6 +366,9 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                   </td>
                   <td colSpan={1} className="left-align" style={{ height: '30px', verticalAlign: 'top', width: '40%', borderTop: 'none' }}>
                     <strong>Quality Remarks</strong>
+                    {config?.activeApproval?.qualityRemark && (
+                      <div style={{ marginTop: 4, fontSize: 11, color: 'var(--charcoal)' }}>{config.activeApproval.qualityRemark}</div>
+                    )}
                   </td>
                 </tr>
                 <tr>
@@ -405,15 +401,32 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                   </td>
                 </tr>
                 <tr>
-                  <td colSpan={2} className="left-align" style={{ height: '60px', verticalAlign: 'bottom', padding: '8px 16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                      <span><strong>Additional Note:-</strong></span>
-                      <span><strong>Approved By: Quality Head</strong></span>
+                  <td colSpan={2} className="left-align" style={{ minHeight: '60px', verticalAlign: 'bottom', padding: '8px 16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'flex-end' }}>
+                      <div style={{ flex: 1, paddingRight: 20 }}>
+                        <span><strong>Additional Note:-</strong></span>
+                        {config?.activeApproval?.additionalNote && (
+                          <div style={{ marginTop: 4, fontSize: 11, color: 'var(--charcoal)' }}>{config.activeApproval.additionalNote}</div>
+                        )}
+                      </div>
+                      <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        {config?.activeApproval && (
+                          <span><strong>Approved By: </strong> 
+                            {`${config.activeApproval.inspectorName} (${config.activeApproval.approverDesignation || 'Quality Head'})`}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>
               </tbody>
             </table>
+          )}
+          {/* END OF CERTIFICATE (On the last page of every operation) */}
+          {page.isLast && (
+            <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '14px', marginTop: '20px', paddingBottom: '10px', fontStyle: 'italic', color: '#333', fontFamily: '"Georgia", "Times New Roman", serif', letterSpacing: '1px' }}>
+              *** END OF CERTIFICATE ***
+            </div>
           )}
         </div>
       ))}

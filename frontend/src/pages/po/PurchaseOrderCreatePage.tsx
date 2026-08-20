@@ -467,6 +467,7 @@ export default function PurchaseOrderCreatePage() {
   const [poNumber, setPoNumber] = useState(
     () => `PO-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`
   );
+  const [workOrderNo, setWorkOrderNo] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
   const [deliveryDate, setDeliveryDate] = useState('');
@@ -529,6 +530,7 @@ export default function PurchaseOrderCreatePage() {
     }
     createMut.mutate({
       poNumber,
+      workOrderNo: workOrderNo.trim(),
       customerName: customerName.trim(),
       orderDate,
       expectedDeliveryDate: deliveryDate || null,
@@ -564,6 +566,13 @@ export default function PurchaseOrderCreatePage() {
               <input className="input font-mono" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} required />
               {getFieldError('poNumber') && (
                 <p style={{ fontSize: 11, color: 'var(--status-rejected)', marginTop: 3 }}>{getFieldError('poNumber')}</p>
+              )}
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Work Order No. *</label>
+              <input className="input font-mono" value={workOrderNo} onChange={(e) => setWorkOrderNo(e.target.value)} required />
+              {getFieldError('workOrderNo') && (
+                <p style={{ fontSize: 11, color: 'var(--status-rejected)', marginTop: 3 }}>{getFieldError('workOrderNo')}</p>
               )}
             </div>
             <div>

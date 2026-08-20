@@ -20,6 +20,9 @@ public class PurchaseOrderRequest {
     @NotBlank(message = "PO number is required")
     private String poNumber;
 
+    @NotBlank(message = "Work Order number is required")
+    private String workOrderNo;
+
     @NotBlank(message = "Customer name is required")
     private String customerName;
 

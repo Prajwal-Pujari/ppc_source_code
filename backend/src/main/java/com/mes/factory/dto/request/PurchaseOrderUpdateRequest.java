@@ -10,6 +10,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PurchaseOrderUpdateRequest {
+    private String workOrderNo;
     private LocalDate orderDate;
     private LocalDate expectedDeliveryDate;
 }

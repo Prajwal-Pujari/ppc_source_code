@@ -1,0 +1,16 @@
+.ops-desktop-view {
+  display: block;
+}
+
+.ops-mobile-view {
+  display: none !important;
+}
+
+@media (max-width: 992px) {
+  .ops-desktop-view {
+    display: none !important;
+  }
+  .ops-mobile-view {
+    display: flex !important;
+  }
+}

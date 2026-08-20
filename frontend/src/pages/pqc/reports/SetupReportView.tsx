@@ -167,14 +167,15 @@ export default function SetupReportView({ gaugeId, hideIfEmpty = false }: SetupR
                 {log.answers.map((ans: any, i: number) => {
                   let standardReq = '-';
                   if (ans.questionType === 'PASS_FAIL') {
-                    standardReq = ans.expectedAnswer === 'true' ? 'PASS' : 'FAIL';
+                    const expected = (ans.expectedAnswer == null || ans.expectedAnswer === '') ? 'true' : String(ans.expectedAnswer).toLowerCase();
+                    standardReq = expected === 'true' ? 'PASS' : 'FAIL';
                   } else if (ans.questionType === 'NUMERIC') {
                     standardReq = `${ans.minValue != null ? ans.minValue : ''} - ${ans.maxValue != null ? ans.maxValue : ''} ${ans.unit || ''}`;
                   }
 
                   let actual = ans.answerValue || '-';
                   if (ans.questionType === 'PASS_FAIL') {
-                    actual = ans.answerValue === 'true' ? 'PASS' : 'FAIL';
+                    actual = String(ans.answerValue).toLowerCase() === 'true' ? 'PASS' : 'FAIL';
                   } else if (ans.questionType === 'NUMERIC' && ans.unit) {
                     actual = `${actual} ${ans.unit}`;
                   }

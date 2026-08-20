@@ -136,7 +136,7 @@ export default function PdirReportView({ data, config }: { data: QualityReportDt
                 <img src={logoUrl} alt="Logo" style={{ maxHeight: '48px', maxWidth: '100%', objectFit: 'contain' }} />
               ) : (
                 <span style={{ fontWeight: 'bold', fontSize: '12px', color: '#333' }}>
-                  {config?.companyName || 'OASIS'}
+                  {config?.customerName || ''}
                 </span>
               )}
             </td>
@@ -146,7 +146,9 @@ export default function PdirReportView({ data, config }: { data: QualityReportDt
             <td style={{ width: '28%', fontSize: '11px', paddingLeft: '8px' }}>
               <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>Date:- {reportDate}</div>
               <div style={{ fontSize: '10px' }}>
-                {data.docNo || config?.docNo ? `Doc. No: ${data.docNo || config?.docNo}` : ''}
+                {data.docNo || config?.pdirDocNo || config?.docNo ? <div>Doc. No: {data.docNo || config?.pdirDocNo || config?.docNo}</div> : null}
+                {data.revNo || config?.pdirRevNo || config?.revNo ? <div>Rev.No./Date: {data.revNo || config?.pdirRevNo || config?.revNo}</div> : null}
+                {data.issueDate || config?.pdirIssueDate || config?.issueDate ? <div>Issue Date: {data.issueDate || config?.pdirIssueDate || config?.issueDate}</div> : null}
               </div>
             </td>
           </tr>
@@ -158,7 +160,7 @@ export default function PdirReportView({ data, config }: { data: QualityReportDt
         <tbody>
           <tr>
             <td style={{ width: '35%', verticalAlign: 'top' }}>
-              <strong>Supplier :-</strong> {config?.companyName || 'Oasis projects'}
+              <strong>Supplier :-</strong> {config?.customerName || ''}
             </td>
             <td style={{ width: '35%', verticalAlign: 'top' }}>
               <strong>Invoice no :-</strong> {data.poNumber || '—'}

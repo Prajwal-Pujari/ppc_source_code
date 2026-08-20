@@ -1,0 +1,1 @@
+ALTER TABLE report_configuration ADD COLUMN customer_name VARCHAR(255);

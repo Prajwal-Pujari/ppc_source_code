@@ -23,6 +23,7 @@ export interface PurchaseOrder {
   customerName: string;
   id: string;
   poNumber: string;
+  workOrderNo: string;
   customer: { id: string; name: string };
   orderDate: string;
   expectedDeliveryDate: string;
@@ -254,6 +255,9 @@ export interface ApprovalDto {
   inspectorName: string;
   signature: string;
   approvedAt: string;
+  qualityRemark?: string;
+  additionalNote?: string;
+  approverDesignation?: string;
 }
 
 export interface QualityReportDto {

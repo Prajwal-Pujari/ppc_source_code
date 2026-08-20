@@ -117,7 +117,7 @@ export const JobCardPrintableView = forwardRef<HTMLDivElement, JobCardPrintableV
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
           <Cell label="Customer Name" value={po?.customer?.name || po?.customerName || '—'} borderRight />
-          <Cell label="W.O. No." value={po?.poNumber || '—'} mono />
+          <Cell label="W.O. No." value={po?.workOrderNo || po?.poNumber || '—'} mono />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid #D4CCBF' }}>
           <Cell label="P.O. No." value={po?.poNumber || '—'} mono borderRight />

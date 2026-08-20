@@ -10,8 +10,8 @@ export const reportsApi = {
     const response = await api.get(url);
     return response.data;
   },
-  approveShift: async (gaugeId: string, shiftId: string, inspectionDate: string): Promise<any> => {
-    const response = await api.post('/pqc/approvals/shift', { gaugeId, shiftId, inspectionDate });
+  approveShift: async (gaugeId: string, shiftId: string, inspectionDate: string, qualityRemark?: string, additionalNote?: string, approverDesignation?: string): Promise<any> => {
+    const response = await api.post('/pqc/approvals/shift', { gaugeId, shiftId, inspectionDate, qualityRemark, additionalNote, approverDesignation });
     return response.data;
   },
   getSetupReport: async (gaugeId: string): Promise<{ data: any }> => {

@@ -39,6 +39,9 @@ public class QualityReportDto {
         private String inspectorName;
         private String signature;
         private OffsetDateTime approvedAt;
+        private String qualityRemark;
+        private String additionalNote;
+        private String approverDesignation;
     }
 
     @Data

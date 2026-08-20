@@ -47,20 +47,50 @@ public class PqcReportService {
         String revNo = gauge.getRevNo();
         String issueDate = gauge.getIssueDate();
 
-        if (logo == null && docNo == null && revNo == null && issueDate == null && gauge.getFactory() != null) {
-            ReportConfiguration rc = reportConfigurationRepository.findByFactoryId(gauge.getFactory().getId())
-                    .orElse(null);
-            if (rc != null) {
-                gauge.setCustomerLogo(rc.getCustomerLogo());
-                gauge.setDocNo(rc.getDocNo());
-                gauge.setRevNo(rc.getRevNo());
-                gauge.setIssueDate(rc.getIssueDate());
-                gaugeRepository.save(gauge);
+        ReportConfiguration rc = null;
+        if (gauge.getFactory() != null) {
+            rc = reportConfigurationRepository.findByFactoryId(gauge.getFactory().getId()).orElse(null);
+        }
 
-                logo = gauge.getCustomerLogo();
-                docNo = gauge.getDocNo();
-                revNo = gauge.getRevNo();
-                issueDate = gauge.getIssueDate();
+        if (logo == null && docNo == null && revNo == null && issueDate == null && rc != null) {
+            gauge.setCustomerLogo(rc.getCustomerLogo());
+            gauge.setDocNo(rc.getDocNo());
+            gauge.setRevNo(rc.getRevNo());
+            gauge.setIssueDate(rc.getIssueDate());
+            gaugeRepository.save(gauge);
+
+            logo = gauge.getCustomerLogo();
+            docNo = gauge.getDocNo();
+            revNo = gauge.getRevNo();
+            issueDate = gauge.getIssueDate();
+        }
+
+        if (rc != null) {
+            logo = rc.getCustomerLogo() != null ? rc.getCustomerLogo() : logo;
+            if ("IN_PROCESS".equalsIgnoreCase(reportType) && rc.getInProcessDocNo() != null && !rc.getInProcessDocNo().isEmpty()) {
+                docNo = rc.getInProcessDocNo();
+                revNo = rc.getInProcessRevNo();
+                issueDate = rc.getInProcessIssueDate();
+            } else if ("PDIR".equalsIgnoreCase(reportType) && rc.getPdirDocNo() != null && !rc.getPdirDocNo().isEmpty()) {
+                docNo = rc.getPdirDocNo();
+                revNo = rc.getPdirRevNo();
+                issueDate = rc.getPdirIssueDate();
+            } else if ("SETUP".equalsIgnoreCase(reportType) && rc.getSetupDocNo() != null && !rc.getSetupDocNo().isEmpty()) {
+                docNo = rc.getSetupDocNo();
+                revNo = rc.getSetupRevNo();
+                issueDate = rc.getSetupIssueDate();
+            } else if ("FAI".equalsIgnoreCase(reportType) && rc.getFaiDocNo() != null && !rc.getFaiDocNo().isEmpty()) {
+                docNo = rc.getFaiDocNo();
+                revNo = rc.getFaiRevNo();
+                issueDate = rc.getFaiIssueDate();
+            } else if ("LAYOUT".equalsIgnoreCase(reportType) && rc.getLayoutDocNo() != null && !rc.getLayoutDocNo().isEmpty()) {
+                docNo = rc.getLayoutDocNo();
+                revNo = rc.getLayoutRevNo();
+                issueDate = rc.getLayoutIssueDate();
+            } else if (rc.getDocNo() != null && !rc.getDocNo().isEmpty()) {
+                docNo = rc.getDocNo();
+                revNo = rc.getRevNo();
+                issueDate = rc.getIssueDate();
             }
         }
 
@@ -89,6 +119,9 @@ public class PqcReportService {
                         .inspectorName(a.getInspectorName())
                         .signature(a.getSignature())
                         .approvedAt(a.getApprovedAt())
+                        .qualityRemark(a.getQualityRemark())
+                        .additionalNote(a.getAdditionalNote())
+                        .approverDesignation(a.getApproverDesignation())
                         .build())
                 .collect(Collectors.toList());
         reportBuilder.approvals(approvalDtos);

@@ -739,7 +739,16 @@ function MachineSetupModal({ task, onClose, onComplete }: { task: GaugeOperation
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                         <input type="number" step="any" required className="input" style={{ width: 150, fontSize: 16 }} placeholder="Enter value..." value={answers[q.id] || ''} onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))} />
                         {q.unit && <span style={{ fontWeight: 600, color: 'var(--charcoal)', fontSize: 16 }}>{q.unit}</span>}
-                        {q.minValue != null && q.maxValue != null && <span style={{ fontSize: 14, color: 'var(--ash)', marginLeft: 16, padding: '6px 12px', background: 'var(--warm-white)', borderRadius: 8 }}>Range: {q.minValue} - {q.maxValue}</span>}
+                        {(q.minValue != null || q.maxValue != null) && (
+                          <span style={{ fontSize: 14, color: 'var(--ash)', marginLeft: 16, padding: '6px 12px', background: 'var(--warm-white)', borderRadius: 8 }}>
+                            {q.minValue != null && q.maxValue != null 
+                              ? `Range: ${q.minValue} - ${q.maxValue}`
+                              : q.minValue != null 
+                                ? `Min: ${q.minValue}`
+                                : `Max: ${q.maxValue}`
+                            }
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>

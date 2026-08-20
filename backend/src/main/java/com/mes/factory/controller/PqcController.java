@@ -97,6 +97,9 @@ public class PqcController {
                 since = LocalDate.now(istZone).atStartOfDay(istZone).toOffsetDateTime();
                 break;
         }
+        // Fetch logs first to accurately calculate Final Operations metrics
+        List<PqcInspectionLog> logs = inspectionLogRepository.findAllSince(factoryId, since);
+        List<UUID> finalOpIds = gaugeOperationRepository.findFinalOperationIdsByFactory(factoryId);
 
         // ── Summary stats ──
         long planned = inspectionLogRepository.sumPlannedSince(factoryId, since);
@@ -106,9 +109,13 @@ public class PqcController {
         long scrap = inspectionLogRepository.sumScrapSince(factoryId, since);
         long batchCount = inspectionLogRepository.countLogsSince(factoryId, since);
         
-        // Calculate Passed dynamically to ensure perfect mathematical balance across operations
-        long passed = produced - (rejected + rework + scrap);
-        if (passed < 0) passed = 0;
+        // Calculate Passed dynamically based ONLY on final operations (matches PO Tracker logic)
+        long passed = 0;
+        for (PqcInspectionLog l : logs) {
+            if (l.getGaugeOperation() != null && finalOpIds.contains(l.getGaugeOperation().getId())) {
+                passed += l.getPassedQty();
+            }
+        }
 
         // All-time for yield comparison
         long allTimeProduced = inspectionLogRepository.sumActualAllTime(factoryId);
@@ -119,7 +126,7 @@ public class PqcController {
         double allTimeYield = allTimeProduced > 0 ? (double) allTimePassed / allTimeProduced * 100 : 0;
         double periodYield = produced > 0 ? (double) passed / produced * 100 : 0;
         
-        long ppm = produced > 0 ? (rejected * 1000000L) / produced : 0;
+        long ppm = (passed + rejected) > 0 ? (rejected * 1000000L) / (passed + rejected) : 0;
 
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("planned", planned);
@@ -134,8 +141,6 @@ public class PqcController {
         summary.put("ppm", ppm);
 
         // ── Hourly breakdown (for bar chart) ──
-        List<PqcInspectionLog> logs = inspectionLogRepository.findAllSince(factoryId, since);
-        List<UUID> finalOpIds = gaugeOperationRepository.findFinalOperationIdsByFactory(factoryId);
         Map<String, Map<String, Object>> chartMap = new LinkedHashMap<>();
 
         for (PqcInspectionLog l : logs) {

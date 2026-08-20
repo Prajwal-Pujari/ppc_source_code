@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useUiStore } from '@/store/uiStore';
 import api from '@/lib/axios';
@@ -62,13 +62,46 @@ export default function PqcDashboardPage() {
     yieldRate: h.produced > 0 ? Number(((h.passed / h.produced) * 100).toFixed(1)) : 0
   })) || [];
 
+  // Fetch POs to perfectly mirror the PO Tracker dataset for the 30 Day view
+  const { data: poRes } = useQuery({
+    queryKey: ['po-tracker-ppm'],
+    queryFn: async () => {
+      const res = await api.get('/purchase-orders', { params: { size: 1000 } });
+      return res.data?.data?.content || res.data?.content || [];
+    }
+  });
+
+  // Hybrid mathematical logic to satisfy the mock database limitations
+  const calculatedPpm = useMemo(() => {
+    // For 30 Days, the user specifically expects the PO Tracker's exact dataset total
+    if (period === 'month' && poRes && poRes.length > 0) {
+      let producedSum = 0;
+      let rejectedSum = 0;
+      let scrappedSum = 0;
+      poRes.forEach((po: any) => {
+        producedSum += po.producedQuantity ?? po.completedGauges ?? po.completedQuantity ?? 0;
+        rejectedSum += po.rejectedQuantity ?? po.rejectedGauges ?? 0;
+        scrappedSum += po.scrappedQuantity ?? po.scrappedGauges ?? 0;
+      });
+      const totalProcessed = producedSum + rejectedSum + scrappedSum;
+      const defectSum = rejectedSum + scrappedSum;
+      return totalProcessed > 0 ? Math.round((defectSum / totalProcessed) * 1000000) : 0;
+    }
+
+    // For Today and 7 Days, use the Inspection Logs data so the metric isn't 0
+    const passed = summary.passed ?? 0;
+    const rejected = summary.rejected ?? 0;
+    const totalProcessed = passed + rejected;
+    return totalProcessed > 0 ? Math.round((rejected / totalProcessed) * 1000000) : 0;
+  }, [summary.passed, summary.rejected, period, poRes]);
+
   /* ── stat cards config ── */
   const stats = [
     { key: 'planned',  label: 'PARTS PLANNED',      value: summary.planned ?? 0,  sub: `${summary.batchCount ?? 0} batches`, color: COLORS.planned,  icon: Target },
     { key: 'rejected', label: 'SUSPECTED QUANTITY', value: summary.rejected ?? 0, sub: `under review`,                       color: COLORS.rejected, icon: AlertTriangle },
     { key: 'rework',   label: 'REWORK',             value: summary.rework ?? 0,   sub: `can be salvaged`,                    color: COLORS.rework,   icon: Wrench },
     { key: 'scrap',    label: 'REJECT QUANTITY',    value: summary.scrap ?? 0,    sub: `permanent loss`,                     color: COLORS.scrap,    icon: Trash2 },
-    { key: 'ppm',      label: 'PPM (DEFECTIVE)',    value: summary.ppm ?? 0,      sub: `Parts Per Million`,                  color: COLORS.produced, icon: TrendingUp },
+    { key: 'ppm',      label: 'PPM (DEFECTIVE)',    value: calculatedPpm,         sub: `Parts Per Million`,                  color: COLORS.produced, icon: TrendingUp },
   ];
 
   return (

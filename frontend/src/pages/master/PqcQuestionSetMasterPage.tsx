@@ -642,11 +642,11 @@ function ManageQuestionSetsModal({
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 10 }}>
                         <div>
                           <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--slate)', marginBottom: 3 }}>Min Value</label>
-                          <input className="input font-mono" style={{ fontSize: 13 }} type="number" step="0.0001" value={q.minValue || ''} onChange={(e) => updateQuestion(index, 'minValue', parseFloat(e.target.value))} />
+                          <input className="input font-mono" style={{ fontSize: 13 }} type="number" step="any" value={q.minValue ?? ''} onChange={(e) => updateQuestion(index, 'minValue', e.target.value === '' ? null : e.target.value)} />
                         </div>
                         <div>
                           <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--slate)', marginBottom: 3 }}>Max Value</label>
-                          <input className="input font-mono" style={{ fontSize: 13 }} type="number" step="0.0001" value={q.maxValue || ''} onChange={(e) => updateQuestion(index, 'maxValue', parseFloat(e.target.value))} />
+                          <input className="input font-mono" style={{ fontSize: 13 }} type="number" step="any" value={q.maxValue ?? ''} onChange={(e) => updateQuestion(index, 'maxValue', e.target.value === '' ? null : e.target.value)} />
                         </div>
                         <div>
                           <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--slate)', marginBottom: 3 }}>Unit</label>

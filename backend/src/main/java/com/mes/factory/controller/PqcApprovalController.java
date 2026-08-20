@@ -58,13 +58,18 @@ public class PqcApprovalController {
         FactoryShift shift = shiftRepository.findById(shiftId)
                 .orElseThrow(() -> new IllegalArgumentException("Shift not found"));
 
-        PqcShiftApproval approval = PqcShiftApproval.builder()
-                .gauge(gauge)
-                .shift(shift)
-                .inspectionDate(inspectionDate)
-                .inspectorName(user.getFullName())
-                .signature(user.getSignature())
-                .build();
+        PqcShiftApproval approval = approvalRepository.findByGaugeIdAndShiftIdAndInspectionDate(gaugeId, shiftId, inspectionDate)
+                .orElseGet(() -> PqcShiftApproval.builder()
+                        .gauge(gauge)
+                        .shift(shift)
+                        .inspectionDate(inspectionDate)
+                        .build());
+
+        approval.setInspectorName(user.getFullName());
+        approval.setSignature(user.getSignature());
+        approval.setQualityRemark(payload.get("qualityRemark"));
+        approval.setAdditionalNote(payload.get("additionalNote"));
+        approval.setApproverDesignation(payload.get("approverDesignation"));
 
         PqcShiftApproval saved = approvalRepository.save(approval);
 

@@ -135,6 +135,7 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
         return PurchaseOrderResponse.builder()
             .id(po.getId())
             .poNumber(po.getPoNumber())
+            .workOrderNo(po.getWorkOrderNo())
             .customerName(po.getCustomer() != null ? po.getCustomer().getName() : null)
             .customerId(po.getCustomer() != null ? po.getCustomer().getId() : null)
             .partName(partName)
@@ -173,6 +174,7 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
         PurchaseOrder po = PurchaseOrder.builder()
                 .factory(factory)
                 .poNumber(request.getPoNumber())
+                .workOrderNo(request.getWorkOrderNo())
                 .customer(customer)
                 .orderDate(request.getOrderDate())
                 .expectedDeliveryDate(request.getExpectedDeliveryDate())
@@ -473,6 +475,9 @@ public Page<PurchaseOrderResponse> getPurchaseOrders(UUID factoryId, String stat
     public PurchaseOrder updatePurchaseOrder(UUID poId, com.mes.factory.dto.request.PurchaseOrderUpdateRequest request) {
         PurchaseOrder po = getPurchaseOrder(poId);
         
+        if (request.getWorkOrderNo() != null) {
+            po.setWorkOrderNo(request.getWorkOrderNo());
+        }
         if (request.getOrderDate() != null) {
             po.setOrderDate(request.getOrderDate());
         }

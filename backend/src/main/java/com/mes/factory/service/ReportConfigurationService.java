@@ -35,9 +35,30 @@ public class ReportConfigurationService {
                 });
 
         config.setCustomerLogo(dto.getCustomerLogo());
+        config.setCustomerName(dto.getCustomerName());
         config.setDocNo(dto.getDocNo());
         config.setRevNo(dto.getRevNo());
         config.setIssueDate(dto.getIssueDate());
+
+        config.setInProcessDocNo(dto.getInProcessDocNo());
+        config.setInProcessRevNo(dto.getInProcessRevNo());
+        config.setInProcessIssueDate(dto.getInProcessIssueDate());
+
+        config.setPdirDocNo(dto.getPdirDocNo());
+        config.setPdirRevNo(dto.getPdirRevNo());
+        config.setPdirIssueDate(dto.getPdirIssueDate());
+
+        config.setSetupDocNo(dto.getSetupDocNo());
+        config.setSetupRevNo(dto.getSetupRevNo());
+        config.setSetupIssueDate(dto.getSetupIssueDate());
+
+        config.setFaiDocNo(dto.getFaiDocNo());
+        config.setFaiRevNo(dto.getFaiRevNo());
+        config.setFaiIssueDate(dto.getFaiIssueDate());
+
+        config.setLayoutDocNo(dto.getLayoutDocNo());
+        config.setLayoutRevNo(dto.getLayoutRevNo());
+        config.setLayoutIssueDate(dto.getLayoutIssueDate());
 
         config = reportConfigurationRepository.save(config);
         return mapToDto(config);
@@ -47,9 +68,25 @@ public class ReportConfigurationService {
         return ReportConfigurationDto.builder()
                 .id(entity.getId())
                 .customerLogo(entity.getCustomerLogo())
+                .customerName(entity.getCustomerName())
                 .docNo(entity.getDocNo())
                 .revNo(entity.getRevNo())
                 .issueDate(entity.getIssueDate())
+                .inProcessDocNo(entity.getInProcessDocNo())
+                .inProcessRevNo(entity.getInProcessRevNo())
+                .inProcessIssueDate(entity.getInProcessIssueDate())
+                .pdirDocNo(entity.getPdirDocNo())
+                .pdirRevNo(entity.getPdirRevNo())
+                .pdirIssueDate(entity.getPdirIssueDate())
+                .setupDocNo(entity.getSetupDocNo())
+                .setupRevNo(entity.getSetupRevNo())
+                .setupIssueDate(entity.getSetupIssueDate())
+                .faiDocNo(entity.getFaiDocNo())
+                .faiRevNo(entity.getFaiRevNo())
+                .faiIssueDate(entity.getFaiIssueDate())
+                .layoutDocNo(entity.getLayoutDocNo())
+                .layoutRevNo(entity.getLayoutRevNo())
+                .layoutIssueDate(entity.getLayoutIssueDate())
                 .build();
     }
 }

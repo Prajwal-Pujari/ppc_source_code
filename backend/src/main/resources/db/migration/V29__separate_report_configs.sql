@@ -1,0 +1,16 @@
+ALTER TABLE report_configuration 
+ADD COLUMN in_process_doc_no VARCHAR(100), 
+ADD COLUMN in_process_rev_no VARCHAR(100), 
+ADD COLUMN in_process_issue_date VARCHAR(100), 
+ADD COLUMN pdir_doc_no VARCHAR(100), 
+ADD COLUMN pdir_rev_no VARCHAR(100), 
+ADD COLUMN pdir_issue_date VARCHAR(100), 
+ADD COLUMN setup_doc_no VARCHAR(100), 
+ADD COLUMN setup_rev_no VARCHAR(100), 
+ADD COLUMN setup_issue_date VARCHAR(100), 
+ADD COLUMN fai_doc_no VARCHAR(100), 
+ADD COLUMN fai_rev_no VARCHAR(100), 
+ADD COLUMN fai_issue_date VARCHAR(100), 
+ADD COLUMN layout_doc_no VARCHAR(100), 
+ADD COLUMN layout_rev_no VARCHAR(100), 
+ADD COLUMN layout_issue_date VARCHAR(100);

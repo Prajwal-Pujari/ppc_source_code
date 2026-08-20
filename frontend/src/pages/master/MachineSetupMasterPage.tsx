@@ -342,7 +342,7 @@ function ManageMachineSetupModal({
     setEditingSet(prev => {
       if (!prev) return prev;
       const questions = prev.questions || [];
-      return { ...prev, questions: [...questions, { sequenceOrder: questions.length + 1, questionText: '', questionType: 'PASS_FAIL', isCritical: false, checkingMethod: 'Visual', showInPdir: true }] };
+      return { ...prev, questions: [...questions, { sequenceOrder: questions.length + 1, questionText: '', questionType: 'PASS_FAIL', expectedAnswer: 'true', isCritical: false, checkingMethod: 'Visual', showInPdir: true }] };
     });
   };
 
@@ -351,6 +351,9 @@ function ManageMachineSetupModal({
       if (!prev) return prev;
       const questions = [...(prev.questions || [])];
       questions[index] = { ...questions[index], [field]: value };
+      if (field === 'questionType' && value === 'PASS_FAIL' && !questions[index].expectedAnswer) {
+        questions[index].expectedAnswer = 'true';
+      }
       return { ...prev, questions };
     });
   };

@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getPurchaseOrders } from '@/api/purchase-orders.api';
+import { machinesApi } from '@/api/machines.api';
 import {
   Calendar, Filter, Search, RefreshCw, Download, Printer, Award,
   CheckCircle2, AlertTriangle, Clock, TrendingUp, Layers, Package,
   Factory, ShieldCheck, ArrowUpRight, ChevronRight, Check, X,
-  FileText, BarChart3, PieChart, Users, Loader2
+  FileText, BarChart3, PieChart, Users, Loader2, Settings, User
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import './pqc-po-tracker.css';
 
 const getArray = (res: any): any[] => {
   if (Array.isArray(res)) return res;
@@ -30,14 +32,17 @@ export default function PqcPoTrackerPage() {
   const [syncing, setSyncing] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
 
-  // Time & Period Filters (Separated Year and Month as requested! Default to July 2026)
-  const [selectedYear, setSelectedYear] = useState<string>('2026');
-  const [selectedMonth, setSelectedMonth] = useState<string>('July');
+  // Time & Period Filters (Separated Year and Month. Default to current date)
+  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
+  const [selectedMonth, setSelectedMonth] = useState<string>(MONTH_NAMES[new Date().getMonth() + 1]);
 
   // Customer & Active Track Filters
   const [selectedCustomer, setSelectedCustomer] = useState<string>('ALL');
   const [selectedTrackStatus, setSelectedTrackStatus] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  
+  // Modal State
+  const [modalOpDetails, setModalOpDetails] = useState<any | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -48,8 +53,14 @@ export default function PqcPoTrackerPage() {
     else setLoading(true);
 
     try {
-      const res = await getPurchaseOrders({ size: 1000 });
-      const apiList = getArray(res);
+      // Fetch both POs and machine schedule events
+      const [poRes, eventsRes] = await Promise.all([
+        getPurchaseOrders({ size: 1000 }),
+        machinesApi.getEvents()
+      ]);
+      
+      const apiList = getArray(poRes);
+      const eventsList = getArray(eventsRes);
 
       // Map API POs into standardized tracker structure
       const mappedApi = apiList.map((po: any) => {
@@ -67,6 +78,58 @@ export default function PqcPoTrackerPage() {
           activeTrack = 'ON_HOLD_CANCELLED';
         }
 
+        const totalProcessed = produced + rejected + scrapped;
+        const defectSum = rejected + scrapped;
+        const ppm = totalProcessed > 0 ? Math.round((defectSum / totalProcessed) * 1000000) : 0;
+        
+        // Find all operation events for this PO
+        const poEvents = eventsList.filter(e => e.poNumber === po.poNumber);
+        
+        // Ensure we handle Jackson's serialization of boolean isCompleted -> completed
+        const activeEvent = poEvents.find(e => !(e.completed ?? e.isCompleted));
+        
+        // Mark operations with their specific status
+        const enhancedOperations = poEvents.map(e => {
+          const isDone = e.completed ?? e.isCompleted;
+          
+          // Only show as Active if the PO itself is actively being worked on
+          let statusText = activeTrack === 'ACTIVE_TRACK' ? '[Active]' : '[Pending]';
+          let statusColor = activeTrack === 'ACTIVE_TRACK' ? '#ca8a04' : 'var(--slate)';
+          
+          if (isDone) {
+            statusText = '[Done]';
+            statusColor = '#16a34a';
+          }
+          
+          return {
+            ...e,
+            isDone,
+            statusText,
+            statusColor,
+            displayText: `${e.operationName} (on ${e.machineName || 'Unknown Machine'})`
+          };
+        });
+        
+        let currentOp = 'Not started yet';
+        let currentMachine = 'No machine setup';
+        
+        // If there are multiple active operations, show a summary
+        const activeEvents = enhancedOperations.filter(e => e.statusText === '[Active]');
+        if (activeEvents.length === 1) {
+          currentOp = activeEvents[0].operationName || 'Unknown Operation';
+          currentMachine = activeEvents[0].machineName || 'Unknown Machine';
+        } else if (activeEvents.length > 1) {
+          currentOp = 'Multiple Operations Active';
+          currentMachine = 'Multiple Machines';
+        } else if (activeTrack === 'COMPLETED' || (enhancedOperations.length > 0 && activeEvents.length === 0)) {
+          // If no active events and there are operations, it's either all done or all pending
+          const allPending = enhancedOperations.every(e => e.statusText === '[Pending]');
+          if (!allPending) {
+            currentOp = 'All Operations Completed';
+            currentMachine = '-';
+          }
+        }
+
         return {
           id: po.id,
           poNumber: po.poNumber || `PO-${po.id?.slice(0, 8)}`,
@@ -80,6 +143,10 @@ export default function PqcPoTrackerPage() {
           completedGauges: produced,
           rejectedGauges: rejected,
           scrappedGauges: scrapped,
+          ppm,
+          currentOperation: currentOp,
+          machineName: currentMachine,
+          allOperations: enhancedOperations, // include all scheduled operations for the dropdown
           activeTrackStatus: activeTrack,
           remarks: po.specialInstructions || po.remarks || 'Standard PQC quality monitoring active.'
         };
@@ -152,7 +219,19 @@ export default function PqcPoTrackerPage() {
         const matchCust = po.customerName?.toLowerCase().includes(q);
         const matchPart = po.partName?.toLowerCase().includes(q);
         const matchRem = po.remarks?.toLowerCase().includes(q);
-        if (!matchPo && !matchCust && !matchPart && !matchRem) return false;
+        
+        // Search by current machine or operation
+        const matchMachine = po.machineName?.toLowerCase().includes(q);
+        const matchCurrentOp = po.currentOperation?.toLowerCase().includes(q);
+        
+        // Search inside the allOperations array (operation names and status texts like "[Pending]", "[Active]")
+        const matchAnyOp = po.allOperations?.some((op: any) => 
+          op.operationName?.toLowerCase().includes(q) || 
+          op.statusText?.toLowerCase().includes(q) ||
+          op.machineName?.toLowerCase().includes(q)
+        );
+
+        if (!matchPo && !matchCust && !matchPart && !matchRem && !matchMachine && !matchCurrentOp && !matchAnyOp) return false;
       }
 
       return true;
@@ -183,6 +262,9 @@ export default function PqcPoTrackerPage() {
     });
 
     const totalProcessed = producedSum + rejectedSum + scrappedSum;
+    const defectSum = rejectedSum + scrappedSum;
+    const averagePPM = totalProcessed > 0 ? Math.round((defectSum / totalProcessed) * 1000000) : 0;
+    
     const overallProgress = plannedSum > 0 ? Math.min(100, Math.round((producedSum / plannedSum) * 100)) : 0;
     const passRate = (producedSum + rejectedSum) > 0 
       ? ((producedSum / (producedSum + rejectedSum)) * 100).toFixed(1)
@@ -191,7 +273,7 @@ export default function PqcPoTrackerPage() {
     return {
       totalPOs, activePOs, draftedPOs, completedPOs,
       plannedSum, producedSum, rejectedSum, scrappedSum,
-      totalProcessed, overallProgress, passRate
+      totalProcessed, overallProgress, passRate, averagePPM
     };
   }, [filteredOrders]);
 
@@ -458,27 +540,28 @@ export default function PqcPoTrackerPage() {
           </div>
         </div>
 
-        {/* Quality Pass Rate / Compliance */}
+        {/* Quality (Average PPM) */}
         <div style={{
           padding: '22px', borderRadius: 14, background: 'var(--warm-white)',
           border: '1px solid var(--silk)', boxShadow: '0 4px 16px rgba(0,0,0,0.02)',
           display: 'flex', flexDirection: 'column', justifyContent: 'space-between', position: 'relative', overflow: 'hidden'
         }}>
-          <div style={{ position: 'absolute', top: -10, right: -10, width: 80, height: 80, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.08)', zIndex: 0 }} />
+          <div style={{ position: 'absolute', top: -10, right: -10, width: 80, height: 80, borderRadius: '50%', background: summaryMetrics.averagePPM > 2000 ? 'rgba(239, 68, 68, 0.08)' : (summaryMetrics.averagePPM > 0 ? 'rgba(234, 179, 8, 0.08)' : 'rgba(34, 197, 94, 0.08)'), zIndex: 0 }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 1, marginBottom: 14 }}>
             <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--dust)' }}>
-              First Time Quality Pass Rate
+              Average Monthly PPM
             </span>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(59, 130, 246, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: summaryMetrics.averagePPM > 2000 ? 'rgba(239, 68, 68, 0.12)' : (summaryMetrics.averagePPM > 0 ? 'rgba(234, 179, 8, 0.12)' : 'rgba(34, 197, 94, 0.12)'), display: 'flex', alignItems: 'center', justifyContent: 'center', color: summaryMetrics.averagePPM > 2000 ? '#dc2626' : (summaryMetrics.averagePPM > 0 ? '#ca8a04' : '#16a34a') }}>
               <Award size={20} />
             </div>
           </div>
           <div style={{ zIndex: 1 }}>
-            <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--charcoal)', letterSpacing: '-0.03em', lineHeight: 1 }}>
-              {summaryMetrics.passRate}%
+            <div style={{ fontSize: 32, fontWeight: 800, color: summaryMetrics.averagePPM > 2000 ? '#dc2626' : (summaryMetrics.averagePPM > 0 ? '#ca8a04' : '#16a34a'), letterSpacing: '-0.03em', lineHeight: 1 }}>
+              {summaryMetrics.averagePPM.toLocaleString()} <span style={{ fontSize: 14, fontWeight: 600 }}>PPM</span>
             </div>
-            <div style={{ fontSize: 12, color: '#2563eb', fontWeight: 600, marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <CheckCircle2 size={14} /> Meets plant QA tolerance standard
+            <div style={{ fontSize: 12, color: 'var(--slate)', fontWeight: 600, marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <CheckCircle2 size={14} style={{ color: summaryMetrics.averagePPM <= 2000 ? '#16a34a' : '#dc2626' }} /> 
+              {summaryMetrics.averagePPM === 0 ? 'Zero Defects Recorded' : (summaryMetrics.averagePPM > 2000 ? 'Action Required: High Defect Rate' : 'Within Quality Limits')}
             </div>
           </div>
         </div>
@@ -595,10 +678,9 @@ export default function PqcPoTrackerPage() {
                   <th style={{ padding: '14px 20px' }}>Order / PO Details</th>
                   <th style={{ padding: '14px 20px' }}>Customer & Part Name</th>
                   <th style={{ padding: '14px 20px' }}>Active Track Status</th>
-                  <th style={{ padding: '14px 20px', textAlign: 'right' }}>Planned</th>
-                  <th style={{ padding: '14px 20px', textAlign: 'right', color: '#16a34a' }}>Produced</th>
-                  <th style={{ padding: '14px 20px', textAlign: 'right', color: '#dc2626' }}>Rejected</th>
-                  <th style={{ padding: '14px 20px', textAlign: 'right', color: '#ea580c' }}>Scrapped</th>
+                  <th style={{ padding: '14px 20px' }}>Operations Status</th>
+                  <th style={{ padding: '14px 20px', minWidth: 160 }}>Volume & Yield</th>
+                  <th style={{ padding: '14px 20px' }}>Quality (PPM)</th>
                   <th style={{ padding: '14px 20px', minWidth: 160 }}>Production Progress</th>
                   <th style={{ padding: '14px 20px', textAlign: 'center' }}>Action</th>
                 </tr>
@@ -684,24 +766,101 @@ export default function PqcPoTrackerPage() {
                         </span>
                       </td>
 
-                      {/* Volume: Planned */}
-                      <td style={{ padding: '16px 20px', textAlign: 'right', fontWeight: 700, color: 'var(--charcoal)', fontSize: 14 }}>
-                        {planned.toLocaleString()}
+                      {/* Operations Status */}
+                      <td style={{ padding: '16px 20px' }}>
+                        {po.allOperations && po.allOperations.length > 0 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {/* Desktop View: Expandable List */}
+                            <div className="ops-desktop-view">
+                              <details style={{ background: 'var(--cream)', border: '1px solid var(--silk)', borderRadius: 8, padding: '6px 10px', fontSize: 12, cursor: 'pointer' }}>
+                                <summary style={{ fontWeight: 700, color: 'var(--charcoal)', outline: 'none' }}>
+                                  {po.currentOperation}
+                                </summary>
+                                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 8, borderLeft: '2px solid var(--silk)' }}>
+                                  {po.allOperations.map((op: any, idx: number) => (
+                                    <div key={idx} style={{ color: op.statusColor, fontWeight: 600 }}>
+                                      {op.statusText} {op.displayText}
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
+                              <div style={{ fontSize: 11, color: 'var(--slate)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                                <Factory size={12} style={{ color: 'var(--copper-bronze)' }} />
+                                {po.machineName}
+                              </div>
+                            </div>
+                            
+                            {/* Mobile/Tab View: Button + Modal */}
+                            <div className="ops-mobile-view" style={{ flexDirection: 'column', gap: 6 }}>
+                              <div style={{ fontWeight: 700, color: 'var(--charcoal)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Settings size={14} style={{ color: 'var(--copper-bronze)' }} />
+                                {po.currentOperation}
+                              </div>
+                              <button
+                                onClick={() => setModalOpDetails(po)}
+                                style={{
+                                  padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                                  background: 'var(--cream)', border: '1px solid var(--silk)', color: 'var(--copper-bronze)',
+                                  cursor: 'pointer', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 4
+                                }}
+                              >
+                                <Layers size={12} /> View All Ops
+                              </button>
+                              <div style={{ fontSize: 11, color: 'var(--slate)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                                <Factory size={12} style={{ color: 'var(--copper-bronze)' }} />
+                                {po.machineName}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ fontWeight: 700, color: 'var(--charcoal)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Settings size={14} style={{ color: 'var(--copper-bronze)' }} />
+                              {po.currentOperation}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--slate)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <Factory size={12} />
+                              {po.machineName}
+                            </div>
+                          </div>
+                        )}
                       </td>
 
-                      {/* Volume: Produced */}
-                      <td style={{ padding: '16px 20px', textAlign: 'right', fontWeight: 800, color: '#16a34a', fontSize: 14 }}>
-                        {produced.toLocaleString()}
+                      {/* Volume & Yield (Compact) */}
+                      <td style={{ padding: '16px 20px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', fontSize: 12 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--charcoal)' }}>
+                            <span style={{ color: 'var(--ash)' }}>Plan:</span> <b>{planned.toLocaleString()}</b>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a' }}>
+                            <span style={{ color: 'var(--ash)' }}>Prod:</span> <b>{produced.toLocaleString()}</b>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: rejected > 0 ? '#dc2626' : 'var(--ash)' }}>
+                            <span style={{ color: 'var(--ash)' }}>Rej:</span> <b>{rejected.toLocaleString()}</b>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: scrapped > 0 ? '#ea580c' : 'var(--ash)' }}>
+                            <span style={{ color: 'var(--ash)' }}>Scrap:</span> <b>{scrapped.toLocaleString()}</b>
+                          </div>
+                        </div>
                       </td>
 
-                      {/* Volume: Rejected */}
-                      <td style={{ padding: '16px 20px', textAlign: 'right', fontWeight: 700, color: rejected > 0 ? '#dc2626' : 'var(--ash)', fontSize: 14 }}>
-                        {rejected.toLocaleString()}
-                      </td>
-
-                      {/* Volume: Scrapped */}
-                      <td style={{ padding: '16px 20px', textAlign: 'right', fontWeight: 700, color: scrapped > 0 ? '#ea580c' : 'var(--ash)', fontSize: 14 }}>
-                        {scrapped.toLocaleString()}
+                      {/* Quality (PPM) */}
+                      <td style={{ padding: '16px 20px' }}>
+                        <div style={{ 
+                          display: 'inline-flex', flexDirection: 'column',
+                          background: po.ppm > 2000 ? 'rgba(239, 68, 68, 0.1)' : (po.ppm > 0 ? 'rgba(234, 179, 8, 0.1)' : 'rgba(34, 197, 94, 0.1)'),
+                          padding: '6px 12px', borderRadius: 8, border: `1px solid ${po.ppm > 2000 ? 'rgba(239, 68, 68, 0.2)' : 'transparent'}`
+                        }}>
+                          <div style={{ 
+                            fontSize: 14, fontWeight: 800, 
+                            color: po.ppm > 2000 ? '#dc2626' : (po.ppm > 0 ? '#ca8a04' : '#16a34a')
+                          }}>
+                            {po.ppm.toLocaleString()} <span style={{ fontSize: 10, fontWeight: 600 }}>PPM</span>
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--slate)', marginTop: 2 }}>
+                            {po.ppm === 0 ? 'Zero Defects' : (po.ppm > 2000 ? 'Action Required' : 'Within Limits')}
+                          </div>
+                        </div>
                       </td>
 
                       {/* Progress Bar */}
@@ -746,6 +905,60 @@ export default function PqcPoTrackerPage() {
           </div>
         )}
       </div>
+
+      {/* ── Operations Modal ── */}
+      {modalOpDetails && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          background: 'rgba(0,0,0,0.5)', zIndex: 9999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+        }}>
+          <div style={{
+            background: 'var(--warm-white)', borderRadius: 16, width: '100%', maxWidth: 500,
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '1px solid var(--silk)',
+            display: 'flex', flexDirection: 'column', maxHeight: '85vh'
+          }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--silk)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--charcoal)' }}>Operations Tracking</h3>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--slate)' }}>{modalOpDetails.poNumber} • {modalOpDetails.customerName}</p>
+              </div>
+              <button onClick={() => setModalOpDetails(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--ash)' }}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ padding: '24px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {modalOpDetails.allOperations.map((op: any, idx: number) => (
+                  <div key={idx} style={{ 
+                    padding: '12px 16px', borderRadius: 8, background: 'var(--cream)', 
+                    border: '1px solid var(--silk)', display: 'flex', flexDirection: 'column', gap: 4
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--charcoal)', fontSize: 14 }}>{op.operationName}</span>
+                      <span style={{ 
+                        fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12, 
+                        background: op.isDone ? 'rgba(22, 163, 74, 0.1)' : 'rgba(202, 138, 4, 0.1)',
+                        color: op.isDone ? '#16a34a' : '#ca8a04' 
+                      }}>
+                        {op.statusText}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--slate)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Factory size={12} /> {op.machineName || 'Unknown Machine'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ padding: '16px 24px', borderTop: '1px solid var(--silk)', textAlign: 'right', background: 'rgba(250,248,245,0.5)', borderRadius: '0 0 16px 16px' }}>
+              <button onClick={() => setModalOpDetails(null)} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, background: 'var(--charcoal)', color: 'white', cursor: 'pointer', border: 'none' }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

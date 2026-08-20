@@ -43,6 +43,9 @@ public class ReportConfiguration {
     @Column(name = "customer_logo", columnDefinition = "TEXT")
     private String customerLogo;
 
+    @Column(name = "customer_name", length = 255)
+    private String customerName;
+
     @Column(name = "doc_no", length = 100)
     private String docNo;
 
@@ -51,6 +54,56 @@ public class ReportConfiguration {
 
     @Column(name = "issue_date", length = 100)
     private String issueDate;
+
+    // In-Process
+    @Column(name = "in_process_doc_no", length = 100)
+    private String inProcessDocNo;
+
+    @Column(name = "in_process_rev_no", length = 100)
+    private String inProcessRevNo;
+
+    @Column(name = "in_process_issue_date", length = 100)
+    private String inProcessIssueDate;
+
+    // PDIR
+    @Column(name = "pdir_doc_no", length = 100)
+    private String pdirDocNo;
+
+    @Column(name = "pdir_rev_no", length = 100)
+    private String pdirRevNo;
+
+    @Column(name = "pdir_issue_date", length = 100)
+    private String pdirIssueDate;
+
+    // Setup
+    @Column(name = "setup_doc_no", length = 100)
+    private String setupDocNo;
+
+    @Column(name = "setup_rev_no", length = 100)
+    private String setupRevNo;
+
+    @Column(name = "setup_issue_date", length = 100)
+    private String setupIssueDate;
+
+    // FAI
+    @Column(name = "fai_doc_no", length = 100)
+    private String faiDocNo;
+
+    @Column(name = "fai_rev_no", length = 100)
+    private String faiRevNo;
+
+    @Column(name = "fai_issue_date", length = 100)
+    private String faiIssueDate;
+
+    // Layout
+    @Column(name = "layout_doc_no", length = 100)
+    private String layoutDocNo;
+
+    @Column(name = "layout_rev_no", length = 100)
+    private String layoutRevNo;
+
+    @Column(name = "layout_issue_date", length = 100)
+    private String layoutIssueDate;
 
     @Column(name = "is_active")
     @Builder.Default

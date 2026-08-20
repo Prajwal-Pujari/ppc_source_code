@@ -453,9 +453,14 @@ export function InspectorLiveEntryPage() {
                 />
                 {q.unit && <span className="il-data-label" style={{ position: 'absolute', bottom: 16, right: -48, color: 'var(--warm-gray)' }}>{q.unit}</span>}
               </div>
-              {(q.minValue !== undefined || q.maxValue !== undefined) && (
+              {(q.minValue != null || q.maxValue != null) && (
                 <p className="il-body-md" style={{ marginTop: 12, color: 'var(--ash)' }}>
-                  Range: {q.minValue ?? '-âˆž'} to {q.maxValue ?? 'âˆž'} {q.unit}
+                  {q.minValue != null && q.maxValue != null 
+                    ? `Range: ${q.minValue} to ${q.maxValue}`
+                    : q.minValue != null 
+                      ? `Min: ${q.minValue}`
+                      : `Max: ${q.maxValue}`
+                  } {q.unit}
                 </p>
               )}
             </div>
