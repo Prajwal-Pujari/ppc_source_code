@@ -14,6 +14,7 @@ import type { FieldError } from '@/types/api.types';
 interface LineItem {
   gaugeMasterId: string;
   gaugeTypeName: string;
+  categoryCode?: string;
   nominalSize: string;
   sizeUnit: string;
   quantity: string;
@@ -478,7 +479,7 @@ export default function PurchaseOrderCreatePage() {
 
   const addLine = () =>
     setLines([...lines, {
-      gaugeMasterId: '', gaugeTypeName: '', nominalSize: '',
+      gaugeMasterId: '', gaugeTypeName: '', categoryCode: '', nominalSize: '',
       sizeUnit: 'mm', quantity: '1', materialGradeOverride: '', lineNotes: '',
     }]);
 
@@ -491,6 +492,7 @@ export default function PurchaseOrderCreatePage() {
       const gm = gaugeMasters.find((g: any) => g.id === value);
       if (gm) {
         updated[i].gaugeTypeName = gm.gaugeTypeName;
+        updated[i].categoryCode = gm.categoryCode;
         if (gm.unitOfMeasurement) updated[i].sizeUnit = gm.unitOfMeasurement;
       }
     }
@@ -646,7 +648,7 @@ export default function PurchaseOrderCreatePage() {
                       </div>
                     )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 0.6fr 0.6fr 1fr 2fr', gap: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 0.6fr 0.6fr 1fr 2fr', gap: 12 }}>
                       <div>
                         <label style={{ display: 'block', fontSize: 11, color: 'var(--ash)', marginBottom: 2 }}>Part / Product Name *</label>
                         <select className="input" value={line.gaugeMasterId} onChange={(e) => updateLine(i, 'gaugeMasterId', e.target.value)} required>
@@ -655,6 +657,10 @@ export default function PurchaseOrderCreatePage() {
                             <option key={gm.id} value={gm.id}>{gm.gaugeTypeName}</option>
                           ))}
                         </select>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11, color: 'var(--ash)', marginBottom: 2 }}>Part Code</label>
+                        <input className="input" value={line.categoryCode || ''} readOnly style={{ backgroundColor: 'var(--linen)', color: 'var(--slate)', cursor: 'not-allowed' }} placeholder="Auto-populated" />
                       </div>
                       <div>
                         <label style={{ display: 'block', fontSize: 11, color: 'var(--ash)', marginBottom: 2 }}>Nominal Size *</label>
