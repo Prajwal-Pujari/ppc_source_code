@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import AutoVisionInspectionPage from '@/pages/pqc/AutoVisionInspectionPage';
 import { useAuthStore } from '@/store/authStore';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
@@ -56,6 +57,7 @@ export default function App() {
               <Route path="/job-cards/:id" element={<JobCardDetailPage />} />
               <Route path="/calibration-report/:id" element={<CalibrationReportPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/pqc/auto-vision-inspection" element={<AutoVisionInspectionPage />} />
               <Route path="/operations-tracking" element={<OperationsAnalyticsPage />} />
               <Route path="/assign-operations" element={<AssignOperationsPage />} />
               <Route path="/nc-records" element={<NcRecordsPage />} />

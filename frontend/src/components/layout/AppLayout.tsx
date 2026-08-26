@@ -7,7 +7,7 @@ import { useWebSocket } from '@/websocket/useWebSocket';
 import {
   LayoutDashboard, ClipboardList, Wrench, Package, AlertTriangle,
   BarChart3, Database, FileText, Settings, Bell, Menu, LogOut,
-  ChevronRight, Users, Shield, Gauge, CheckCircle, CheckCheck, X
+  ChevronRight, Users, Shield, Gauge, CheckCircle, CheckCheck, X, ScanBarcode
 } from 'lucide-react';
 
 const navSections = [
@@ -37,6 +37,7 @@ const navSections = [
     title: 'Quality',
     items: [
       { label: 'NC Records', path: '/nc-records', icon: AlertTriangle, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
+      { label: 'Auto-Vision Inspect', path: '/pqc/auto-vision-inspection', icon: ScanBarcode, roles: ['ADMIN', 'QUALITY_INSPECTOR'] },
       { label: 'Report Approvals', path: '/approvals', icon: CheckCheck, roles: ['ADMIN'] },
     ],
   },
