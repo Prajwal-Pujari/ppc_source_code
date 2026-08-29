@@ -14,9 +14,9 @@ if [[ "$CONTINUE" != "Y" && "$CONTINUE" != "y" ]]; then
     exit 0
 fi
 
-PG_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -i postgres | head -n 1)
-MYSQL_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -i mysql | head -n 1)
-REDIS_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -i redis | head -n 1)
+PG_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -E "^ppc-postgres$|^pqc-mes-postgres$" | head -n 1)
+MYSQL_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -E "^ppc-mysql$|^pqc-mes-mysql$" | head -n 1)
+REDIS_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -E "^ppc-redis$|^pqc-mes-redis$" | head -n 1)
 
 if [ -z "$PG_CONTAINER" ]; then
     echo "Error: PostgreSQL container is not running!"
