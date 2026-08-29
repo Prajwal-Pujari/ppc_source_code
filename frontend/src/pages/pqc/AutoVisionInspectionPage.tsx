@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Webcam from 'react-webcam';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { Camera, ScanBarcode, CheckCircle2, Circle, Target, ChevronRight } from 'lucide-react';
+import { Camera, ScanBarcode, CheckCircle2, Circle, Target, ChevronRight, Play, Square } from 'lucide-react';
+import api from '@/lib/axios';
 
 type InspectionStage = 'SCANNING' | 'INSPECTING' | 'COMPLETED';
 
@@ -23,6 +24,41 @@ export default function AutoVisionInspectionPage() {
   const [partId, setPartId] = useState<string | null>(null);
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>(INITIAL_CHECKPOINTS);
   const [activeCheckIndex, setActiveCheckIndex] = useState<number>(0);
+  const [isScannerRunning, setIsScannerRunning] = useState(false);
+
+  const checkScannerStatus = async () => {
+    try {
+      const res = await api.get('/vision/scanner-status');
+      setIsScannerRunning(res.data.running);
+    } catch (e) {
+      console.error('Failed to check scanner status', e);
+    }
+  };
+
+  useEffect(() => {
+    checkScannerStatus();
+    const interval = setInterval(checkScannerStatus, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleStartScanner = async () => {
+    try {
+      await api.post('/vision/start-scanner');
+      setIsScannerRunning(true);
+    } catch (e) {
+      console.error('Failed to start scanner', e);
+      alert('Failed to start scanner. It might already be running.');
+    }
+  };
+
+  const handleStopScanner = async () => {
+    try {
+      await api.post('/vision/stop-scanner');
+      setIsScannerRunning(false);
+    } catch (e) {
+      console.error('Failed to stop scanner', e);
+    }
+  };
   const webcamRef = useRef<Webcam>(null);
   useEffect(() => {
     if (stage === 'SCANNING') {
@@ -95,13 +131,27 @@ export default function AutoVisionInspectionPage() {
 
   return (
     <div style={{ padding: 32, maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
-        <div style={{ width: 48, height: 48, background: 'var(--copper-bronze)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <ScanBarcode size={24} color="white" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 48, height: 48, background: 'var(--copper-bronze)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ScanBarcode size={24} color="white" />
+          </div>
+          <div>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--charcoal)', margin: 0 }}>Auto-Vision Inspection</h1>
+            <p style={{ fontSize: 14, color: 'var(--slate)', margin: '4px 0 0 0' }}>AI-assisted geometry validation</p>
+          </div>
         </div>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--charcoal)', margin: 0 }}>Auto-Vision Inspection</h1>
-          <p style={{ fontSize: 14, color: 'var(--slate)', margin: '4px 0 0 0' }}>AI-assisted geometry validation</p>
+
+        <div style={{ display: 'flex', gap: 12 }}>
+          {!isScannerRunning ? (
+            <button className="btn btn-primary" onClick={handleStartScanner} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: 'var(--copper-bronze)', border: 'none' }}>
+              <Play size={18} /> Start External AI Scanner
+            </button>
+          ) : (
+            <button className="btn btn-secondary" onClick={handleStopScanner} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', color: 'var(--status-rejected)', borderColor: 'var(--status-rejected)' }}>
+              <Square size={18} /> Stop AI Scanner
+            </button>
+          )}
         </div>
       </div>
 

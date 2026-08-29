@@ -27,7 +27,7 @@ from ai_classifier import HoleClassifier
 # CONFIGURATION
 # ==========================================
 CAMERA_SOURCE = "http://192.168.1.104:8080/video"
-MES_FACTORY_API_URL = "http://localhost:8080/api/v1/vision/results"
+MES_FACTORY_API_URL = "http://localhost:9091/api/v1/vision/results"
 LOG_DIR = "inspection_logs"
 LOG_FILE = os.path.join(LOG_DIR, "inspection_results.csv")
 
@@ -523,7 +523,7 @@ class LocalScannerApp:
             "dataMatrix": self.data_matrix,
             "overallResult": overall,
             "inspectionMethod": "AI_MOBILENET_V2",
-            "inspectedAt": datetime.now().isoformat(),
+            "inspectedAt": datetime.now().astimezone().isoformat(),
             "defectsFound": len(defects),
             "checkpoints": [
                 {
