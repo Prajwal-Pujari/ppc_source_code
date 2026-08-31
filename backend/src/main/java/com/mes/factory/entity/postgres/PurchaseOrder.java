@@ -56,7 +56,7 @@ public class PurchaseOrder {
     @Column(name = "work_order_no", nullable = false, length = 100)
     private String workOrderNo;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "customer_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Customer customer;

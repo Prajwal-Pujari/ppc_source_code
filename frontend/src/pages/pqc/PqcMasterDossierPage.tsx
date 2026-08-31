@@ -102,6 +102,7 @@ export default function PqcMasterDossierPage() {
 
   const [activeTab, setActiveTab] = useState<'dossier' | 'summary'>('dossier');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const dossierRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
@@ -185,6 +186,7 @@ export default function PqcMasterDossierPage() {
 
   return (
     <div className="module-page" style={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
+      <div className={isMobileDrawerOpen ? "po-drawer-overlay open" : "po-drawer-overlay"} onClick={() => setIsMobileDrawerOpen(false)} />
       <style>{`
         @media print {
           .no-print { display: none !important; }
@@ -207,6 +209,13 @@ export default function PqcMasterDossierPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            onClick={() => setIsMobileDrawerOpen(true)}
+            className="btn btn-secondary mobile-only"
+            style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}
+          >
+            Select PO
+          </button>
           <button
             onClick={handleDownloadPDF}
             disabled={!selectedPoId || isGeneratingPdf}
@@ -240,9 +249,9 @@ export default function PqcMasterDossierPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div className="mobile-stack" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Left Sidebar */}
-        <div className="no-print" style={{ width: 320, background: 'white', borderRight: '1px solid var(--silk)', display: 'flex', flexDirection: 'column' }}>
+        <div className={`no-print po-sidebar-drawer ${isMobileDrawerOpen ? 'open' : ''}`} style={{ width: 320, background: 'white', borderRight: '1px solid var(--silk)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '16px' }}>
             <div style={{ position: 'relative' }}>
               <Search size={16} color="var(--ash)" style={{ position: 'absolute', left: 12, top: 10 }} />
@@ -271,7 +280,7 @@ export default function PqcMasterDossierPage() {
                 return (
                   <button
                     key={po.id}
-                    onClick={() => setSelectedPoId(po.id)}
+                    onClick={() => { setSelectedPoId(po.id); setIsMobileDrawerOpen(false); }}
                     style={{
                       width: '100%', textAlign: 'left', padding: '12px', marginBottom: 8,
                       background: isSelected ? 'var(--sand)' : 'white',

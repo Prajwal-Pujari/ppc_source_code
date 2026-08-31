@@ -187,6 +187,7 @@ public class MachineSetupService {
                 .worker(worker)
                 .logTime(OffsetDateTime.now(ZoneOffset.UTC))
                 .remarks(request.getRemarks())
+                .totalTimeSeconds(request.getTotalTimeSeconds() != null ? request.getTotalTimeSeconds() : 0)
                 .isPassed(true) // We assume it passed if they submitted it, or evaluate answers
                 .build();
 
@@ -206,6 +207,7 @@ public class MachineSetupService {
                     .machineSetupLog(logEntry)
                     .question(question)
                     .answerValue(ans.getAnswerValue())
+                    .timeTakenSeconds(ans.getTimeTakenSeconds() != null ? ans.getTimeTakenSeconds() : 0)
                     .isCompliant(isCompliant)
                     .build();
             logEntry.getAnswers().add(logAnswer);

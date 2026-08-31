@@ -652,3 +652,41 @@ tbody tr:hover {
   overflow: hidden;
   width: 100%;
 }
+@media (max-width: 1024px) {
+  .mobile-sidebar {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--silk) !important;
+    max-height: 350px !important;
+  }
+}
+
+
+@media (max-width: 1024px) {
+  .po-sidebar-drawer {
+    position: fixed !important;
+    top: 0; left: 0; z-index: 9999;
+    width: 320px !important; height: 100vh !important; max-height: 100vh !important;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.2);
+  }
+  .po-sidebar-drawer.open {
+    transform: translateX(0);
+  }
+  .po-drawer-overlay {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9998; background: rgba(0,0,0,0.5);
+  }
+  .po-drawer-overlay.open {
+    display: block;
+  }
+  .mobile-only { display: flex !important; }
+  .desktop-only { display: none !important; }
+}
+@media (min-width: 1025px) {
+  .mobile-only { display: none !important; }
+  .po-drawer-overlay { display: none !important; }
+}
+

@@ -60,6 +60,10 @@ public class MachineSetupLog {
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 
+    @Column(name = "total_time_seconds")
+    @Builder.Default
+    private Integer totalTimeSeconds = 0;
+
     @OneToMany(mappedBy = "machineSetupLog", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     @Builder.Default

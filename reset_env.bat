@@ -14,7 +14,7 @@ if /i "%CONTINUE%" neq "Y" (
 
 echo.
 echo [1/3] Clearing PostgreSQL Data...
-FOR /F "tokens=*" %%i IN ('docker ps --format "{{.Names}}" ^| findstr /R "^ppc-postgres$ ^pqc-mes-postgres$"') DO set PG_CONTAINER=%%i
+FOR /F "tokens=*" %%i IN ('docker ps --format "{{.Names}}" ^| findstr "ppc-postgres pqc-mes-postgres"') DO set PG_CONTAINER=%%i
 if "%PG_CONTAINER%"=="" (
     echo Error: PostgreSQL container is not running!
     exit /b
@@ -23,14 +23,14 @@ docker exec %PG_CONTAINER% psql -U pqc_mes_user -d pqc_mes -c "TRUNCATE TABLE ac
 
 echo.
 echo [2/3] Clearing MySQL Analytics Data...
-FOR /F "tokens=*" %%i IN ('docker ps --format "{{.Names}}" ^| findstr /R "^ppc-mysql$ ^pqc-mes-mysql$"') DO set MYSQL_CONTAINER=%%i
+FOR /F "tokens=*" %%i IN ('docker ps --format "{{.Names}}" ^| findstr "ppc-mysql pqc-mes-mysql"') DO set MYSQL_CONTAINER=%%i
 if not "%MYSQL_CONTAINER%"=="" (
     docker exec %MYSQL_CONTAINER% mysql -u root -proot -D pqc_mes_analytics -e "DELETE FROM daily_production_summary; DELETE FROM operation_performance_stats; DELETE FROM po_status_snapshots; DELETE FROM rejection_analysis_summary; DELETE FROM worker_performance_monthly;"
 )
 
 echo.
 echo [3/3] Clearing Redis Cache...
-FOR /F "tokens=*" %%i IN ('docker ps --format "{{.Names}}" ^| findstr /R "^ppc-redis$ ^pqc-mes-redis$"') DO set REDIS_CONTAINER=%%i
+FOR /F "tokens=*" %%i IN ('docker ps --format "{{.Names}}" ^| findstr "ppc-redis pqc-mes-redis"') DO set REDIS_CONTAINER=%%i
 if not "%REDIS_CONTAINER%"=="" (
     docker exec %REDIS_CONTAINER% redis-cli FLUSHALL
 )

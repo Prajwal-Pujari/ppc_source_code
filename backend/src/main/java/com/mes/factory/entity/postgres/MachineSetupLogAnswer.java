@@ -35,4 +35,8 @@ public class MachineSetupLogAnswer {
 
     @Column(name = "is_compliant")
     private Boolean isCompliant;
+
+    @Column(name = "time_taken_seconds")
+    @Builder.Default
+    private Integer timeTakenSeconds = 0;
 }

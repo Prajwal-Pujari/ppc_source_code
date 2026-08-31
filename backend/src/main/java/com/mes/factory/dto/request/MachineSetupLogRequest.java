@@ -17,6 +17,7 @@ public class MachineSetupLogRequest {
     private UUID poLineItemOperationId;
     private UUID questionSetId;
     private String remarks;
+    private Integer totalTimeSeconds;
     private List<Answer> answers;
 
     @Data
@@ -26,5 +27,6 @@ public class MachineSetupLogRequest {
     public static class Answer {
         private UUID questionId;
         private String answerValue;
+        private Integer timeTakenSeconds;
     }
 }

@@ -29,6 +29,7 @@ export default function PqcSetupReportDashboard() {
   const [selectedGaugeId, setSelectedGaugeId] = useState<string | null>(null);
   const selectedReportType: ReportType = 'SETUP';
   const [reportConfig, setReportConfig] = useState<ReportConfiguration | null>(null);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
   // Fetch report config
@@ -126,6 +127,7 @@ export default function PqcSetupReportDashboard() {
 
   const handleSelectGauge = (gaugeId: string) => {
     setSelectedGaugeId(gaugeId);
+    setIsMobileDrawerOpen(false);
   };
 
   const [isExporting, setIsExporting] = useState<false | 'view' | 'download'>(false);
@@ -247,6 +249,7 @@ export default function PqcSetupReportDashboard() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bone-white)' }}>
+      <div className={isMobileDrawerOpen ? "po-drawer-overlay open" : "po-drawer-overlay"} onClick={() => setIsMobileDrawerOpen(false)} />
 
       {/* ─── Header ─── */}
       <div className="hide-on-print mobile-flex-wrap mobile-p-16" style={{
@@ -262,11 +265,19 @@ export default function PqcSetupReportDashboard() {
             Select a Purchase Order → Part to generate inspection reports.
           </p>
         </div>
-        {selectedGaugeId && (
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button onClick={() => setSelectedGaugeId(null)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 6, border: '1px solid var(--stone)', background: 'white', cursor: 'pointer' }}>
-              <X size={16} /> Close
-            </button>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setIsMobileDrawerOpen(true)}
+            className="btn btn-secondary mobile-only"
+            style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}
+          >
+            <Package size={16} /> Select PO
+          </button>
+          {selectedGaugeId && (
+            <>
+              <button onClick={() => setSelectedGaugeId(null)} className="btn-secondary desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 6, border: '1px solid var(--stone)', background: 'white', cursor: 'pointer' }}>
+                <X size={16} /> Close
+              </button>
             <button onClick={() => exportPdf('view')} disabled={!!isExporting} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 6, border: '1px solid var(--stone)', background: 'white', cursor: isExporting ? 'not-allowed' : 'pointer', opacity: isExporting ? 0.7 : 1 }}>
               {isExporting === 'view' ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
               View PDF
@@ -275,15 +286,16 @@ export default function PqcSetupReportDashboard() {
               {isExporting === 'download' ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
               Download PDF
             </button>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* ─── Body ─── */}
       <div className="mobile-stack" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* ─── Left panel: PO list ─── */}
-        <div className="hide-on-print mobile-w-full" style={{
+        <div className={`hide-on-print po-sidebar-drawer ${isMobileDrawerOpen ? 'open' : ''}`} style={{
           width: 340, minWidth: 340, background: 'white', borderRight: '1px solid var(--silk)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           maxHeight: '100%', /* On mobile this will share height with main if not scrollable, but since flex: 1 is used, it should adapt */

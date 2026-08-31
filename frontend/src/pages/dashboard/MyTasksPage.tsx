@@ -585,28 +585,66 @@ function MachineSetupModal({ task, onClose, onComplete }: { task: GaugeOperation
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const accessToken = useAuthStore(state => state.accessToken);
 
+  const [isStarted, setIsStarted] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [globalTimeSeconds, setGlobalTimeSeconds] = useState(0);
+  const [questionTimes, setQuestionTimes] = useState<Record<string, number>>({});
+  const [completedQuestions, setCompletedQuestions] = useState<Record<string, boolean>>({});
+  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
+
   const { data: configData, isLoading } = useQuery({
     queryKey: ['machine-setup-config', task.machineMasterId || task.machineMaster?.id],
     queryFn: () => fetch(`/api/v1/machine-setup/config/${task.machineMasterId || task.machineMaster?.id}/${task.operationMasterId || task.operationMaster?.id}${task.gaugeMasterId ? `?gaugeMasterId=${task.gaugeMasterId}` : ''}`, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     }).then(res => {
-      if (!res.ok) {
-        throw new Error('Failed to fetch config');
-      }
+      if (!res.ok) throw new Error('Failed to fetch config');
       return res.json();
     })
   });
 
   const config = configData?.data;
 
+  // Set initial active question
+  useEffect(() => {
+    if (config?.questions?.length > 0 && !activeQuestionId) {
+      setActiveQuestionId(config.questions[0].id);
+    }
+  }, [config, activeQuestionId]);
+
+  // Timers
+  useEffect(() => {
+    if (!isStarted || isPaused) return;
+    const interval = setInterval(() => {
+      setGlobalTimeSeconds(prev => prev + 1);
+      if (activeQuestionId && !completedQuestions[activeQuestionId]) {
+        setQuestionTimes(prev => ({
+          ...prev,
+          [activeQuestionId]: (prev[activeQuestionId] || 0) + 1
+        }));
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isStarted, isPaused, activeQuestionId, completedQuestions]);
+
+  const handleCompleteQuestion = (qId: string) => {
+    setCompletedQuestions(prev => ({ ...prev, [qId]: true }));
+    const qList = config?.questions || [];
+    const idx = qList.findIndex((q: any) => q.id === qId);
+    if (idx >= 0 && idx < qList.length - 1) {
+      for (let i = idx + 1; i < qList.length; i++) {
+        if (!completedQuestions[qList[i].id]) {
+          setActiveQuestionId(qList[i].id);
+          break;
+        }
+      }
+    }
+  };
+
   const submitMut = useMutation({
     mutationFn: async (body: any) => {
       const response = await fetch('/api/v1/machine-setup/logs', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
         body: JSON.stringify(body)
       });
       return response.json();
@@ -617,13 +655,23 @@ function MachineSetupModal({ task, onClose, onComplete }: { task: GaugeOperation
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!config) return;
-    
     submitMut.mutate({
       poLineItemOperationId: task.setupInfo?.poLineItemOperationId,
       questionSetId: config.id,
       remarks,
-      answers: Object.entries(answers).map(([qId, ans]) => ({ questionId: qId, answerValue: ans }))
+      totalTimeSeconds: globalTimeSeconds,
+      answers: Object.entries(answers).map(([qId, ans]) => ({
+        questionId: qId,
+        answerValue: ans,
+        timeTakenSeconds: questionTimes[qId] || 0
+      }))
     });
+  };
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, '0');
+    const s = (secs % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
   };
 
   if (isLoading) {
@@ -643,24 +691,15 @@ function MachineSetupModal({ task, onClose, onComplete }: { task: GaugeOperation
         <div style={{ background: 'white', padding: 32, borderRadius: 16, maxWidth: 400, textAlign: 'center' }}>
           <AlertTriangle size={32} color="#BA1A1A" style={{ margin: '0 auto 16px' }} />
           <h3 style={{ margin: '0 0 8px', fontSize: 18 }}>No Checklist Found</h3>
-          <p style={{ color: 'var(--ash)', fontSize: 14, marginBottom: 24 }}>
-            There is no Machine Setup configuration available for this operation. You can proceed without setup.
-          </p>
+          <p style={{ color: 'var(--ash)', fontSize: 14, marginBottom: 24 }}>There is no Machine Setup configuration available for this operation. You can proceed without setup.</p>
           <div style={{ display: 'flex', gap: 12 }}>
             <button onClick={onClose} className="btn" style={{ flex: 1, background: 'white', color: 'var(--charcoal)', border: '1px solid var(--silk)' }}>Cancel</button>
-            <button 
-              onClick={() => {
-                submitMut.mutate({
-                  poLineItemOperationId: task.setupInfo?.poLineItemOperationId,
-                  questionSetId: null, // No config
-                  remarks: 'Skipped - No configuration available',
-                  answers: []
-                });
-              }} 
-              className="gradient-copper" 
-              style={{ flex: 1, color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}
-              disabled={submitMut.isPending}
-            >
+            <button onClick={() => {
+              submitMut.mutate({
+                poLineItemOperationId: task.setupInfo?.poLineItemOperationId,
+                questionSetId: null, remarks: 'Skipped - No configuration available', totalTimeSeconds: 0, answers: []
+              });
+            }} className="gradient-copper" style={{ flex: 1, color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }} disabled={submitMut.isPending}>
               {submitMut.isPending ? <Loader size={14} className="spin" /> : 'Skip Setup'}
             </button>
           </div>
@@ -672,88 +711,109 @@ function MachineSetupModal({ task, onClose, onComplete }: { task: GaugeOperation
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div className="card" style={{ width: 800, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: 24, borderBottom: '1px solid var(--silk)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, #8B6914, #6F5100)', color: 'white' }}>
+        
+        {/* Header */}
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--silk)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, #8B6914, #6F5100)', color: 'white' }}>
           <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Machine Setup Checklist</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><X size={20} /></button>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '6px 12px', borderRadius: 20, display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'monospace', fontSize: 16 }}>
+              <Clock size={16} /> {formatTime(globalTimeSeconds)}
+            </div>
+            
+            {!isStarted ? (
+              <button onClick={() => setIsStarted(true)} style={{ background: '#228B22', color: 'white', border: 'none', padding: '6px 16px', borderRadius: 20, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Play size={14} fill="currentColor" /> Start Setup
+              </button>
+            ) : (
+              <button onClick={() => setIsPaused(!isPaused)} style={{ background: isPaused ? '#FFBF00' : 'white', color: isPaused ? 'white' : '#8B6914', border: 'none', padding: '6px 16px', borderRadius: 20, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                {isPaused ? <Play size={14} fill="currentColor" /> : <div style={{width: 10, height: 10, borderLeft: '3px solid', borderRight: '3px solid'}} />} {isPaused ? 'Resume' : 'Pause'}
+              </button>
+            )}
+            
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><X size={20} /></button>
+          </div>
         </div>
         
         <form onSubmit={handleSubmit} style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: 32, flex: 1, overflow: 'auto', background: 'var(--bone-white)' }}>
+          <div style={{ padding: 32, flex: 1, overflow: 'auto', background: 'var(--bone-white)', opacity: (!isStarted || isPaused) ? 0.5 : 1, pointerEvents: (!isStarted || isPaused) ? 'none' : 'auto', transition: 'all 0.3s' }}>
+            
             <div className="card" style={{ marginBottom: 32, padding: 24, border: '1px solid var(--silk)', boxShadow: 'var(--shadow-card)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--status-in-progress-bg)', color: 'var(--status-in-progress)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <ListChecks size={24} />
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--status-in-progress-bg)', color: 'var(--status-in-progress)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ListChecks size={24} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 12, color: 'var(--ash)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Checklist</span>
+                    <div style={{ fontWeight: 600, color: 'var(--charcoal)', fontSize: 16 }}>{config.name}</div>
+                  </div>
                 </div>
-                <div>
-                  <span style={{ fontSize: 12, color: 'var(--ash)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Checklist</span>
-                  <div style={{ fontWeight: 600, color: 'var(--charcoal)', fontSize: 16 }}>{config.name}</div>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--status-pending-bg)', color: 'var(--status-pending)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Wrench size={24} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 12, color: 'var(--ash)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Machine</span>
+                    <div style={{ fontWeight: 600, color: 'var(--charcoal)', fontSize: 16 }}>{config.machineMaster?.machineName || 'N/A'}</div>
+                  </div>
                 </div>
-              </div>
-              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--status-pending-bg)', color: 'var(--status-pending)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Wrench size={24} />
-                </div>
-                <div>
-                  <span style={{ fontSize: 12, color: 'var(--ash)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Machine</span>
-                  <div style={{ fontWeight: 600, color: 'var(--charcoal)', fontSize: 16 }}>{config.machineMaster?.machineName || 'N/A'}</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--status-queued-bg)', color: 'var(--status-queued)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Settings size={24} />
-                </div>
-                <div>
-                  <span style={{ fontSize: 12, color: 'var(--ash)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Part</span>
-                  <div style={{ fontWeight: 600, color: 'var(--charcoal)', fontSize: 16 }}>{config.gaugeMaster?.gaugeTypeName || 'N/A'}</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--status-rework-bg)', color: 'var(--status-rework)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Clock size={24} />
-                </div>
-                <div>
-                  <span style={{ fontSize: 12, color: 'var(--ash)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Estimated Time</span>
-                  <div style={{ fontWeight: 600, color: 'var(--charcoal)', fontSize: 16 }}>{task.setupInfo?.setupTimeMins || 0} mins</div>
-                </div>
-              </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {config.questions?.map((q: any, i: number) => (
-                <div key={q.id} className="card" style={{ padding: 24, border: '1px solid var(--silk)', boxShadow: 'var(--shadow-card)', display: 'flex', gap: 20 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--status-pending-bg)', color: 'var(--status-pending)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14 }}>{i + 1}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 16, color: 'var(--charcoal)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
-                      {q.questionText}
-                      {q.isCritical && <span style={{ fontSize: 11, background: 'var(--status-rejected-bg)', color: 'var(--status-rejected)', padding: '4px 10px', borderRadius: 12, fontWeight: 700 }}>CRITICAL</span>}
-                    </div>
+              {config.questions?.map((q: any, i: number) => {
+                const isActive = activeQuestionId === q.id;
+                const isCompleted = !!completedQuestions[q.id];
+                const timeStr = formatTime(questionTimes[q.id] || 0);
 
-                    {q.questionType === 'PASS_FAIL' && (
-                      <div style={{ display: 'flex', gap: 16, maxWidth: 300 }}>
-                        <button type="button" onClick={() => setAnswers(prev => ({ ...prev, [q.id]: 'true' }))} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px', border: answers[q.id] === 'true' ? '2px solid var(--status-completed)' : '2px solid var(--silk)', background: answers[q.id] === 'true' ? 'var(--status-completed-bg)' : 'white', borderRadius: 12, fontWeight: 600, color: answers[q.id] === 'true' ? 'var(--status-completed)' : 'var(--ash)', cursor: 'pointer', transition: 'all 0.2s' }}>PASS</button>
-                        <button type="button" onClick={() => setAnswers(prev => ({ ...prev, [q.id]: 'false' }))} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px', border: answers[q.id] === 'false' ? '2px solid var(--status-rejected)' : '2px solid var(--silk)', background: answers[q.id] === 'false' ? 'var(--status-rejected-bg)' : 'white', borderRadius: 12, fontWeight: 600, color: answers[q.id] === 'false' ? 'var(--status-rejected)' : 'var(--ash)', cursor: 'pointer', transition: 'all 0.2s' }}>FAIL</button>
+                return (
+                <div key={q.id} className="card" style={{ padding: 24, border: isActive ? '2px solid var(--copper-bronze)' : '1px solid var(--silk)', boxShadow: isActive ? '0 4px 12px rgba(139,105,20,0.1)' : 'var(--shadow-card)', display: 'flex', gap: 20, transition: 'all 0.2s', background: isCompleted ? '#FAFAF8' : 'white' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: isCompleted ? 'var(--status-completed-bg)' : isActive ? 'var(--status-in-progress-bg)' : 'var(--status-pending-bg)', color: isCompleted ? 'var(--status-completed)' : isActive ? 'var(--status-in-progress)' : 'var(--status-pending)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14 }}>
+                    {isCompleted ? <CheckCircle size={18} /> : i + 1}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                      <div style={{ fontWeight: 600, fontSize: 16, color: 'var(--charcoal)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                        {q.questionText}
+                        {q.isCritical && <span style={{ fontSize: 11, background: 'var(--status-rejected-bg)', color: 'var(--status-rejected)', padding: '4px 10px', borderRadius: 12, fontWeight: 700 }}>CRITICAL</span>}
                       </div>
-                    )}
-                    
-                    {q.questionType === 'NUMERIC' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <input type="number" step="any" required className="input" style={{ width: 150, fontSize: 16 }} placeholder="Enter value..." value={answers[q.id] || ''} onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))} />
-                        {q.unit && <span style={{ fontWeight: 600, color: 'var(--charcoal)', fontSize: 16 }}>{q.unit}</span>}
-                        {(q.minValue != null || q.maxValue != null) && (
-                          <span style={{ fontSize: 14, color: 'var(--ash)', marginLeft: 16, padding: '6px 12px', background: 'var(--warm-white)', borderRadius: 8 }}>
-                            {q.minValue != null && q.maxValue != null 
-                              ? `Range: ${q.minValue} - ${q.maxValue}`
-                              : q.minValue != null 
-                                ? `Min: ${q.minValue}`
-                                : `Max: ${q.maxValue}`
-                            }
-                          </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ fontFamily: 'monospace', fontSize: 14, color: isActive ? 'var(--copper-bronze)' : 'var(--ash)', background: isActive ? 'rgba(139,105,20,0.1)' : 'var(--warm-white)', padding: '4px 8px', borderRadius: 6 }}>
+                          ⏱ {timeStr}
+                        </div>
+                        {!isCompleted ? (
+                          <button type="button" onClick={() => handleCompleteQuestion(q.id)} disabled={!answers[q.id]} style={{ background: answers[q.id] ? '#228B22' : 'var(--silk)', color: answers[q.id] ? 'white' : 'var(--ash)', border: 'none', padding: '6px 12px', borderRadius: 6, fontWeight: 600, cursor: answers[q.id] ? 'pointer' : 'not-allowed', fontSize: 13, transition: 'all 0.2s' }}>
+                            Complete
+                          </button>
+                        ) : (
+                          <button type="button" onClick={() => {
+                            setCompletedQuestions(p => ({ ...p, [q.id]: false }));
+                            setActiveQuestionId(q.id);
+                          }} style={{ background: 'none', border: '1px solid var(--silk)', padding: '4px 10px', borderRadius: 6, fontSize: 12, cursor: 'pointer', color: 'var(--slate)' }}>
+                            Edit
+                          </button>
                         )}
                       </div>
-                    )}
+                    </div>
+
+                    <div style={{ opacity: isCompleted ? 0.6 : 1, pointerEvents: isCompleted ? 'none' : 'auto' }}>
+                      {q.questionType === 'PASS_FAIL' && (
+                        <div style={{ display: 'flex', gap: 16, maxWidth: 300 }}>
+                          <button type="button" onClick={() => { setAnswers(prev => ({ ...prev, [q.id]: 'true' })); if(!isActive) setActiveQuestionId(q.id); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px', border: answers[q.id] === 'true' ? '2px solid var(--status-completed)' : '2px solid var(--silk)', background: answers[q.id] === 'true' ? 'var(--status-completed-bg)' : 'white', borderRadius: 12, fontWeight: 600, color: answers[q.id] === 'true' ? 'var(--status-completed)' : 'var(--ash)', cursor: 'pointer', transition: 'all 0.2s' }}>PASS</button>
+                          <button type="button" onClick={() => { setAnswers(prev => ({ ...prev, [q.id]: 'false' })); if(!isActive) setActiveQuestionId(q.id); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px', border: answers[q.id] === 'false' ? '2px solid var(--status-rejected)' : '2px solid var(--silk)', background: answers[q.id] === 'false' ? 'var(--status-rejected-bg)' : 'white', borderRadius: 12, fontWeight: 600, color: answers[q.id] === 'false' ? 'var(--status-rejected)' : 'var(--ash)', cursor: 'pointer', transition: 'all 0.2s' }}>FAIL</button>
+                        </div>
+                      )}
+                      
+                      {q.questionType === 'NUMERIC' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                          <input type="number" step="any" className="input" style={{ width: 150, fontSize: 16 }} placeholder="Enter value..." value={answers[q.id] || ''} onFocus={() => { if(!isActive) setActiveQuestionId(q.id); }} onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))} />
+                          {q.unit && <span style={{ fontWeight: 600, color: 'var(--charcoal)', fontSize: 16 }}>{q.unit}</span>}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
             
             <div className="card" style={{ marginTop: 24, padding: 24, border: '1px solid var(--silk)', boxShadow: 'var(--shadow-card)' }}>
@@ -762,10 +822,12 @@ function MachineSetupModal({ task, onClose, onComplete }: { task: GaugeOperation
             </div>
           </div>
           
-          <div style={{ padding: 24, borderTop: '1px solid var(--silk)', display: 'flex', justifyContent: 'flex-end', gap: 12, background: 'var(--bone-white)' }}>
+          <div style={{ padding: 24, borderTop: '1px solid var(--silk)', display: 'flex', justifyContent: 'flex-end', gap: 12, background: 'white' }}>
+            {!isStarted && <div style={{ color: 'var(--ash)', display: 'flex', alignItems: 'center', marginRight: 'auto', fontSize: 14 }}>Click 'Start Setup' to begin</div>}
+            {isPaused && <div style={{ color: '#FFBF00', display: 'flex', alignItems: 'center', marginRight: 'auto', fontSize: 14, fontWeight: 600 }}>Setup is paused</div>}
             <button type="button" className="btn" onClick={onClose} disabled={submitMut.isPending} style={{ padding: '12px 24px', fontSize: 15 }}>Cancel</button>
-            <button type="submit" className="btn gradient-copper" disabled={submitMut.isPending || config.questions?.some((q:any) => q.questionType !== 'NUMERIC' && !answers[q.id])} style={{ padding: '12px 24px', fontSize: 15, color: 'white', border: 'none' }}>
-              {submitMut.isPending ? 'Submitting...' : 'Complete Setup'}
+            <button type="submit" className="btn gradient-copper" disabled={!isStarted || submitMut.isPending || config.questions?.some((q:any) => q.questionType !== 'NUMERIC' && !completedQuestions[q.id])} style={{ padding: '12px 24px', fontSize: 15, color: 'white', border: 'none' }}>
+              {submitMut.isPending ? 'Submitting...' : 'Complete All & Save'}
             </button>
           </div>
         </form>
