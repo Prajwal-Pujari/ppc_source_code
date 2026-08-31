@@ -659,6 +659,7 @@ public class PqcQuestionSetService {
                                         .expectedAnswer(qPreview.getExpectedAnswer())
                                         .checkingMethod(qPreview.getCheckingMethod())
                                         .minValue(qPreview.getMinValue() != null ? new java.math.BigDecimal(qPreview.getMinValue()) : null)
+                                        .maxValue(maxVal)
                                         .isCritical(qPreview.getIsCritical() != null && qPreview.getIsCritical())
                                         .checkingMethod(qPreview.getCheckingMethod())
                                         .showInPdir(true)
