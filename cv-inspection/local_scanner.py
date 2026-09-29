@@ -26,7 +26,16 @@ from ai_classifier import HoleClassifier
 # ==========================================
 # CONFIGURATION
 # ==========================================
-CAMERA_SOURCE = "http://192.168.1.104:8080/video"
+CAMERAS = {
+    0: "http://192.168.1.102:8080/video",  # PoE IP Camera
+    1: 1,  # Logical Camera 1 maps to physical USB index 1
+    2: 2,  # Logical Camera 2 maps to physical USB index 2
+    3: 3,  # Logical Camera 3 maps to physical USB index 3
+}
+
+# The camera to use for the initial Data Matrix Scan
+DATA_MATRIX_CAMERA = 0 
+
 MES_FACTORY_API_URL = "http://localhost:9091/api/v1/vision/results"
 LOG_DIR = "inspection_logs"
 LOG_FILE = os.path.join(LOG_DIR, "inspection_results.csv")
@@ -43,6 +52,7 @@ MIN_CONFIDENCE = 0.85       # Minimum AI confidence to accept (more strict now)
 CHECKPOINTS = [
     {
         "id": "THD_1",
+        "camera": 0,
         "balloon": "70-73",
         "name": "Threaded Hole #1 (M6)",
         "description": "M6x1.0 — Position 1 of 3 (120 deg apart on front face)",
@@ -52,6 +62,7 @@ CHECKPOINTS = [
     },
     {
         "id": "THD_2",
+        "camera": 0,
         "balloon": "70-73",
         "name": "Threaded Hole #2 (M6)",
         "description": "M6x1.0 — Position 2 of 3 (120 deg apart on front face)",
@@ -61,6 +72,7 @@ CHECKPOINTS = [
     },
     {
         "id": "THD_3",
+        "camera": 0,
         "balloon": "70-73",
         "name": "Threaded Hole #3 (M6)",
         "description": "M6x1.0 — Position 3 of 3 (120 deg apart on front face)",
@@ -70,6 +82,7 @@ CHECKPOINTS = [
     },
     {
         "id": "HOLE_1",
+        "camera": 0,
         "balloon": "62-67",
         "name": "Through-Hole #1",
         "description": "Through-hole on mounting flange (back side)",
@@ -79,6 +92,7 @@ CHECKPOINTS = [
     },
     {
         "id": "HOLE_2",
+        "camera": 0,
         "balloon": "62-67",
         "name": "Through-Hole #2",
         "description": "Through-hole on mounting flange (back side)",
@@ -129,9 +143,9 @@ def log_result(part_id, data_matrix, overall_result, results):
 
 
 class LocalScannerApp:
-    def __init__(self, camera_source):
-        self.camera_source = camera_source
+    def __init__(self):
         self.cap = None
+        self.current_camera_id = None
 
         # AI Classifier
         self.classifier = HoleClassifier("models/best_model.pth")
@@ -158,19 +172,37 @@ class LocalScannerApp:
         cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(self.window_name, 1024, 768)
 
-    def start(self):
-        print(f"\nConnecting to camera: {self.camera_source}")
-        self.cap = cv2.VideoCapture(self.camera_source)
+    def switch_camera(self, camera_id):
+        """Seamlessly drop the old camera and open the new one if different."""
+        if self.current_camera_id == camera_id and self.cap is not None and self.cap.isOpened():
+            return True # Already on this camera
+            
+        print(f"\n[CAMERA] Switching to Camera {camera_id}...")
+        if self.cap is not None:
+            self.cap.release()
+            
+        source = CAMERAS.get(camera_id, 0)
+        self.cap = cv2.VideoCapture(source)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-
+        
         if not self.cap.isOpened():
-            print("ERROR: Could not open camera.")
-            return
-
+            print(f"[ERROR] Could not open Camera {camera_id} (Source: {source})")
+            return False
+            
+        self.current_camera_id = camera_id
+        # Let the new sensor adjust to the light
+        time.sleep(0.5)
+        
         w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        print(f"Camera connected: {w}x{h}")
+        print(f"[CAMERA] Connected: {w}x{h}")
+        return True
+
+    def start(self):
+        print(f"\nStarting Local Scanner App...")
+        if not self.switch_camera(DATA_MATRIX_CAMERA):
+            return
 
         if self.classifier.is_loaded:
             print("AI Model: LOADED ✓")
@@ -254,6 +286,10 @@ class LocalScannerApp:
             self.results = []
             self.consecutive_good = 0
             self.consecutive_fail = 0
+            
+            # Switch to the first checkpoint's camera automatically
+            cp_camera = CHECKPOINTS[self.checkpoint_index].get("camera", 0)
+            self.switch_camera(cp_camera)
 
         # AI status badge
         ai_status = "AI: READY" if self.classifier.is_loaded else "AI: NOT TRAINED"
@@ -422,6 +458,10 @@ class LocalScannerApp:
                 self.phase = "CHECKPOINT"
                 self.consecutive_good = 0
                 self.consecutive_fail = 0
+                
+                # Automatically switch to the next camera if required
+                next_camera = CHECKPOINTS[self.checkpoint_index].get("camera", 0)
+                self.switch_camera(next_camera)
 
         return display
 
@@ -485,6 +525,7 @@ class LocalScannerApp:
             self.consecutive_good = 0
             self.consecutive_fail = 0
             print("\n  Ready for next part...\n")
+            self.switch_camera(DATA_MATRIX_CAMERA)
 
         return display
 
@@ -557,5 +598,5 @@ class LocalScannerApp:
 # MAIN
 # ==========================================
 if __name__ == "__main__":
-    app = LocalScannerApp(CAMERA_SOURCE)
+    app = LocalScannerApp()
     app.start()
