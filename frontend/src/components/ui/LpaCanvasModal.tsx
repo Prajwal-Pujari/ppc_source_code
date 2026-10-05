@@ -98,7 +98,7 @@ export default function LpaCanvasModal({
             operationCode: matchingOp ? matchingOp.operationCode : '',
             operationName: opName,
             department: matchingOp ? matchingOp.department : '',
-            cycleTimeMins: matchingOp ? matchingOp.cycleTimeMins : null,
+            cycleTimeMins: matchingOp ? (matchingOp as any).cycleTimeMins : null,
             existingOperationMasterId: matchingOp ? matchingOp.id : null,
             questions: []
           };

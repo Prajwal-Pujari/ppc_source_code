@@ -11,7 +11,7 @@ import App from './App';
 
 // Patch third-party 'unload' listeners to avoid Chrome Permission Policy Violations
 const originalAddEventListener = window.addEventListener;
-window.addEventListener = function(type, listener, options) {
+window.addEventListener = function(type: any, listener: any, options?: any) {
   if (type === 'unload') {
     type = 'pagehide';
   }

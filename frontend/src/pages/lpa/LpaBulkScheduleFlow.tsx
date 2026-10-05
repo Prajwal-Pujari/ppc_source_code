@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { ReactFlow, MiniMap, Controls, Background, useNodesState, useEdgesState, addEdge, MarkerType, Handle, Position, useReactFlow, BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
-import type { Connection, Node } from '@xyflow/react';
+import type { Connection, Node, Edge } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { lpaApi, type LpaQuestionSet } from '@/api/lpa.api';
 import { getUsersApi } from '@/api/users.api';
@@ -182,8 +182,8 @@ const edgeTypes = {
 };
 
 export function LpaBulkScheduleFlow({ onClose, onSaved }: { onClose: () => void, onSaved: () => void }) {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [availableChecklists, setAvailableChecklists] = useState<any[]>([]);
@@ -290,7 +290,7 @@ export function LpaBulkScheduleFlow({ onClose, onSaved }: { onClose: () => void,
         const qs = qsNode.data.qs as any;
         const qsId = qs.id;
         const assignedFreq = qsNode?.data?.frequency || 'DAILY';
-        const assignedDate = qsNode?.data?.nextDueDate ? new Date(qsNode.data.nextDueDate).toISOString() : new Date().toISOString();
+        const assignedDate = qsNode?.data?.nextDueDate ? new Date(qsNode.data.nextDueDate as string).toISOString() : new Date().toISOString();
         
         const payload = {
           auditType: qs?.auditType || 'LAYERED_PROCESS',

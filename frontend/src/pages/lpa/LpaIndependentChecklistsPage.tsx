@@ -15,13 +15,12 @@ export function LpaIndependentChecklistsPage({ auditType }: { auditType: 'SYSTEM
   // Fetch Data
   const { data: qsData, refetch } = useQuery({
     queryKey: ['lpa-question-sets'],
-    queryFn: lpaApi.getQuestionSets,
+    queryFn: () => lpaApi.getQuestionSets(),
   });
 
   useEffect(() => {
-    if (qsData?.data) {
-      setQuestionSets(qsData.data.filter((qs: LpaQuestionSet) => qs.auditType === auditType));
-    }
+    const list = Array.isArray(qsData) ? qsData : (qsData as any)?.data || [];
+    setQuestionSets(list.filter((qs: LpaQuestionSet) => qs.auditType === auditType));
   }, [qsData, auditType]);
 
   return (

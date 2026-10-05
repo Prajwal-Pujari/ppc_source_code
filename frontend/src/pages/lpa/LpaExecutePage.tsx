@@ -29,6 +29,7 @@ export function LpaExecutePage({ auditType }: { auditType?: string }) {
     answerValue: string;
     isPassed: boolean;
     correctiveAction?: string;
+    explicitStatus?: string;
   }>>({});
   const [generalNotes, setGeneralNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
