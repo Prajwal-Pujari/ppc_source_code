@@ -5,8 +5,9 @@ import {
   FileText, Search, Filter, Download, Printer, Award, CheckCircle2,
   AlertTriangle, ShieldAlert, X, Eye, Calendar, User, Layers, Wrench,
   Cpu, Ruler, Sparkles, Loader2, RefreshCw,
-  Check, AlertCircle, ArrowUpRight
+  Check, AlertCircle, ArrowUpRight, Paperclip
 } from 'lucide-react';
+import { PdfPreviewer } from '@/components/PdfPreviewer';
 
 const getArray = (res: any): any[] => {
   if (Array.isArray(res)) return res;
@@ -16,7 +17,7 @@ const getArray = (res: any): any[] => {
   return [];
 };
 
-export function LpaReportsPage() {
+export function LpaReportsPage({ auditType }: { auditType?: string }) {
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,17 +25,29 @@ export function LpaReportsPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
   const [reportConfig, setReportConfig] = useState<ReportConfiguration | null>(null);
+  const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null);
+
+  const getValidUrl = (url: string | null | undefined) => {
+    if (!url) return '';
+    return url.replace('http://localhost:8080', '');
+  };
 
   useEffect(() => {
     fetchLogs();
     reportConfigApi.get().then(res => setReportConfig(res.data)).catch(console.error);
-  }, []);
+  }, [auditType]);
 
   const fetchLogs = async () => {
     setLoading(true);
     try {
       const res = await lpaApi.getAuditLogs();
-      setLogs(getArray(res));
+      let list = getArray(res);
+      if (auditType) {
+        list = list.filter((l: any) => l.auditType === auditType || l.questionSet?.auditType === auditType);
+      } else {
+        list = list.filter((l: any) => l.auditType !== 'SYSTEM_AUDIT' && l.auditType !== 'SUPPLIER_AUDIT' && l.questionSet?.auditType !== 'SYSTEM_AUDIT' && l.questionSet?.auditType !== 'SUPPLIER_AUDIT');
+      }
+      setLogs(list);
     } catch (err) {
       console.error('Failed to load LPA audit reports:', err);
     } finally {
@@ -68,7 +81,7 @@ export function LpaReportsPage() {
   const totalNonConforming = logs.reduce((acc, l) => acc + (l.nonConformingCount || 0), 0);
   const openActions = logs.reduce((acc, l) => {
     const ansList = l.answers || [];
-    return acc + ansList.filter((a: any) => a.status === 'NON_CONFORMING' && a.actionStatus === 'OPEN').length;
+    return acc + ansList.filter((a: any) => (a.status === 'NON_CONFORMING' || a.status === 'SCOPE_OF_IMPROVEMENT') && a.actionStatus === 'OPEN').length;
   }, 0);
 
   const handlePrint = () => {
@@ -180,6 +193,7 @@ export function LpaReportsPage() {
 
         {/* Filters */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          {!auditType && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Filter size={15} style={{ color: 'var(--ash)' }} />
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--slate)' }}>Type:</span>
@@ -195,6 +209,7 @@ export function LpaReportsPage() {
               <option value="PROCESS_AUDIT">Process Audit</option>
             </select>
           </div>
+          )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--slate)' }}>Status:</span>
@@ -309,14 +324,31 @@ export function LpaReportsPage() {
 
                 {/* Score & Actions */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ash)', textTransform: 'uppercase' }}>Score</div>
-                    <div style={{
-                      fontSize: 22, fontWeight: 800,
-                      color: score === 100 ? '#16a34a' : score >= 80 ? '#ca8a04' : '#dc2626'
-                    }}>
-                      {score}%
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ash)', textTransform: 'uppercase' }}>Score</div>
+                      <div style={{
+                        fontSize: 22, fontWeight: 800,
+                        color: score === 100 ? '#16a34a' : score >= 80 ? '#ca8a04' : '#dc2626'
+                      }}>
+                        {score}%
+                      </div>
                     </div>
+                    
+                    {/* NC Status Badge directly on the card */}
+                    {(log.answers || []).some((a: any) => a.status === 'NON_CONFORMING' || a.status === 'SCOPE_OF_IMPROVEMENT') && (() => {
+                      const hasOpen = (log.answers || []).some((a: any) => (a.status === 'NON_CONFORMING' || a.status === 'SCOPE_OF_IMPROVEMENT') && a.actionStatus !== 'CLOSED');
+                      return (
+                        <div style={{
+                          fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 4,
+                          background: hasOpen ? '#fef2f2' : '#f0fdf4',
+                          color: hasOpen ? '#dc2626' : '#16a34a',
+                          border: `1px solid ${hasOpen ? '#fca5a5' : '#bbf7d0'}`
+                        }}>
+                          {hasOpen ? 'OPEN NCs' : 'ALL NCs CLOSED'}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <button
@@ -461,8 +493,187 @@ export function LpaReportsPage() {
                   </tbody>
                 </table>
 
-                {/* Conditional Layout: Product Audit vs Layered Process Audit */}
-                {(selectedLog.auditType === 'PRODUCT_AUDIT' || selectedLog.questionSet?.auditType === 'PRODUCT_AUDIT' || selectedLog.auditType === 'PRODUCT') ? (
+                {/* Conditional Layout: Process Audit vs Poka-Yoke vs Product Audit vs Layered Process Audit */}
+                {selectedLog.auditType === 'PROCESS_AUDIT' || selectedLog.questionSet?.auditType === 'PROCESS_AUDIT' ? (
+                  <>
+                    {/* Metadata Grid Table - Process Audit (VDA 6.3 Style) */}
+                    <table style={{ width: '100%', borderCollapse: 'collapse', borderBottom: '2px solid #000' }}>
+                      <tbody>
+                        <tr>
+                          <td style={{ width: '33.33%', borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
+                            <span style={{ fontWeight: 800 }}>PROCESS NAME : </span>
+                            <span>{selectedLog.operationMaster?.operationName || selectedLog.auditSection || 'Assembly Process'}</span>
+                          </td>
+                          <td style={{ width: '33.33%', borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
+                            <span style={{ fontWeight: 800 }}>PROCESS OWNER : </span>
+                            <span>{selectedLog.auditeeName || selectedLog.schedule?.assignedRole || 'Production Manager'}</span>
+                          </td>
+                          <td style={{ width: '33.33%', borderBottom: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
+                            <span style={{ fontWeight: 800 }}>AUDIT DATE : </span>
+                            <span>{selectedLog.auditDate ? new Date(selectedLog.auditDate).toLocaleDateString() : new Date().toLocaleDateString()}</span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ width: '33.33%', borderRight: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
+                            <span style={{ fontWeight: 800 }}>AUDITOR : </span>
+                            <span>{selectedLog.auditedBy?.fullName || selectedLog.auditorName || 'Lead Auditor'}</span>
+                          </td>
+                          <td style={{ width: '33.33%', borderRight: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
+                            <span style={{ fontWeight: 800 }}>MACHINE / EQUIPMENT : </span>
+                            <span>{selectedLog.machineMaster?.machineName || 'N/A'}</span>
+                          </td>
+                          <td style={{ width: '33.33%', padding: '8px 10px', fontSize: '12px' }}>
+                            <span style={{ fontWeight: 800 }}>PROCESS RATING : </span>
+                            <span style={{ fontWeight: 800, color: (selectedLog.scorePercentage || selectedLog.score || 100) >= 90 ? '#16a34a' : (selectedLog.scorePercentage || selectedLog.score || 100) >= 80 ? '#ca8a04' : '#dc2626' }}>
+                              {selectedLog.scorePercentage || selectedLog.score || 100}%
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    {/* Main Observations Table - Process Audit */}
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                      <thead>
+                        <tr style={{ background: '#f0f9ff' }}>
+                          <th style={{ border: '1px solid #000', padding: '10px 4px', textAlign: 'center', width: '5%', fontWeight: 800, fontSize: '11px' }}>No.</th>
+                          <th style={{ border: '1px solid #000', padding: '10px 8px', textAlign: 'left', width: '35%', fontWeight: 800, fontSize: '11px' }}>PROCESS REQUIREMENT / QUESTION</th>
+                          <th style={{ border: '1px solid #000', padding: '10px 8px', textAlign: 'left', width: '20%', fontWeight: 800, fontSize: '11px' }}>PROCESS PARAMETER / SPEC</th>
+                          <th style={{ border: '1px solid #000', padding: '10px 8px', textAlign: 'center', width: '15%', fontWeight: 800, fontSize: '11px' }}>ACTUAL FINDING</th>
+                          <th style={{ border: '1px solid #000', padding: '10px 6px', textAlign: 'center', width: '10%', fontWeight: 800, fontSize: '11px' }}>RATING</th>
+                          <th style={{ border: '1px solid #000', padding: '10px 8px', textAlign: 'left', width: '15%', fontWeight: 800, fontSize: '11px' }}>EVIDENCE / NOTES</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(selectedLog.answers || []).length === 0 ? (
+                          <tr>
+                            <td colSpan={6} style={{ border: '1px solid #000', padding: '20px', textAlign: 'center', color: '#666', fontStyle: 'italic' }}>
+                              No process parameters recorded.
+                            </td>
+                          </tr>
+                        ) : (
+                          (selectedLog.answers || []).map((ans: any, i: number) => {
+                            const isPass = ans.status === 'CONFORMING';
+                            const isNA = ans.status === 'NA';
+                            const score = isPass ? '10' : isNA ? '-' : '0';
+                            return (
+                              <tr key={ans.id || i} style={{ background: !isPass && !isNA ? '#fef2f2' : 'transparent' }}>
+                                <td style={{ border: '1px solid #000', padding: '8px 4px', textAlign: 'center', fontWeight: 700 }}>{ans.sequenceOrder || i + 1}</td>
+                                <td style={{ border: '1px solid #000', padding: '8px 8px', fontWeight: 600 }}>{ans.questionText}</td>
+                                <td style={{ border: '1px solid #000', padding: '8px 8px', color: '#374151' }}>{ans.specification || ans.checkingMethod || '-'}</td>
+                                <td style={{ border: '1px solid #000', padding: '8px 8px', textAlign: 'center' }}>{ans.actualValue || (isPass ? 'Meets Requirement' : isNA ? 'N/A' : 'Deviation Found')}</td>
+                                <td style={{ border: '1px solid #000', padding: '8px 6px', textAlign: 'center', fontWeight: 800, color: isPass ? '#16a34a' : isNA ? '#6b7280' : '#dc2626' }}>{score}</td>
+                                <td style={{ border: '1px solid #000', padding: '8px 8px' }}>
+                                  {ans.remarks || (isPass ? 'OK' : 'Requires Action')}
+                                  {ans.evidenceFileUrl && (
+                                    <div style={{ marginTop: 4 }}>
+                                      <button 
+                                        onClick={(e) => { e.preventDefault(); setPreviewFileUrl(getValidUrl(ans.evidenceFileUrl)); }} 
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 800, color: '#0369a1', background: '#e0f2fe', padding: '2px 6px', borderRadius: 4, border: 'none', cursor: 'pointer' }}
+                                      >
+                                        EVIDENCE
+                                      </button>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </>
+                ) : selectedLog.auditType === 'POKA_YOKE' || selectedLog.questionSet?.auditType === 'POKA_YOKE' ? (
+                  <>
+                    {/* Metadata Grid Table - Poka-Yoke Audit */}
+                    <table style={{ width: '100%', borderCollapse: 'collapse', borderBottom: '2px solid #000' }}>
+                      <tbody>
+                        <tr>
+                          <td style={{ width: '33.33%', borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
+                            <span style={{ fontWeight: 800 }}>MACHINE / EQUIPMENT : </span>
+                            <span>{selectedLog.machineMaster?.machineName || 'N/A'}</span>
+                          </td>
+                          <td style={{ width: '33.33%', borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
+                            <span style={{ fontWeight: 800 }}>OPERATION : </span>
+                            <span>{selectedLog.operationMaster?.operationName || 'N/A'}</span>
+                          </td>
+                          <td style={{ width: '33.33%', borderBottom: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
+                            <span style={{ fontWeight: 800 }}>VERIFICATION DATE : </span>
+                            <span>{selectedLog.auditDate ? new Date(selectedLog.auditDate).toLocaleDateString() : new Date().toLocaleDateString()}</span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ width: '33.33%', borderRight: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
+                            <span style={{ fontWeight: 800 }}>VERIFIED BY : </span>
+                            <span>{selectedLog.auditedBy?.fullName || selectedLog.auditorName || 'Quality Inspector'}</span>
+                          </td>
+                          <td style={{ width: '33.33%', borderRight: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
+                            <span style={{ fontWeight: 800 }}>PART NO : </span>
+                            <span>{selectedLog.gaugeMaster?.gaugeId || selectedLog.gaugeMaster?.partNo || '-'}</span>
+                          </td>
+                          <td style={{ width: '33.33%', padding: '8px 10px', fontSize: '12px' }}>
+                            <span style={{ fontWeight: 800 }}>POKA-YOKE STATUS : </span>
+                            <span style={{ fontWeight: 900, color: selectedLog.overallStatus === 'PASS' || selectedLog.overallStatus === 'CONFORMING' ? '#16a34a' : '#dc2626' }}>
+                              {selectedLog.overallStatus || 'PASS'}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    {/* Main Observations Table - Poka-Yoke */}
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                      <thead>
+                        <tr style={{ background: '#fdf4ff' }}>
+                          <th style={{ border: '1px solid #000', padding: '10px 4px', textAlign: 'center', width: '5%', fontWeight: 800, fontSize: '11px', color: '#86198f' }}>No.</th>
+                          <th style={{ border: '1px solid #000', padding: '10px 8px', textAlign: 'left', width: '30%', fontWeight: 800, fontSize: '11px', color: '#86198f' }}>POKA-YOKE MECHANISM / VERIFICATION POINT</th>
+                          <th style={{ border: '1px solid #000', padding: '10px 8px', textAlign: 'left', width: '20%', fontWeight: 800, fontSize: '11px', color: '#86198f' }}>VALIDATION METHOD (e.g. Master Defect)</th>
+                          <th style={{ border: '1px solid #000', padding: '10px 8px', textAlign: 'left', width: '20%', fontWeight: 800, fontSize: '11px', color: '#86198f' }}>EXPECTED SYSTEM RESPONSE</th>
+                          <th style={{ border: '1px solid #000', padding: '10px 6px', textAlign: 'center', width: '10%', fontWeight: 800, fontSize: '11px', color: '#86198f' }}>RESULT</th>
+                          <th style={{ border: '1px solid #000', padding: '10px 8px', textAlign: 'left', width: '15%', fontWeight: 800, fontSize: '11px', color: '#86198f' }}>NOTES</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(selectedLog.answers || []).length === 0 ? (
+                          <tr>
+                            <td colSpan={6} style={{ border: '1px solid #000', padding: '20px', textAlign: 'center', color: '#666', fontStyle: 'italic' }}>
+                              No Poka-Yoke verifications recorded.
+                            </td>
+                          </tr>
+                        ) : (
+                          (selectedLog.answers || []).map((ans: any, i: number) => {
+                            const isPass = ans.status === 'CONFORMING';
+                            const isNA = ans.status === 'NA';
+                            return (
+                              <tr key={ans.id || i} style={{ background: !isPass && !isNA ? '#fef2f2' : 'transparent' }}>
+                                <td style={{ border: '1px solid #000', padding: '8px 4px', textAlign: 'center', fontWeight: 700 }}>{ans.sequenceOrder || i + 1}</td>
+                                <td style={{ border: '1px solid #000', padding: '8px 8px', fontWeight: 700, color: '#111' }}>{ans.questionText}</td>
+                                <td style={{ border: '1px solid #000', padding: '8px 8px', color: '#374151', fontStyle: 'italic' }}>{ans.checkingMethod || 'Red Rabbit / Master Defect'}</td>
+                                <td style={{ border: '1px solid #000', padding: '8px 8px', color: '#374151' }}>{ans.specification || 'Machine stops / Rejects part'}</td>
+                                <td style={{ border: '1px solid #000', padding: '8px 6px', textAlign: 'center', fontWeight: 900, color: isPass ? '#16a34a' : isNA ? '#6b7280' : '#dc2626' }}>
+                                  {isPass ? 'OK' : isNA ? 'N/A' : 'FAIL'}
+                                </td>
+                                <td style={{ border: '1px solid #000', padding: '8px 8px' }}>
+                                  {ans.remarks || (isPass ? 'Functional' : 'Malfunction')}
+                                  {ans.evidenceFileUrl && (
+                                    <div style={{ marginTop: 4 }}>
+                                      <button 
+                                        onClick={(e) => { e.preventDefault(); setPreviewFileUrl(getValidUrl(ans.evidenceFileUrl)); }} 
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 800, color: '#86198f', background: '#fae8ff', padding: '2px 6px', borderRadius: 4, border: 'none', cursor: 'pointer' }}
+                                      >
+                                        EVIDENCE
+                                      </button>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </>
+                ) : (selectedLog.auditType === 'PRODUCT_AUDIT' || selectedLog.questionSet?.auditType === 'PRODUCT_AUDIT' || selectedLog.auditType === 'PRODUCT') ? (
                   <>
                     {/* Metadata Grid Table - Product Audit */}
                     <table style={{ width: '100%', borderCollapse: 'collapse', borderBottom: '2px solid #000' }}>
@@ -661,8 +872,23 @@ export function LpaReportsPage() {
                                 </td>
                                 <td style={{ border: '1px solid #000', padding: '8px 8px' }}>{ans.actualValue || (isPass ? 'Conforming' : isNA ? 'Not Applicable' : 'Non-Conforming Observed')}</td>
                                 <td style={{ border: '1px solid #000', padding: '8px 8px' }}>
-                                  {ans.remarks || ans.correctiveAction || (isPass ? 'OK' : 'Action required')}
+                                  {ans.remarks && <div style={{ marginBottom: 4 }}><strong>Remarks:</strong> {ans.remarks}</div>}
+                                  {(ans.correctiveAction || !isPass) && (
+                                    <div><strong>CA:</strong> {ans.correctiveAction || 'Action required'}</div>
+                                  )}
                                   {ans.assignedActionOwner && <div style={{ fontSize: '10px', color: '#4b5563', fontStyle: 'italic', marginTop: 2 }}>[Owner: {ans.assignedActionOwner}]</div>}
+                                  {ans.approvedBy && <div style={{ fontSize: '10px', color: '#16a34a', fontStyle: 'italic', marginTop: 2 }}>[Approved By: {ans.approvedBy}]</div>}
+                                  {ans.evidenceFileUrl && (
+                                    <div style={{ marginTop: 6 }}>
+                                      <button 
+                                        onClick={(e) => { e.preventDefault(); setPreviewFileUrl(getValidUrl(ans.evidenceFileUrl)); }} 
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 800, color: '#1d4ed8', background: '#dbeafe', padding: '4px 8px', borderRadius: 4, border: 'none', cursor: 'pointer', transition: 'background 0.15s' }}
+                                      >
+                                        <Paperclip size={12} />
+                                        VIEW EVIDENCE
+                                      </button>
+                                    </div>
+                                  )}
                                 </td>
                               </tr>
                             );
@@ -674,13 +900,34 @@ export function LpaReportsPage() {
                 )}
 
                 {/* Corrective Action Footer if any non-conformity */}
-                {(selectedLog.answers || []).some((a: any) => a.status === 'NON_CONFORMING') && (
+                {(selectedLog.answers || []).some((a: any) => a.status === 'NON_CONFORMING' || a.status === 'SCOPE_OF_IMPROVEMENT') && (
                   <div style={{ borderTop: 'none', borderLeft: '2px solid #000', borderRight: '2px solid #000', borderBottom: '2px solid #000', padding: '12px 16px', background: '#fff5f5' }}>
                     <div style={{ fontWeight: 800, fontSize: '12px', color: '#b91c1c', marginBottom: 6 }}>CORRECTIVE ACTION TAKEN / REACTION PLAN:</div>
-                    {(selectedLog.answers || []).filter((a: any) => a.status === 'NON_CONFORMING').map((a: any, idx: number) => (
-                      <div key={idx} style={{ fontSize: '12px', marginBottom: 4 }}>
+                    {(selectedLog.answers || []).filter((a: any) => a.status === 'NON_CONFORMING' || a.status === 'SCOPE_OF_IMPROVEMENT').map((a: any, idx: number) => (
+                      <div key={idx} style={{ fontSize: '12px', marginBottom: 8, paddingBottom: 4, borderBottom: '1px dashed #fca5a5' }}>
                         <span style={{ fontWeight: 700 }}>Check #{a.sequenceOrder || idx + 1} ({a.questionText}): </span>
-                        <span>{a.correctiveAction || 'No corrective action recorded.'} {a.assignedActionOwner ? `(Owner: ${a.assignedActionOwner})` : ''}</span>
+                        <span>{a.correctiveAction || 'No corrective action recorded.'}</span>
+                        {a.assignedActionOwner && <span style={{ marginLeft: 4 }}>[Owner: {a.assignedActionOwner}]</span>}
+                        {a.approvedBy && <span style={{ marginLeft: 4 }}>[Approved By: {a.approvedBy}]</span>}
+                        <span style={{ marginLeft: 8, fontWeight: 800, color: a.actionStatus === 'CLOSED' ? '#16a34a' : '#dc2626' }}>
+                          [{a.actionStatus || 'OPEN'}]
+                        </span>
+                        {a.evidenceFileUrl && (
+                          <div style={{ marginTop: 6, display: 'inline-block', marginLeft: 12 }}>
+                            <button 
+                              onClick={(e) => { e.preventDefault(); setPreviewFileUrl(getValidUrl(a.evidenceFileUrl)); }} 
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, color: '#b91c1c', background: '#fee2e2', padding: '4px 8px', borderRadius: 4, border: 'none', cursor: 'pointer', transition: 'background 0.15s' }}
+                            >
+                              <Paperclip size={12} />
+                              VIEW EVIDENCE
+                            </button>
+                          </div>
+                        )}
+                        {!a.evidenceFileUrl && (
+                          <div style={{ marginTop: 8, fontSize: '9px', color: '#666' }}>
+                            [DEBUG: No evidence URL received from backend. Keys: {Object.keys(a).join(', ')}]
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -714,6 +961,53 @@ export function LpaReportsPage() {
               >
                 Close Report
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File Preview Modal */}
+      {previewFileUrl && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(8px)', padding: 24
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 16, width: '100%', maxWidth: 1000, height: '85vh',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid var(--silk)', background: 'var(--warm-white)' }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--charcoal)' }}>
+                <Paperclip size={18} color="var(--copper-bronze)" />
+                Evidence Preview
+              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <a href={previewFileUrl} download style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--slate)', textDecoration: 'none', background: 'var(--cream)', width: 32, height: 32, borderRadius: 6, border: '1px solid var(--silk)', transition: 'all 0.15s' }}>
+                  <Download size={16} />
+                </a>
+                <a href={previewFileUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--slate)', textDecoration: 'none', background: 'var(--cream)', width: 32, height: 32, borderRadius: 6, border: '1px solid var(--silk)', transition: 'all 0.15s' }}>
+                  <ArrowUpRight size={16} />
+                </a>
+                <div style={{ width: 1, height: 24, background: 'var(--silk)', margin: '0 4px' }} />
+                <button onClick={() => setPreviewFileUrl(null)} style={{ background: 'var(--dust)', border: 'none', cursor: 'pointer', color: '#fff', width: 32, height: 32, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            <div style={{ flex: 1, background: '#e2e8f0', position: 'relative', overflow: 'hidden' }}>
+              {previewFileUrl.toLowerCase().endsWith('.pdf') ? (
+                (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0))) ? (
+                  <PdfPreviewer url={previewFileUrl} />
+                ) : (
+                  <iframe src={`${previewFileUrl}#toolbar=0&navpanes=0`} style={{ width: '100%', height: '100%', border: 'none', borderRadius: 8, background: '#fff' }} title="PDF Preview">
+                    <p style={{ padding: 20, textAlign: 'center' }}>Your device does not support inline PDFs. <a href={previewFileUrl} download style={{ color: '#2563eb', textDecoration: 'underline' }}>Download PDF</a></p>
+                  </iframe>
+                )
+              ) : (
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+                  <img src={previewFileUrl} alt="Evidence" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
+                </div>
+              )}
             </div>
           </div>
         </div>

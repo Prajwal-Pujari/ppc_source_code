@@ -203,8 +203,8 @@ export default function GaugeMasterPage() {
               </tr>
             ) : (
               gauges.map((g: any) => (
-                <>
-                  <tr key={g.id}>
+                <React.Fragment key={g.id}>
+                  <tr>
                     <td>
                       <button
                         onClick={() => setExpandedId(expandedId === g.id ? null : g.id)}
@@ -240,7 +240,7 @@ export default function GaugeMasterPage() {
                     </td>
                   </tr>
                   {expandedId === g.id && <OperationSequenceRow gaugeMasterId={g.id} />}
-                </>
+                </React.Fragment>
               ))
             )}
           </tbody>

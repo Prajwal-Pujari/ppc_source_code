@@ -10,16 +10,43 @@ import {
 } from 'lucide-react';
 import { ModuleSwitcher } from './ModuleSwitcher';
 
-const lpaNavItems = [
-  { label: 'Dashboard', path: '/lpa/dashboard', icon: 'dashboard' },
-  { label: 'Execute Audit', path: '/lpa/execute', icon: 'fact_check' },
-  { label: 'Audit Reports & Logs', path: '/lpa/reports', icon: 'assessment' },
-  { label: 'Audit Schedules', path: '/lpa/schedules', icon: 'calendar_month' },
-  { label: 'Checklists & Questions', path: '/lpa/question-sets', icon: 'checklist' },
-  { label: 'Part / Product Master', path: '/lpa/gauges', icon: 'straighten' },
-  { label: 'Operation Master', path: '/lpa/operations', icon: 'build' },
-  { label: 'Machine Master', path: '/lpa/machines', icon: 'precision_manufacturing' },
-  { label: 'Report & System Settings', path: '/lpa/settings', icon: 'settings' },
+const lpaNavSections = [
+  {
+    title: 'Dashboard & Execution',
+    items: [
+      { label: 'Dashboard & Overview', path: '/lpa/dashboard', icon: 'dashboard' },
+      { label: 'Action Items (NC)', path: '/lpa/ncs', icon: 'assignment_late' },
+      { label: 'Execute Shop Floor Audit', path: '/lpa/execute', icon: 'fact_check' },
+      { label: 'Execute System Audit', path: '/lpa/system-execute', icon: 'domain_verification' },
+      { label: 'Execute Supplier Audit', path: '/lpa/supplier-execute', icon: 'local_shipping' },
+    ]
+  },
+  {
+    title: 'Reports & Logs',
+    items: [
+      { label: 'Process & LPA Reports', path: '/lpa/reports', icon: 'assessment' },
+      { label: 'System Audit Reports', path: '/lpa/system-reports', icon: 'pie_chart' },
+      { label: 'Supplier Audit Reports', path: '/lpa/supplier-reports', icon: 'insights' },
+    ]
+  },
+  {
+    title: 'Checklists & Questions',
+    items: [
+      { label: 'Shop Floor Checklists', path: '/lpa/question-sets', icon: 'checklist' },
+      { label: 'System Checklists', path: '/lpa/system-checklists', icon: 'rule_folder' },
+      { label: 'Supplier Checklists', path: '/lpa/supplier-checklists', icon: 'assignment' },
+    ]
+  },
+  {
+    title: 'Master Data & Settings',
+    items: [
+      { label: 'Audit Schedules', path: '/lpa/schedules', icon: 'calendar_month' },
+      { label: 'Part / Product Master', path: '/lpa/gauges', icon: 'straighten' },
+      { label: 'Operation Master', path: '/lpa/operations', icon: 'build' },
+      { label: 'Machine Master', path: '/lpa/machines', icon: 'precision_manufacturing' },
+      { label: 'Report & System Settings', path: '/lpa/settings', icon: 'settings' },
+    ]
+  }
 ];
 
 export function LpaLayout() {
@@ -109,48 +136,54 @@ export function LpaLayout() {
 
         {/* LPA Navigation */}
         <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--dust)', padding: '0 8px', marginBottom: 8 }}>
-            Audit Management
-          </div>
-          {lpaNavItems.map((item) => {
-            const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`sidebar-nav-link ${isActive ? 'active' : ''}`}
-                onClick={() => {
-                  if (window.innerWidth <= 1024 && sidebarOpen) {
-                    closeSidebar();
-                  }
-                }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '10px 14px', borderRadius: 6,
-                  fontSize: 13, fontWeight: isActive ? 600 : 500,
-                  color: isActive ? 'var(--charcoal)' : 'var(--slate)',
-                  background: isActive ? 'var(--linen)' : 'transparent',
-                  textDecoration: 'none', transition: 'all 0.15s',
-                  position: 'relative',
-                }}
-              >
-                {isActive && (
-                  <div style={{
-                    position: 'absolute', left: 0, top: 6, bottom: 6, width: 3,
-                    background: 'var(--copper-bronze)', borderRadius: '0 3px 3px 0',
-                  }} />
-                )}
-                <span className="material-symbols-outlined" style={{
-                  fontSize: 20,
-                  color: isActive ? 'var(--copper-bronze)' : 'var(--ash)',
-                  transition: 'color 0.15s',
-                }}>
-                  {item.icon}
-                </span>
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+          {lpaNavSections.map((section, idx) => (
+            <div key={idx} style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--dust)', padding: '0 8px', marginBottom: 8, marginTop: idx > 0 ? 8 : 0 }}>
+                {section.title}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {section.items.map((item) => {
+                  const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`sidebar-nav-link ${isActive ? 'active' : ''}`}
+                      onClick={() => {
+                        if (window.innerWidth <= 1024 && sidebarOpen) {
+                          closeSidebar();
+                        }
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '10px 14px', borderRadius: 6,
+                        fontSize: 13, fontWeight: isActive ? 600 : 500,
+                        color: isActive ? 'var(--charcoal)' : 'var(--slate)',
+                        background: isActive ? 'var(--linen)' : 'transparent',
+                        textDecoration: 'none', transition: 'all 0.15s',
+                        position: 'relative',
+                      }}
+                    >
+                      {isActive && (
+                        <div style={{
+                          position: 'absolute', left: 0, top: 6, bottom: 6, width: 3,
+                          background: 'var(--copper-bronze)', borderRadius: '0 3px 3px 0',
+                        }} />
+                      )}
+                      <span className="material-symbols-outlined" style={{
+                        fontSize: 20,
+                        color: isActive ? 'var(--copper-bronze)' : 'var(--ash)',
+                        transition: 'color 0.15s',
+                      }}>
+                        {item.icon}
+                      </span>
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* Module Switcher */}

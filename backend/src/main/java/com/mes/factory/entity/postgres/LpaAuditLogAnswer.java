@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -42,7 +43,7 @@ public class LpaAuditLogAnswer {
     @Column(nullable = false, length = 30)
     private String status; // CONFORMING, NON_CONFORMING, NA
 
-    @Column(name = "actual_value")
+    @Column(name = "actual_value", columnDefinition = "TEXT")
     private String actualValue;
 
     @Column(columnDefinition = "TEXT")
@@ -57,4 +58,16 @@ public class LpaAuditLogAnswer {
     @Column(name = "action_status", length = 30)
     @Builder.Default
     private String actionStatus = "OPEN";
+
+    @Column(name = "evidence_file_url")
+    private String evidenceFileUrl;
+
+    @Column(name = "target_closure_date")
+    private OffsetDateTime targetClosureDate;
+
+    @Column(name = "escalated_to", length = 100)
+    private String escalatedTo;
+
+    @Column(name = "approved_by", length = 100)
+    private String approvedBy;
 }

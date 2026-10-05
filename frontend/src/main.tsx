@@ -9,6 +9,15 @@ import '@fontsource/jetbrains-mono/500.css';
 
 import App from './App';
 
+// Patch third-party 'unload' listeners to avoid Chrome Permission Policy Violations
+const originalAddEventListener = window.addEventListener;
+window.addEventListener = function(type, listener, options) {
+  if (type === 'unload') {
+    type = 'pagehide';
+  }
+  return originalAddEventListener.call(window, type, listener, options);
+};
+
 // console.log('main.tsx: Script is executing!');
 
 const rootElement = document.getElementById('root');

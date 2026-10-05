@@ -5,6 +5,8 @@ export const LpaAuditType = {
   PRODUCT_AUDIT: 'PRODUCT_AUDIT',
   PROCESS_AUDIT: 'PROCESS_AUDIT',
   POKA_YOKE: 'POKA_YOKE',
+  SYSTEM_AUDIT: 'SYSTEM_AUDIT',
+  SUPPLIER_AUDIT: 'SUPPLIER_AUDIT',
 } as const;
 
 export type LpaAuditType = keyof typeof LpaAuditType;
@@ -88,6 +90,25 @@ export interface LpaDashboardSummary {
   }[];
 }
 
+export interface LpaNcResponse {
+  answerId: string;
+  auditLogId: string;
+  auditDate: string;
+  auditedByName: string;
+  shiftName?: string;
+  targetName: string;
+  questionText: string;
+  actualValue?: string;
+  remarks?: string;
+  assignedActionOwner?: string;
+  correctiveAction?: string;
+  actionStatus: string;
+  evidenceFileUrl?: string;
+  targetClosureDate?: string;
+  approvedBy?: string;
+  escalatedTo?: string;
+}
+
 export const lpaApi = {
   getQuestionSets: async (auditType?: string) => {
     const res = await api.get<any>('/lpa/question-sets', { params: auditType ? { auditType } : {} });
@@ -95,6 +116,28 @@ export const lpaApi = {
   },
   createQuestionSet: async (data: any) => {
     const res = await api.post<any>('/lpa/question-sets', data);
+    return res.data;
+  },
+  updateQuestionSet: async (id: string, data: any) => {
+    const res = await api.put<any>(`/lpa/question-sets/${id}`, data);
+    return res.data;
+  },
+  importQuestionSetsFromExcel: async (file: File, auditType: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('auditType', auditType);
+    const res = await api.post<any>('/lpa/question-sets/import-excel', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+  previewQuestionSetsFromExcel: async (file: File, auditType: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('auditType', auditType);
+    const res = await api.post<any>('/lpa/question-sets/preview-excel', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return res.data;
   },
   getSchedules: async (auditType?: string) => {
@@ -117,4 +160,20 @@ export const lpaApi = {
     const res = await api.get<any>('/lpa/dashboard/summary');
     return res.data;
   },
+  getNonConformances: async () => {
+    const res = await api.get<any>('/lpa/ncs');
+    return res.data;
+  },
+  updateNcAction: async (answerId: string, data: any) => {
+    const res = await api.put<any>(`/lpa/ncs/${answerId}/action`, data);
+    return res.data;
+  },
+  uploadFile: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post<any>('/files/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  }
 };

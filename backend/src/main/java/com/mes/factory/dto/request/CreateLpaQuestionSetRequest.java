@@ -25,6 +25,11 @@ public class CreateLpaQuestionSetRequest {
     private UUID gaugeMasterId;
     private UUID machineMasterId;
 
+    // Optional strings used during Excel bulk import to lookup or create masters
+    private String importedPartNo;
+    private String importedPartName;
+    private String importedOperationName;
+
     private String defaultFrequency = "DAILY";
 
     @Valid

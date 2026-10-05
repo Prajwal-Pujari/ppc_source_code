@@ -4,7 +4,7 @@ import { lpaApi, type LpaSchedule, type LpaQuestionSet, type LpaAuditType } from
 import { getUsersApi } from '@/api/users.api';
 import {
   Calendar, Plus, Clock, CheckCircle2, AlertTriangle, ShieldAlert,
-  Search, Filter, Save, X, AlertCircle, Loader2, Play, UserCheck, Layers
+  Search, Filter, Save, X, AlertCircle, Loader2, Play, UserCheck, Layers, GitMerge
 } from 'lucide-react';
 
 const getArray = (res: any): any[] => {
@@ -135,17 +135,29 @@ export function LpaSchedulePage() {
             Configure recurring audit frequencies (Shift-wise, Daily, Weekly, Monthly) and assign to personnel or roles.
           </p>
         </div>
-        <button
-          onClick={() => { setShowModal(true); setMessage(null); }}
-          style={{
-            padding: '12px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-            background: 'linear-gradient(135deg, var(--copper-bronze), var(--golden-brown))',
-            color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-            boxShadow: '0 4px 14px rgba(184,115,51,0.25)', transition: 'all 0.15s',
-          }}
-        >
-          <Plus size={18} /> Schedule New Audit
-        </button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            onClick={() => navigate('/lpa/schedules/bulk-flow')}
+            style={{
+              padding: '12px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+              background: 'var(--cream)', color: 'var(--charcoal)', border: '1px solid var(--silk)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s',
+            }}
+          >
+            <GitMerge size={18} color="var(--copper-bronze)" /> Visual Bulk Scheduler
+          </button>
+          <button
+            onClick={() => { setShowModal(true); setMessage(null); }}
+            style={{
+              padding: '12px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+              background: 'linear-gradient(135deg, var(--copper-bronze), var(--golden-brown))',
+              color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+              boxShadow: '0 4px 14px rgba(184,115,51,0.25)', transition: 'all 0.15s',
+            }}
+          >
+            <Plus size={18} /> Schedule New Audit
+          </button>
+        </div>
       </div>
 
       {message && (

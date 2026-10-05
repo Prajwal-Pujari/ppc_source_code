@@ -4,8 +4,9 @@ import { getGaugeMasters, getGaugeMasterOperations } from '@/api/gauge-master.ap
 import { getOperationMasters } from '@/api/operation-master.api';
 import { machinesApi, type MachineMaster } from '@/api/machines.api';
 import type { OperationMaster, GaugeMaster } from '@/types/domain.types';
+import LpaCanvasModal from '@/components/ui/LpaCanvasModal';
 import {
-  CheckSquare, Plus, Trash2, ChevronDown, ChevronRight,
+  CheckSquare, Plus, Trash2, ChevronDown, ChevronRight, Upload,
   Check, Save, X, Settings, Search, AlertCircle, ClipboardList, BookOpen,
   Database, Wrench, Loader2, CheckCircle2, ShieldAlert, Layers, Package, Box
 } from 'lucide-react';
@@ -31,7 +32,13 @@ export function LpaQuestionSetPage() {
   const [manageOp, setManageOp] = useState<OperationMaster | null>(null);
   const [managePart, setManagePart] = useState<GaugeMaster | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importAuditType, setImportAuditType] = useState<LpaAuditType>('LAYERED_PROCESS');
   const [searchTerm, setSearchTerm] = useState('');
+  const [uploadingExcel, setUploadingExcel] = useState(false);
+  const [previewData, setPreviewData] = useState<any[] | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchData();
@@ -111,17 +118,30 @@ export function LpaQuestionSetPage() {
             Manage Layered Process Audit (LPA), Poka-Yoke, and Quality check templates by Part or Operation.
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          style={{
-            padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-            background: 'linear-gradient(135deg, var(--copper-bronze), var(--golden-brown))',
-            color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-            boxShadow: '0 4px 14px rgba(184,115,51,0.25)', transition: 'all 0.15s',
-          }}
-        >
-          <Plus size={18} /> Create New Checklist
-        </button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            onClick={() => setShowImportModal(true)}
+            style={{
+              padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+              background: 'var(--warm-white)', color: 'var(--charcoal)', border: '1px solid var(--silk)', 
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+              boxShadow: '0 4px 14px rgba(0,0,0,0.02)', transition: 'all 0.15s',
+            }}
+          >
+            <Upload size={18} /> Bulk Import (Excel)
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            style={{
+              padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+              background: 'linear-gradient(135deg, var(--copper-bronze), var(--golden-brown))',
+              color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+              boxShadow: '0 4px 14px rgba(184,115,51,0.25)', transition: 'all 0.15s',
+            }}
+          >
+            <Plus size={18} /> Create New Checklist
+          </button>
+        </div>
       </div>
 
       {/* View Mode Switcher & Search Bar */}
@@ -585,6 +605,17 @@ export function LpaQuestionSetPage() {
           onRefresh={fetchData}
         />
       )}
+
+      <LpaCanvasModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        allOperations={operations}
+        allParts={gaugeMasters}
+        onSuccess={() => {
+          setShowImportModal(false);
+          fetchData();
+        }}
+      />
     </div>
   );
 }
@@ -740,7 +771,12 @@ function ManageLpaChecklistsModal({
         })),
       };
 
-      await lpaApi.createQuestionSet(payload);
+      if ((editingSet as any).id) {
+        await lpaApi.updateQuestionSet((editingSet as any).id, payload);
+      } else {
+        await lpaApi.createQuestionSet(payload);
+      }
+      
       setEditingSet(null);
       onRefresh?.();
     } catch (err: any) {
@@ -845,6 +881,8 @@ function ManageLpaChecklistsModal({
                     <option value="POKA_YOKE">Poka-Yoke / Error Proofing</option>
                     <option value="PRODUCT_AUDIT">Product Audit</option>
                     <option value="PROCESS_AUDIT">Process Audit</option>
+                    <option value="SYSTEM_AUDIT">System Audit</option>
+                    <option value="SUPPLIER_AUDIT">Supplier Audit</option>
                   </select>
                 </div>
                 <div>
@@ -878,6 +916,7 @@ function ManageLpaChecklistsModal({
               </div>
 
               {/* Shared Master Data Links (Part -> Operation -> Machine) */}
+              {editingSet.auditType !== 'SYSTEM_AUDIT' && editingSet.auditType !== 'SUPPLIER_AUDIT' && (
               <div style={{ padding: 18, borderRadius: 12, background: 'var(--cream)', border: '1px solid var(--silk)' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--charcoal)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Database size={15} color="var(--copper-bronze)" />
@@ -947,6 +986,7 @@ function ManageLpaChecklistsModal({
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Questions Header */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid var(--silk)' }}>

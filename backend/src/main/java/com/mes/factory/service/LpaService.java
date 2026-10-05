@@ -5,6 +5,8 @@ import com.mes.factory.dto.request.CreateLpaScheduleRequest;
 import com.mes.factory.dto.request.SubmitLpaAuditRequest;
 import com.mes.factory.dto.response.LpaDashboardSummary;
 import com.mes.factory.dto.response.NotificationMessage;
+import com.mes.factory.dto.request.UpdateNcActionRequest;
+import com.mes.factory.dto.response.LpaNcResponse;
 import com.mes.factory.entity.postgres.*;
 import com.mes.factory.repository.postgres.*;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +38,80 @@ public class LpaService {
     private final MachineMasterRepository machineMasterRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final LpaExcelHelper lpaExcelHelper;
+    
+    public List<CreateLpaQuestionSetRequest> previewFromExcel(org.springframework.web.multipart.MultipartFile file, String auditType) {
+        return lpaExcelHelper.parseExcel(file, auditType);
+    }
+
+    @Transactional
+    public List<LpaQuestionSet> importFromExcel(UUID factoryId, UUID userId, org.springframework.web.multipart.MultipartFile file, String auditType) {
+        List<CreateLpaQuestionSetRequest> requests = lpaExcelHelper.parseExcel(file, auditType);
+        List<LpaQuestionSet> createdSets = new ArrayList<>();
+        
+        List<LpaQuestionSet> existingSets = questionSetRepository.findByFactoryIdAndAuditTypeAndIsActiveTrue(factoryId, LpaAuditType.valueOf(auditType));
+        
+        for (CreateLpaQuestionSetRequest req : requests) {
+            boolean isDuplicate = false;
+            for (LpaQuestionSet exist : existingSets) {
+                // Check if part and operation match
+                String reqPartNo = req.getImportedPartNo() != null ? req.getImportedPartNo().trim() : "";
+                String existPartNo = exist.getGaugeMaster() != null && exist.getGaugeMaster().getCategoryCode() != null 
+                    ? exist.getGaugeMaster().getCategoryCode().trim() : "";
+                
+                String reqOpName = req.getImportedOperationName() != null ? req.getImportedOperationName().trim() : "";
+                String existOpName = exist.getOperationMaster() != null && exist.getOperationMaster().getOperationName() != null 
+                    ? exist.getOperationMaster().getOperationName().trim() : "";
+
+                if (!reqPartNo.equalsIgnoreCase(existPartNo) || !reqOpName.equalsIgnoreCase(existOpName)) {
+                    continue; // Part or Op mismatch, not a duplicate
+                }
+
+                // Check questions exactly
+                List<LpaQuestion> eqList = exist.getQuestions() != null ? exist.getQuestions() : new ArrayList<>();
+                List<CreateLpaQuestionSetRequest.QuestionItem> nqList = req.getQuestions() != null ? req.getQuestions() : new ArrayList<>();
+                
+                if (eqList.size() != nqList.size()) {
+                    continue; // Length differs, not a duplicate
+                }
+                
+                boolean allMatch = true;
+                for (int i = 0; i < eqList.size(); i++) {
+                    LpaQuestion eq = eqList.get(i);
+                    CreateLpaQuestionSetRequest.QuestionItem nq = nqList.get(i);
+                    
+                    if (!eq.getQuestionText().trim().equalsIgnoreCase(nq.getQuestionText().trim())) {
+                        allMatch = false; break;
+                    }
+                    if (!eq.getQuestionType().name().equals(nq.getQuestionType())) {
+                        allMatch = false; break;
+                    }
+                    if (eq.getMinValue() != null && nq.getMinValue() != null) {
+                         if (eq.getMinValue().compareTo(nq.getMinValue()) != 0) { allMatch = false; break; }
+                    } else if (eq.getMinValue() != null || nq.getMinValue() != null) {
+                         allMatch = false; break;
+                    }
+                    if (eq.getMaxValue() != null && nq.getMaxValue() != null) {
+                         if (eq.getMaxValue().compareTo(nq.getMaxValue()) != 0) { allMatch = false; break; }
+                    } else if (eq.getMaxValue() != null || nq.getMaxValue() != null) {
+                         allMatch = false; break;
+                    }
+                }
+
+                if (allMatch) {
+                    isDuplicate = true;
+                    break;
+                }
+            }
+
+            if (!isDuplicate) {
+                createdSets.add(createQuestionSet(factoryId, userId, req));
+            } else {
+                log.info("Skipping duplicate LpaQuestionSet for Part: {} and Op: {}", req.getImportedPartNo(), req.getImportedOperationName());
+            }
+        }
+        return createdSets;
+    }
 
     @Transactional
     public LpaQuestionSet createQuestionSet(UUID factoryId, UUID userId, CreateLpaQuestionSetRequest request) {
@@ -49,6 +125,37 @@ public class LpaService {
                 gaugeMasterRepository.findById(request.getGaugeMasterId()).orElse(null) : null;
         MachineMaster mm = request.getMachineMasterId() != null ?
                 machineMasterRepository.findById(request.getMachineMasterId()).orElse(null) : null;
+
+        // Lookup or create from imported strings (Excel Bulk Import mapping)
+        if (gm == null && request.getImportedPartNo() != null && !request.getImportedPartNo().isEmpty()) {
+            gm = gaugeMasterRepository.findFirstByFactoryIdAndCategoryCodeAndIsActiveTrue(factoryId, request.getImportedPartNo())
+                    .orElseGet(() -> {
+                        GaugeMaster newGm = GaugeMaster.builder()
+                                .factory(factory)
+                                .categoryCode(request.getImportedPartNo())
+                                .gaugeTypeName(request.getImportedPartName() != null ? request.getImportedPartName() : request.getImportedPartNo())
+                                .isActive(true)
+                                .build();
+                        return gaugeMasterRepository.save(newGm);
+                    });
+        }
+
+        if (op == null && request.getImportedOperationName() != null && !request.getImportedOperationName().isEmpty()) {
+            op = operationMasterRepository.findFirstByFactoryIdAndOperationNameAndIsActiveTrue(factoryId, request.getImportedOperationName())
+                    .orElseGet(() -> {
+                        String rawCode = request.getImportedOperationName().split("/")[0].toUpperCase().replaceAll("[^A-Z0-9]", "");
+                        if (rawCode.length() > 20) rawCode = rawCode.substring(0, 20);
+                        String uniqueCode = rawCode + "_" + java.util.UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+                        
+                        OperationMaster newOp = OperationMaster.builder()
+                                .factory(factory)
+                                .operationName(request.getImportedOperationName())
+                                .operationCode(uniqueCode)
+                                .isActive(true)
+                                .build();
+                        return operationMasterRepository.save(newOp);
+                    });
+        }
 
         LpaQuestionSet qs = LpaQuestionSet.builder()
                 .factory(factory)
@@ -64,6 +171,57 @@ public class LpaService {
                 .build();
 
         qs = questionSetRepository.save(qs);
+
+        if (request.getQuestions() != null) {
+            int seq = 1;
+            for (CreateLpaQuestionSetRequest.QuestionItem qi : request.getQuestions()) {
+                QuestionType qt;
+                try {
+                    qt = QuestionType.valueOf(qi.getQuestionType());
+                } catch (Exception e) {
+                    qt = QuestionType.PASS_FAIL;
+                }
+                LpaQuestion q = LpaQuestion.builder()
+                        .questionSet(qs)
+                        .sequenceOrder(qi.getSequenceOrder() != null ? qi.getSequenceOrder() : seq++)
+                        .questionText(qi.getQuestionText())
+                        .questionType(qt)
+                        .expectedAnswer(qi.getExpectedAnswer())
+                        .unit(qi.getUnit())
+                        .minValue(qi.getMinValue())
+                        .maxValue(qi.getMaxValue())
+                        .choices(qi.getChoices())
+                        .isCritical(qi.getIsCritical() != null ? qi.getIsCritical() : false)
+                        .checkingMethod(qi.getCheckingMethod())
+                        .reactionPlan(qi.getReactionPlan())
+                        .isActive(true)
+                        .build();
+                questionRepository.save(q);
+            }
+        }
+
+        return questionSetRepository.findById(qs.getId()).orElse(qs);
+    }
+
+    @Transactional
+    public LpaQuestionSet updateQuestionSet(UUID factoryId, UUID id, CreateLpaQuestionSetRequest request) {
+        LpaQuestionSet qs = questionSetRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Checklist not found"));
+
+        if (!qs.getFactory().getId().equals(factoryId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        qs.setName(request.getName());
+        qs.setDescription(request.getDescription());
+        qs.setDefaultFrequency(request.getDefaultFrequency() != null ? request.getDefaultFrequency() : "DAILY");
+        qs.setAuditType(request.getAuditType());
+
+        // LpaAuditLogAnswer maps question_id as a UUID column (not a foreign key constraint), 
+        // and snapshots the text. So we can safely delete old questions.
+        // Orphan removal will delete them from DB.
+        qs.getQuestions().clear();
+        questionSetRepository.saveAndFlush(qs);
 
         if (request.getQuestions() != null) {
             int seq = 1;
@@ -203,12 +361,15 @@ public class LpaService {
             total++;
             if ("CONFORMING".equalsIgnoreCase(item.getStatus())) {
                 conforming++;
-            } else if ("NON_CONFORMING".equalsIgnoreCase(item.getStatus())) {
+            } else if ("NON_CONFORMING".equalsIgnoreCase(item.getStatus()) || "SCOPE_OF_IMPROVEMENT".equalsIgnoreCase(item.getStatus())) {
                 nonConforming++;
                 if (isCrit) criticalFailed = true;
             } else {
                 na++;
             }
+
+            String actionStat = ("NON_CONFORMING".equalsIgnoreCase(item.getStatus()) || "SCOPE_OF_IMPROVEMENT".equalsIgnoreCase(item.getStatus())) ? "OPEN" : "CLOSED";
+            OffsetDateTime targetClosure = ("NON_CONFORMING".equalsIgnoreCase(item.getStatus()) || "SCOPE_OF_IMPROVEMENT".equalsIgnoreCase(item.getStatus())) ? OffsetDateTime.now().plusDays(2) : null;
 
             LpaAuditLogAnswer ans = LpaAuditLogAnswer.builder()
                     .questionId(item.getQuestionId())
@@ -220,7 +381,8 @@ public class LpaService {
                     .remarks(item.getRemarks())
                     .correctiveAction(item.getCorrectiveAction())
                     .assignedActionOwner(item.getAssignedActionOwner())
-                    .actionStatus("NON_CONFORMING".equalsIgnoreCase(item.getStatus()) ? "OPEN" : "CLOSED")
+                    .actionStatus(actionStat)
+                    .targetClosureDate(targetClosure)
                     .build();
             answerList.add(ans);
         }
@@ -441,6 +603,79 @@ public class LpaService {
                 .categoryMetrics(catMetrics)
                 .recentAudits(recentSummaries)
                 .dueSchedules(dueScheduleSummaries)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<LpaNcResponse> getNonConformances(UUID factoryId) {
+        List<LpaAuditLogAnswer> answers = answerRepository.findOpenNonConformingAnswers(factoryId);
+        return answers.stream().map(a -> {
+            LpaAuditLog log = a.getAuditLog();
+            return LpaNcResponse.builder()
+                    .answerId(a.getId())
+                    .auditLogId(log.getId())
+                    .auditDate(log.getAuditDate())
+                    .auditedByName(log.getAuditedBy() != null ? log.getAuditedBy().getFullName() : "Unknown")
+                    .shiftName(log.getShiftName())
+                    .targetName(getTargetName(log.getOperationMaster(), log.getGaugeMaster(), log.getMachineMaster()))
+                    .questionText(a.getQuestionText())
+                    .actualValue(a.getActualValue())
+                    .remarks(a.getRemarks())
+                    .assignedActionOwner(a.getAssignedActionOwner())
+                    .correctiveAction(a.getCorrectiveAction())
+                    .actionStatus(a.getActionStatus())
+                    .evidenceFileUrl(a.getEvidenceFileUrl())
+                    .targetClosureDate(a.getTargetClosureDate())
+                    .approvedBy(a.getApprovedBy())
+                    .escalatedTo(a.getEscalatedTo())
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public LpaNcResponse updateNcAction(UUID factoryId, UUID answerId, UpdateNcActionRequest request) {
+        LpaAuditLogAnswer a = answerRepository.findById(answerId)
+                .orElseThrow(() -> new RuntimeException("Answer not found"));
+        
+        if (request.getActionStatus() != null) {
+            a.setActionStatus(request.getActionStatus());
+        }
+        if (request.getCorrectiveAction() != null) {
+            a.setCorrectiveAction(request.getCorrectiveAction());
+        }
+        if (request.getAssignedActionOwner() != null) {
+            a.setAssignedActionOwner(request.getAssignedActionOwner());
+        }
+        if (request.getEvidenceFileUrl() != null) {
+            a.setEvidenceFileUrl(request.getEvidenceFileUrl());
+        }
+        if (request.getApprovedBy() != null) {
+            a.setApprovedBy(request.getApprovedBy());
+        }
+        if (request.getEscalatedTo() != null) {
+            a.setEscalatedTo(request.getEscalatedTo());
+        }
+
+        a = answerRepository.save(a);
+        
+        LpaAuditLog log = a.getAuditLog();
+        return LpaNcResponse.builder()
+                .answerId(a.getId())
+                .auditLogId(log.getId())
+                .auditDate(log.getAuditDate())
+                .auditedByName(log.getAuditedBy() != null ? log.getAuditedBy().getFullName() : "Unknown")
+                .shiftName(log.getShiftName())
+                .targetName(getTargetName(log.getOperationMaster(), log.getGaugeMaster(), log.getMachineMaster()))
+                .questionText(a.getQuestionText())
+                .actualValue(a.getActualValue())
+                .remarks(a.getRemarks())
+                .assignedActionOwner(a.getAssignedActionOwner())
+                .correctiveAction(a.getCorrectiveAction())
+                .actionStatus(a.getActionStatus())
+                .evidenceFileUrl(a.getEvidenceFileUrl())
+                .targetClosureDate(a.getTargetClosureDate())
+                .approvedBy(a.getApprovedBy())
+                .escalatedTo(a.getEscalatedTo())
                 .build();
     }
 

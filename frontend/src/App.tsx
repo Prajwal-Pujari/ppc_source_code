@@ -42,6 +42,9 @@ import { LpaExecutePage } from '@/pages/lpa/LpaExecutePage';
 import { LpaReportsPage } from '@/pages/lpa/LpaReportsPage';
 import { LpaSchedulePage } from '@/pages/lpa/LpaSchedulePage';
 import { LpaQuestionSetPage } from '@/pages/lpa/LpaQuestionSetPage';
+import { LpaIndependentChecklistsPage } from '@/pages/lpa/LpaIndependentChecklistsPage';
+import { LpaNcManagementPage } from '@/pages/lpa/LpaNcManagementPage';
+import { LpaBulkScheduleFlowPage } from '@/pages/lpa/LpaBulkScheduleFlowPage';
 import { ModuleSettingsPage } from '@/pages/settings/ModuleSettingsPage';
 import { Toaster } from 'react-hot-toast';
 import './index.css';
@@ -123,10 +126,18 @@ export default function App() {
             {/* ── LPA Module (/lpa/*) ── */}
             <Route element={<LpaLayout />}>
               <Route path="/lpa/dashboard" element={<LpaDashboardPage />} />
+              <Route path="/lpa/ncs" element={<LpaNcManagementPage />} />
               <Route path="/lpa/execute" element={<LpaExecutePage />} />
+              <Route path="/lpa/system-execute" element={<LpaExecutePage auditType="SYSTEM_AUDIT" />} />
+              <Route path="/lpa/supplier-execute" element={<LpaExecutePage auditType="SUPPLIER_AUDIT" />} />
               <Route path="/lpa/reports" element={<LpaReportsPage />} />
+              <Route path="/lpa/system-reports" element={<LpaReportsPage auditType="SYSTEM_AUDIT" />} />
+              <Route path="/lpa/supplier-reports" element={<LpaReportsPage auditType="SUPPLIER_AUDIT" />} />
               <Route path="/lpa/schedules" element={<LpaSchedulePage />} />
+              <Route path="/lpa/schedules/bulk-flow" element={<LpaBulkScheduleFlowPage />} />
               <Route path="/lpa/question-sets" element={<LpaQuestionSetPage />} />
+              <Route path="/lpa/system-checklists" element={<LpaIndependentChecklistsPage auditType="SYSTEM_AUDIT" />} />
+              <Route path="/lpa/supplier-checklists" element={<LpaIndependentChecklistsPage auditType="SUPPLIER_AUDIT" />} />
               <Route path="/lpa/gauges" element={<GaugeMasterPage />} />
               <Route path="/lpa/operations" element={<OperationMasterPage />} />
               <Route path="/lpa/machines" element={<MachineMasterPage />} />
