@@ -403,6 +403,11 @@ public class LpaService {
             overallStatus = "FAIL";
         }
 
+        User auditee = null;
+        if (request.getAuditeeId() != null) {
+            auditee = userRepository.findById(request.getAuditeeId()).orElse(null);
+        }
+
         LpaAuditLog logEntity = LpaAuditLog.builder()
                 .factory(factory)
                 .auditType(request.getAuditType())
@@ -412,6 +417,7 @@ public class LpaService {
                 .gaugeMaster(gm)
                 .machineMaster(mm)
                 .auditedBy(auditedBy)
+                .auditee(auditee)
                 .shiftName(request.getShiftName())
                 .auditDate(OffsetDateTime.now())
                 .scorePercentage(score)

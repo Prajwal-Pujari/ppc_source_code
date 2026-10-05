@@ -66,6 +66,11 @@ public class LpaAuditLog {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "passwordHash"})
     private User auditedBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "auditee_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "passwordHash"})
+    private User auditee;
+
     @Column(name = "shift_name", length = 50)
     private String shiftName;
 

@@ -23,6 +23,7 @@ public class SubmitLpaAuditRequest {
 
     private String shiftName;
     private String remarks;
+    private UUID auditeeId;
 
     @NotNull
     private List<AnswerItem> answers;

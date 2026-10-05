@@ -505,8 +505,8 @@ export function LpaReportsPage({ auditType }: { auditType?: string }) {
                             <span>{selectedLog.operationMaster?.operationName || selectedLog.auditSection || 'Assembly Process'}</span>
                           </td>
                           <td style={{ width: '33.33%', borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
-                            <span style={{ fontWeight: 800 }}>PROCESS OWNER : </span>
-                            <span>{selectedLog.auditeeName || selectedLog.schedule?.assignedRole || 'Production Manager'}</span>
+                            <span style={{ fontWeight: 800 }}>PROCESS OWNER / AUDITEE : </span>
+                            <span>{selectedLog.auditee?.fullName || selectedLog.auditeeName || selectedLog.schedule?.assignedRole || 'Production Manager'}</span>
                           </td>
                           <td style={{ width: '33.33%', borderBottom: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
                             <span style={{ fontWeight: 800 }}>AUDIT DATE : </span>
@@ -604,8 +604,12 @@ export function LpaReportsPage({ auditType }: { auditType?: string }) {
                         </tr>
                         <tr>
                           <td style={{ width: '33.33%', borderRight: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
-                            <span style={{ fontWeight: 800 }}>VERIFIED BY : </span>
+                            <span style={{ fontWeight: 800 }}>VERIFIED BY (AUDITOR) : </span>
                             <span>{selectedLog.auditedBy?.fullName || selectedLog.auditorName || 'Quality Inspector'}</span>
+                            <div style={{ marginTop: 4 }}>
+                              <span style={{ fontWeight: 800 }}>AUDITEE : </span>
+                              <span>{selectedLog.auditee?.fullName || selectedLog.auditeeName || '-'}</span>
+                            </div>
                           </td>
                           <td style={{ width: '33.33%', borderRight: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
                             <span style={{ fontWeight: 800 }}>PART NO : </span>
@@ -713,7 +717,7 @@ export function LpaReportsPage({ auditType }: { auditType?: string }) {
                           </td>
                           <td style={{ width: '33.33%', borderRight: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
                             <span style={{ fontWeight: 800 }}>AUDITEE NAME : </span>
-                            <span>{selectedLog.schedule?.assignedRole || selectedLog.auditeeName || 'Shift Supervisor'}</span>
+                            <span>{selectedLog.auditee?.fullName || selectedLog.schedule?.assignedRole || selectedLog.auditeeName || 'Shift Supervisor'}</span>
                           </td>
                           <td style={{ width: '33.33%', padding: '8px 10px', fontSize: '12px' }}>
                             <span style={{ fontWeight: 800 }}>SAMPLE SIZE : </span>
@@ -824,7 +828,7 @@ export function LpaReportsPage({ auditType }: { auditType?: string }) {
                           </td>
                           <td style={{ width: '33.33%', borderRight: '1px solid #000', padding: '8px 10px', fontSize: '12px' }}>
                             <span style={{ fontWeight: 800 }}>AUDITEE / SUPERVISOR : </span>
-                            <span>{selectedLog.auditeeName || selectedLog.schedule?.assignedRole || 'Shift Supervisor'}</span>
+                            <span>{selectedLog.auditee?.fullName || selectedLog.auditeeName || selectedLog.schedule?.assignedRole || 'Shift Supervisor'}</span>
                           </td>
                           <td style={{ width: '33.33%', padding: '8px 10px', fontSize: '12px' }}>
                             <span style={{ fontWeight: 800 }}>OVERALL STATUS : </span>

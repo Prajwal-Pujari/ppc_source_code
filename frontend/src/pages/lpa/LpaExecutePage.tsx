@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { lpaApi, type LpaSchedule, type LpaQuestionSet, type LpaQuestionItem } from '@/api/lpa.api';
+import { getUsersApi } from '@/api/users.api';
 import {
   CheckCircle2, AlertTriangle, ShieldAlert, Award, Play, Check, X,
   ArrowRight, RotateCcw, Loader2, Sparkles, AlertCircle, HelpCircle, FileText, Clock, Calendar,
@@ -35,6 +36,8 @@ export function LpaExecutePage({ auditType }: { auditType?: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [completedResult, setCompletedResult] = useState<any | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [users, setUsers] = useState<any[]>([]);
+  const [selectedAuditeeId, setSelectedAuditeeId] = useState<string>('');
 
   useEffect(() => {
     fetchSchedules();
@@ -43,12 +46,14 @@ export function LpaExecutePage({ auditType }: { auditType?: string }) {
   const fetchSchedules = async () => {
     setLoading(true);
     try {
-      const [schedRes, qsRes] = await Promise.all([
+      const [schedRes, qsRes, usersRes] = await Promise.all([
         lpaApi.getSchedules(),
-        lpaApi.getQuestionSets().catch(() => ({ data: [] }))
+        lpaApi.getQuestionSets().catch(() => ({ data: [] })),
+        getUsersApi().catch(() => [])
       ]);
       let list: LpaSchedule[] = getArray(schedRes);
       const allQs: LpaQuestionSet[] = getArray(qsRes);
+      setUsers(getArray(usersRes));
 
       // Merge checkpoints/questions into schedule.questionSet if omitted by backend serialization
       list.forEach(s => {
@@ -86,6 +91,7 @@ export function LpaExecutePage({ auditType }: { auditType?: string }) {
     setCompletedResult(null);
     setErrorMessage(null);
     setGeneralNotes('');
+    setSelectedAuditeeId('');
 
     // Initialize answers
     const initAnswers: Record<string, any> = {};
@@ -160,6 +166,7 @@ export function LpaExecutePage({ auditType }: { auditType?: string }) {
     setErrorMessage(null);
     try {
       const payload = {
+        auditeeId: selectedAuditeeId || null,
         auditType: selectedSchedule.auditType || selectedSchedule.questionSet.auditType || 'LAYERED_PROCESS',
         scheduleId: selectedSchedule.id,
         questionSetId: selectedSchedule.questionSet.id,
@@ -770,6 +777,22 @@ export function LpaExecutePage({ auditType }: { auditType?: string }) {
             onChange={(e) => setGeneralNotes(e.target.value)}
             style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--silk)', background: 'var(--cream)', fontSize: 13 }}
           />
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--charcoal)', marginBottom: 6 }}>
+            Auditee (Optional)
+          </label>
+          <select
+            value={selectedAuditeeId}
+            onChange={(e) => setSelectedAuditeeId(e.target.value)}
+            style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--silk)', background: 'var(--cream)', fontSize: 13 }}
+          >
+            <option value="">-- Select Auditee --</option>
+            {users.map(u => (
+              <option key={u.id} value={u.id}>{u.fullName || u.username}</option>
+            ))}
+          </select>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--silk)' }}>
