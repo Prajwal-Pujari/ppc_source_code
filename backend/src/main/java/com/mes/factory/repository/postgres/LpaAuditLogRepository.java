@@ -19,6 +19,7 @@ public interface LpaAuditLogRepository extends JpaRepository<LpaAuditLog, UUID> 
            "LEFT JOIN FETCH l.gaugeMaster " +
            "LEFT JOIN FETCH l.machineMaster " +
            "LEFT JOIN FETCH l.auditedBy " +
+           "LEFT JOIN FETCH l.auditee " +
            "LEFT JOIN FETCH l.answers " +
            "WHERE l.factory.id = :factoryId " +
            "ORDER BY l.auditDate DESC")
@@ -30,6 +31,7 @@ public interface LpaAuditLogRepository extends JpaRepository<LpaAuditLog, UUID> 
            "LEFT JOIN FETCH l.gaugeMaster " +
            "LEFT JOIN FETCH l.machineMaster " +
            "LEFT JOIN FETCH l.auditedBy " +
+           "LEFT JOIN FETCH l.auditee " +
            "WHERE l.factory.id = :factoryId AND l.auditType = :auditType " +
            "ORDER BY l.auditDate DESC")
     List<LpaAuditLog> findByFactoryIdAndAuditTypeOrderByAuditDateDesc(UUID factoryId, LpaAuditType auditType);

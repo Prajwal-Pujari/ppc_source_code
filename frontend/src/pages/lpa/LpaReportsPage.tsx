@@ -294,8 +294,14 @@ export function LpaReportsPage({ auditType }: { auditType?: string }) {
                       </span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                         <User size={14} style={{ color: 'var(--ash)' }} />
-                        <span>{log.auditedBy?.fullName || 'Auditor'} ({log.auditedBy?.role || 'Staff'})</span>
+                        <span>Auditor: {log.auditedBy?.fullName || 'Auditor'} ({log.auditedBy?.role || 'Staff'})</span>
                       </span>
+                      {log.auditee && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <User size={14} style={{ color: 'var(--ash)' }} />
+                          <span>Auditee: {log.auditee.fullName}</span>
+                        </span>
+                      )}
                     </div>
 
                     {/* Linked Target Badges */}
@@ -425,7 +431,7 @@ export function LpaReportsPage({ auditType }: { auditType?: string }) {
             </div>
 
             {/* Modal Body - Exact Replica of product_audit.png */}
-            <div style={{ padding: '32px', overflowY: 'auto', background: '#e5e7eb', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ padding: '32px', overflowY: 'auto', overflowX: 'auto', background: '#e5e7eb', display: 'flex', justifyContent: 'center' }}>
               <style>{`
                 @media print {
                   body * {
@@ -456,7 +462,7 @@ export function LpaReportsPage({ auditType }: { auditType?: string }) {
               <div
                 id="printable-audit-report"
                 style={{
-                  background: '#fff', color: '#000', width: '100%', maxWidth: '960px',
+                  background: '#fff', color: '#000', width: '100%', minWidth: '800px', maxWidth: '960px',
                   border: '2px solid #000', boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
                   fontFamily: "'Segoe UI', Arial, sans-serif", fontSize: '12px', boxSizing: 'border-box'
                 }}
@@ -941,11 +947,15 @@ export function LpaReportsPage({ auditType }: { auditType?: string }) {
                 <div style={{ borderTop: 'none', borderLeft: '2px solid #000', borderRight: '2px solid #000', borderBottom: '2px solid #000', padding: '24px 20px 16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', background: '#fff' }}>
                   <div>
                     <div style={{ fontWeight: 800, fontSize: '12px', marginBottom: 24 }}>AUDITOR SIGNATURE : </div>
-                    <div style={{ borderBottom: '1px solid #000', width: '220px', paddingBottom: '2px', fontWeight: 600 }}>{selectedLog.auditedBy?.fullName || '___________________________'}</div>
+                    <div style={{ borderBottom: '1px solid #000', width: '220px', paddingBottom: '2px', fontWeight: 600, color: 'var(--charcoal)' }}>
+                      {selectedLog.auditedBy?.fullName || '___________________________'}
+                    </div>
                   </div>
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: '12px', marginBottom: 24 }}>REVIEWED BY (SUPERVISOR) : </div>
-                    <div style={{ borderBottom: '1px solid #000', width: '220px', paddingBottom: '2px', fontWeight: 600 }}>___________________________</div>
+                    <div style={{ fontWeight: 800, fontSize: '12px', marginBottom: 24 }}>AUDITEE SIGNATURE : </div>
+                    <div style={{ borderBottom: '1px solid #000', width: '220px', paddingBottom: '2px', fontWeight: 600, color: 'var(--charcoal)' }}>
+                      {selectedLog.auditee?.fullName || selectedLog.auditeeName || selectedLog.schedule?.assignedRole || '___________________________'}
+                    </div>
                   </div>
                 </div>
               </div>
