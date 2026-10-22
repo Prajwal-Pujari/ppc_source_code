@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
 import { useNotificationStore } from '@/store/notificationStore';
@@ -16,6 +16,7 @@ const pqcNavItems = [
   { label: 'Purchase Orders', path: '/pqc/po', icon: 'inventory_2' },
   { label: 'Job Cards', path: '/pqc/jobcards', icon: 'assignment' },
   { label: 'Inspections', path: '/pqc/inspect', icon: 'content_paste_search' },
+  { label: 'Breakdowns & Incidents', path: '/pqc/breakdowns', icon: 'report_problem' },
   { label: 'Reports', path: '/pqc/reports', icon: 'description' },
   { label: 'Scrap Report', path: '/pqc/scrap-report', icon: 'delete_forever' },
   { label: 'Setup Report', path: '/pqc/setup-report', icon: 'settings_applications' },
@@ -61,10 +62,23 @@ export default function PqcLayout() {
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
+  useEffect(() => {
+    if (window.innerWidth <= 1024) {
+      useUiStore.getState().closeSidebar();
+    }
+  }, [location.pathname]);
+
+  const isInspectPage = location.pathname === '/pqc/inspect' || location.pathname === '/inspection';
+
   const handleLogout = () => {
     clearAuth();
     window.location.href = '/login';
   };
+
+  // Prevent WORKER role from directly accessing PQC management screens (except the inspection screen)
+  if (user?.role === 'WORKER' && !location.pathname.startsWith('/pqc/inspect')) {
+    return <Navigate to="/tasks/my" replace />;
+  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#FFF8F2' }}>
@@ -236,7 +250,7 @@ export default function PqcLayout() {
               {isNotifOpen && (
                 <div style={{
                   position: 'absolute', top: '100%', right: 0, marginTop: 8,
-                  width: 360, background: 'white', borderRadius: 12,
+                  width: 'min(360px, calc(100vw - 24px))', background: 'white', borderRadius: 12,
                   boxShadow: '0 12px 40px rgba(48,49,47,0.12), 0 4px 16px rgba(139,105,20,0.08)',
                   border: '1px solid var(--silk)', zIndex: 100, overflow: 'hidden'
                 }}>
@@ -263,7 +277,13 @@ export default function PqcLayout() {
                       </div>
                     ) : (
                       notifications.map(notif => (
-                        <div key={notif.id} onClick={() => markAsRead(notif.id)} style={{
+                        <div key={notif.id} onClick={() => {
+                          markAsRead(notif.id);
+                          if (notif.link) {
+                            navigate(notif.link);
+                            setNotifOpen(false);
+                          }
+                        }} style={{
                           padding: '16px 20px', borderBottom: '1px solid var(--silk)',
                           background: notif.isRead ? 'white' : 'rgba(139,105,20,0.03)',
                           cursor: 'pointer', transition: 'background 0.2s', position: 'relative'
@@ -286,6 +306,11 @@ export default function PqcLayout() {
                                 </span>
                               </h4>
                               <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--ash)', lineHeight: 1.4 }}>{notif.message}</p>
+                              {notif.link && (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 11, fontWeight: 600, color: 'var(--copper-bronze)' }}>
+                                  Open inspection &rarr;
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -303,7 +328,17 @@ export default function PqcLayout() {
         </header>
 
         {/* Page Content */}
-        <main className="responsive-main" style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+        <main
+          className={isInspectPage ? '' : 'responsive-main'}
+          style={{
+            flex: 1,
+            overflow: isInspectPage ? 'hidden' : 'auto',
+            padding: isInspectPage ? 0 : 24,
+            display: isInspectPage ? 'flex' : undefined,
+            flexDirection: isInspectPage ? 'column' : undefined,
+            minHeight: 0
+          }}
+        >
           <Outlet />
         </main>
       </div>

@@ -43,4 +43,8 @@ public class ReportConfigurationDto {
     private String layoutDocNo;
     private String layoutRevNo;
     private String layoutIssueDate;
+
+    // In-Process Inspection Interval
+    private Double inspectionIntervalHours;
+    private Double defaultShiftHours;
 }

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
 import { useNotificationStore } from '@/store/notificationStore';
@@ -39,6 +39,7 @@ const navSections = [
     items: [
       { label: 'Inspection', path: '/inspection', icon: Shield, roles: ['WORKER', 'QUALITY_INSPECTOR', 'ADMIN', 'SUPERVISOR', 'VIEWER'] },
       { label: 'NC Records', path: '/nc-records', icon: AlertTriangle, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
+      { label: 'Breakdowns', path: '/breakdowns', icon: Wrench, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
     ],
   },
   {
@@ -65,6 +66,7 @@ const navSections = [
     title: 'System',
     items: [
       { label: 'Report & System Settings', path: '/settings/reports', icon: Settings, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR'] },
+      { label: 'PQC Authority Control', path: '/settings/authority', icon: ShieldCheck, roles: ['ADMIN'] },
       { label: 'Users', path: '/settings/users', icon: Settings, roles: ['ADMIN'] },
       { label: 'Module Access Control', path: '/settings/modules', icon: ShieldCheck, roles: ['ADMIN'] },
     ],
@@ -103,6 +105,22 @@ export default function AppLayout() {
     clearAuth();
     window.location.href = '/login';
   };
+
+  // Prevent WORKER role from directly accessing management routes (like /dashboard, /po, /settings, /analytics)
+  const workerAllowedPaths = [
+    '/tasks/my',
+    '/tasks/completed',
+    '/my-tasks',
+    '/completed-tasks',
+    '/inspection'
+  ];
+  const isWorkerAllowed = workerAllowedPaths.some(
+    (p) => location.pathname === p || location.pathname.startsWith(p + '/')
+  );
+
+  if (userRole === 'WORKER' && !isWorkerAllowed && location.pathname !== '/') {
+    return <Navigate to="/tasks/my" replace />;
+  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bone-white)' }}>
@@ -316,7 +334,13 @@ export default function AppLayout() {
                       </div>
                     ) : (
                       notifications.map(notif => (
-                        <div key={notif.id} onClick={() => markAsRead(notif.id)} style={{
+                        <div key={notif.id} onClick={() => {
+                          markAsRead(notif.id);
+                          if (notif.link) {
+                            navigate(notif.link);
+                            setNotifOpen(false);
+                          }
+                        }} style={{
                           padding: '16px 20px', borderBottom: '1px solid var(--silk)',
                           background: notif.isRead ? 'white' : 'rgba(139,105,20,0.03)',
                           cursor: 'pointer', transition: 'background 0.2s',
@@ -340,6 +364,11 @@ export default function AppLayout() {
                                 </span>
                               </h4>
                               <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--ash)', lineHeight: 1.4 }}>{notif.message}</p>
+                              {notif.link && (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 11, fontWeight: 600, color: 'var(--copper-bronze)' }}>
+                                  Open inspection &rarr;
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>

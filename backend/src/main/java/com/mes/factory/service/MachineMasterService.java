@@ -22,7 +22,6 @@ import java.util.HashSet;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class MachineMasterService {
 
     private final MachineMasterRepository machineMasterRepository;
@@ -30,6 +29,19 @@ public class MachineMasterService {
     private final PoLineItemOperationRepository poLineItemOperationRepository;
     private final GaugeOperationRepository gaugeOperationRepository;
     private final FactoryShiftRepository factoryShiftRepository;
+
+    public MachineMasterService(
+            MachineMasterRepository machineMasterRepository,
+            FactoryRepository factoryRepository,
+            PoLineItemOperationRepository poLineItemOperationRepository,
+            GaugeOperationRepository gaugeOperationRepository,
+            FactoryShiftRepository factoryShiftRepository) {
+        this.machineMasterRepository = machineMasterRepository;
+        this.factoryRepository = factoryRepository;
+        this.poLineItemOperationRepository = poLineItemOperationRepository;
+        this.gaugeOperationRepository = gaugeOperationRepository;
+        this.factoryShiftRepository = factoryShiftRepository;
+    }
 
     @Transactional(readOnly = true)
     public List<MachineMasterDto> getActiveMachines(UUID factoryId) {
@@ -124,7 +136,10 @@ public class MachineMasterService {
             boolean isPoCompleted = po.getStatus() != null && 
                 ("COMPLETED".equals(po.getStatus().name()) || "CLOSED".equals(po.getStatus().name()));
             
-            java.time.LocalDate currentDate = po.getOrderDate() != null ? po.getOrderDate() : today;
+            java.time.LocalDate poStartDate = po.getOrderDate() != null ? po.getOrderDate() : today;
+
+            // Track continuous production flow: all operations start simultaneously as parts flow
+            int prevRunningDays = 0;
 
             for (com.mes.factory.entity.postgres.PoLineItemOperation op : lineItemOps) {
                 int quantity = op.getPoLineItem().getQuantity() != null ? op.getPoLineItem().getQuantity() : 0;
@@ -133,27 +148,36 @@ public class MachineMasterService {
                 double totalOperationMins = (quantity * cycleTimeMins) + setupMins;
                 
                 int daysNeeded = (int) Math.ceil(totalOperationMins / workingMins);
+                if (daysNeeded < 1 && (quantity > 0 || totalOperationMins > 0)) {
+                    daysNeeded = 1;
+                }
                 
-                java.time.LocalDate startDate = currentDate;
-                java.time.LocalDate endDate = startDate.plusDays(daysNeeded);
-                
+                // Downstream operations process parts as they flow from upstream operations,
+                // so operations run concurrently and continue as long as upstream is running or its own processing requires.
+                int runningDays = Math.max(daysNeeded, prevRunningDays);
+                if (runningDays < 1) {
+                    runningDays = 1;
+                }
+                prevRunningDays = runningDays;
+
                 String opKey = op.getPoLineItem().getId() + "-" + op.getOperationMaster().getId();
                 String actualStatus = gaugeOpStatusMap.get(opKey);
                 
                 boolean isOpCompleted = isPoCompleted || "COMPLETED".equals(actualStatus);
                 
-                if (!"COMPLETED".equals(op.getSetupStatus())) {
-                    if (endDate.isBefore(today) || startDate.isBefore(today)) {
-                        endDate = today.plusDays(daysNeeded);
-                    }
-                } else if (op.getSetupCompletedAt() != null) {
+                // Operations start simultaneously from the PO start date (or today if pending/upcoming)
+                java.time.LocalDate startDate = poStartDate;
+                if (op.getSetupCompletedAt() != null) {
                     startDate = op.getSetupCompletedAt().toLocalDate();
-                    endDate = startDate.plusDays(daysNeeded);
-                    
-                    if (!isPoCompleted && !isOpCompleted) {
-                        if (endDate.isBefore(today)) {
-                            endDate = today;
-                        }
+                } else if (!isPoCompleted && !isOpCompleted && startDate.isBefore(today)) {
+                    startDate = today;
+                }
+
+                java.time.LocalDate endDate = startDate.plusDays(runningDays);
+
+                if (!isPoCompleted && !isOpCompleted) {
+                    if (endDate.isBefore(today)) {
+                        endDate = today;
                     }
                 }
                 
@@ -168,8 +192,6 @@ public class MachineMasterService {
                         .isCompleted(isOpCompleted)
                         .poStatus(po.getStatus() != null ? po.getStatus().name() : null)
                         .build());
-                        
-                currentDate = endDate;
             }
         }
         

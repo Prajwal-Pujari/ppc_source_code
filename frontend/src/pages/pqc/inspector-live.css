@@ -184,16 +184,6 @@
   overflow: hidden;
 }
 
-.il-progress-banner::after {
-  content: '⚙';
-  position: absolute;
-  right: 16px;
-  top: -10px;
-  font-size: 100px;
-  opacity: 0.05;
-  pointer-events: none;
-}
-
 /* ─── Input card ─── */
 .il-input-card {
   background: white;
@@ -489,133 +479,538 @@
   background: var(--warm-gray);
 }
 
-/* ═══ TABLET (≤1024px) ═══ */
+/* ─── Responsive Form Components ─── */
+.il-select-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  gap: 12px;
+}
+
+.il-select-card select {
+  width: 250px;
+  max-width: 100%;
+}
+
+.il-qty-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.il-variance-row {
+  background: var(--linen);
+  border: 1px solid var(--silk);
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-radius: var(--radius-sm, 8px);
+}
+
+.il-variance-rejection-inputs {
+  display: flex;
+  gap: 16px;
+}
+
+.il-variance-rejection-inputs input {
+  width: 70px;
+  text-align: center;
+}
+
+.il-mobile-back-btn {
+  display: none;
+}
+
+.il-mobile-resume-banner {
+  display: none;
+}
+
+.il-desktop-only {
+  display: flex !important;
+}
+
+.il-mobile-only {
+  display: none !important;
+}
+
+.il-wizard-step-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.il-progress-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 16px;
+}
+
+/* ═══ TABLET & MOBILE RESPONSIVE (≤1024px, optimized for 375x667) ═══ */
 @media (max-width: 1024px) {
+  .il-page {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--bone-white);
+  }
+
+  .il-main-grid {
+    flex-direction: column;
+    height: 100%;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* When wizard is active on mobile/tablet, hide queue to maximize entry space */
+  .il-page--wizard-active .il-queue {
+    display: none !important;
+  }
+
+  /* When queue is active on mobile/tablet, hide wizard */
+  .il-page--queue-active .il-wizard {
+    display: none !important;
+  }
+
   .il-queue {
-    width: 100%;
+    width: 100% !important;
+    height: 100% !important;
     border-right: none;
-    border-bottom: 1px solid var(--silk);
-    flex-shrink: 0;
-    max-height: none;
-    overflow: visible;
+    border-bottom: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex: 1;
+    min-height: 0;
   }
 
   .il-queue-header {
-    display: none;
-  }
-
-  .il-queue-list {
-    flex-direction: row;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 10px 12px;
-    gap: 10px;
-    scrollbar-width: none;
-  }
-
-  .il-queue-list::-webkit-scrollbar {
-    display: none;
-  }
-
-  .il-q-card {
-    min-width: 200px;
+    display: flex !important;
+    padding: 10px 14px;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--warm-white);
+    border-bottom: 1px solid var(--silk);
     flex-shrink: 0;
   }
 
-  .il-main-grid {
-    flex-direction: column;
-  }
-
-  .il-wizard-header {
-    padding: 14px 20px;
-  }
-
-  .il-wizard-body {
-    padding: 20px;
-  }
-
-  .il-wizard-footer {
-    padding: 14px 20px;
-  }
-}
-
-/* ═══ MOBILE (≤640px) ═══ */
-@media (max-width: 640px) {
-  .il-page {
-    height: auto;
-    min-height: calc(100vh - var(--header-height, 56px));
-  }
-
-  .il-main-grid {
-    flex-direction: column;
-    overflow: visible;
+  .il-queue-header h3 {
+    font-size: 1rem !important;
+    line-height: 1.25rem !important;
   }
 
   .il-queue-list {
-    padding: 8px 16px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 10px 12px;
     gap: 8px;
+    display: flex;
+    flex-direction: column;
   }
 
   .il-q-card {
-    min-width: 160px;
-    padding: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
   }
 
-  .il-q-card .il-q-card-name {
-    font-size: 0.8125rem;
+  .il-wizard {
+    width: 100% !important;
+    height: 100% !important;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bone-white);
   }
 
   .il-wizard-header {
-    padding: 14px 16px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+    padding: 8px 12px;
+    gap: 6px;
+    background: var(--warm-white);
+    border-bottom: 1px solid var(--silk);
+    flex-shrink: 0;
   }
 
   .il-wizard-body {
-    padding: 16px;
+    padding: 10px 12px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+    min-height: 0;
   }
 
   .il-wizard-body-inner {
-    gap: 20px;
+    max-width: 100%;
+    gap: 10px;
+    display: flex;
+    flex-direction: column;
   }
 
+  /* Compact Progress banner on mobile */
+  .il-progress-banner {
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 0;
+  }
+
+  .il-progress-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px;
+    padding-top: 8px;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .il-progress-stats .il-data-display {
+    font-size: 1.25rem !important;
+    line-height: 1.2 !important;
+    font-weight: 700;
+  }
+
+  .il-progress-stats .il-label-sm {
+    font-size: 9px !important;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px !important;
+  }
+
+  /* Selects Card: 2-column compact grid */
+  .il-select-card {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    align-items: stretch;
+    padding: 8px 12px !important;
+    gap: 8px;
+  }
+
+  .il-select-card select {
+    width: 100% !important;
+    font-size: 0.8125rem !important;
+    min-height: 36px !important;
+    height: 36px;
+    padding: 4px 8px;
+  }
+
+  /* Mobile Qty Grid: 3-column in a single compact row */
+  .il-qty-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .il-qty-grid input,
+  .il-qty-grid .il-input {
+    min-height: 40px !important;
+    height: 40px;
+    font-size: 1.125rem !important;
+    text-align: center;
+    font-weight: 700;
+    padding: 4px 6px;
+  }
+
+  /* Variance row on mobile */
+  .il-variance-row {
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+  }
+
+  .il-variance-rejection-inputs {
+    display: flex !important;
+    gap: 6px;
+  }
+
+  .il-variance-rejection-inputs input {
+    width: 48px !important;
+    min-height: 32px !important;
+    height: 32px;
+    font-size: 0.875rem !important;
+    text-align: center;
+    padding: 2px 4px;
+  }
+
+  /* Sticky Footer on mobile */
   .il-wizard-footer {
-    padding: 12px 16px;
+    padding: 8px 12px;
     position: sticky;
     bottom: 0;
-    z-index: 10;
+    z-index: 30;
+    background: var(--warm-white);
+    border-top: 1px solid var(--silk);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.06);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
-  .il-progress-banner {
-    padding: 16px;
-  }
-
-  .il-input-card-body {
-    padding: 14px;
-  }
-
-  .il-input {
-    font-size: 1rem;
-    padding: 8px 12px;
-  }
-
-  .il-btn-primary,
-  .il-btn-secondary {
+  .il-wizard-footer button {
+    min-height: 42px;
+    font-size: 0.875rem;
     padding: 8px 16px;
+    border-radius: 8px;
+  }
+
+  /* Pass/Fail buttons for thumbs on 375px */
+  .il-btn-pass,
+  .il-btn-fail {
+    min-height: 64px;
+    padding: 12px 8px;
+    font-size: 0.8125rem;
+  }
+
+  .il-btn-pass svg,
+  .il-btn-fail svg {
+    width: 24px;
+    height: 24px;
   }
 
   .il-headline-lg {
-    font-size: 1.375rem;
-    line-height: 1.75rem;
+    font-size: 1.125rem;
+    line-height: 1.375rem;
   }
 
   .il-headline-md {
-    font-size: 1.125rem;
-    line-height: 1.5rem;
+    font-size: 1rem;
+    line-height: 1.25rem;
   }
 
-  .il-data-display {
-    font-size: 1rem;
+  .il-input-card {
+    border-radius: 8px;
+    margin-bottom: 0 !important;
+  }
+
+  .il-input-card-header {
+    padding: 8px 12px !important;
+  }
+
+  .il-input-card-body {
+    padding: 10px 12px !important;
+  }
+
+  /* Mobile back to tasks navigation */
+  .il-mobile-back-btn {
+    display: inline-flex !important;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    align-items: center;
+    gap: 4px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    background: var(--linen);
+    border: 1px solid var(--silk);
+    color: var(--charcoal);
+  }
+
+  /* Mobile resume active inspection banner */
+  .il-mobile-resume-banner {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    margin: 6px 12px 2px;
+    padding: 8px 12px;
+    background: var(--copper-light, #FBF4E8);
+    border: 1px solid var(--copper-bronze, #8B6914);
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(139, 105, 20, 0.08);
+  }
+
+  .il-desktop-only {
+    display: none !important;
+  }
+
+  .il-mobile-only {
+    display: flex !important;
+  }
+
+  .il-wizard-step-container {
+    gap: 10px !important;
   }
 }
+
+/* ═══ Hourly Inspection Stack Responsive Design (.his-) ═══ */
+.his-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.his-card {
+  background: var(--bone-white, #FFFFFF);
+  border-radius: var(--radius-sm, 8px);
+  border: 1px solid var(--dust, #E2DDD5);
+  padding: 12px 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.his-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.his-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.his-badge {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--slate, #4A4540);
+  background-color: var(--silk, #E8E2D9);
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* Tabs for multi-slot sets (> 8 slots) */
+.his-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.his-tab-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--silk, #E8E2D9);
+  background: var(--warm-white, #F5F2ED);
+  color: var(--slate, #4A4540);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.his-tab-btn--active {
+  background: var(--copper-bronze, #8B6914);
+  color: #FFFFFF;
+  border-color: var(--copper-bronze, #8B6914);
+  box-shadow: 0 1px 3px rgba(139, 105, 20, 0.2);
+}
+
+/* Slot Grid */
+.his-grid {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+
+/* 8 columns per row by default */
+.his-grid--8-col {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+
+.his-grid--4-col {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Individual Slot Button */
+.his-slot-btn {
+  padding: 6px 3px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  transition: all 0.15s ease;
+  position: relative;
+  text-align: center;
+  user-select: none;
+  font-family: inherit;
+}
+
+.his-slot-btn:active {
+  transform: scale(0.97);
+}
+
+/* Lock Banner */
+.his-lock-banner {
+  padding: 12px 14px;
+  background-color: var(--copper-light, #FBF4E8);
+  border: 1.5px solid var(--copper-bronze, #8B6914);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Tablet / Split-view wizard (width <= 900px) */
+@media (max-width: 900px) {
+  .his-grid--8-col {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Mobile screen (width <= 640px) */
+@media (max-width: 640px) {
+  .his-card {
+    padding: 10px 12px !important;
+  }
+  
+  .his-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 6px;
+  }
+
+  .his-badge {
+    align-self: flex-start;
+  }
+  
+  .his-grid--8-col,
+  .his-grid--4-col {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+  }
+
+  .his-slot-btn {
+    min-height: 48px;
+    padding: 5px 2px;
+  }
+
+  .his-lock-banner {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .his-lock-banner button {
+    width: 100% !important;
+    justify-content: center;
+    margin-top: 6px;
+  }
+}

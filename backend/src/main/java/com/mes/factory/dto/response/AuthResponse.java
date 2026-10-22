@@ -32,5 +32,6 @@ public class AuthResponse {
         private Boolean mesEnabled;
         private Boolean pqcEnabled;
         private Boolean lpaEnabled;
+        private Boolean canBackfillPqc;
     }
 }

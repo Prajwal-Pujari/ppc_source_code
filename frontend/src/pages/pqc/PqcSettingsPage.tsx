@@ -1,10 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Plus, Pencil, Trash2, Clock, Check, X } from 'lucide-react';
+import { Settings, Plus, Pencil, Trash2, Clock, Check, X, Save, ShieldCheck } from 'lucide-react';
 import { shiftsApi, type FactoryShift } from '../../api/shifts.api';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
+import { useAuthStore } from '@/store/authStore';
 import EmailSettingsPage from '../settings/EmailSettingsPage';
+import PqcAuthoritySettings from '../settings/PqcAuthoritySettings';
 
-export default function PqcSettingsPage() {
+interface Props {
+  initialTab?: 'system' | 'authority';
+}
+
+export default function PqcSettingsPage({ initialTab }: Props) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab') as 'system' | 'authority' | null;
+  const [currentTab, setCurrentTab] = useState<'system' | 'authority'>(initialTab || urlTab || 'system');
+
+  const currentUser = useAuthStore(s => s.user);
+  const isAdmin = currentUser?.role === 'ADMIN' ||
+    currentUser?.role === 'SUPERADMIN' ||
+    currentUser?.role === 'SUPER_ADMIN';
+  const hasAuthorityOrAdmin = isAdmin || Boolean(currentUser?.canBackfillPqc);
   const [shifts, setShifts] = useState<FactoryShift[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -61,24 +77,92 @@ export default function PqcSettingsPage() {
   };
 
   return (
-    <div style={{ padding: '32px 40px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 32 }}>
+    <div className="pqc-page-container">
       
       {/* ─── Header Bar ─── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           <div style={{ width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)' }}>
             <Settings size={24} color="#f8fafc" />
           </div>
           <div>
             <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--charcoal)', margin: 0 }}>System Settings & Report Layout</h2>
-            <p style={{ fontSize: 12, color: 'var(--ash)', marginTop: 4 }}>
-              Global Preferences, Shift Timings & Report Header Configuration for all P-Track Modules (PQC, LPA & General)
+            <p style={{ fontSize: 12, color: 'var(--ash)', marginTop: 4, margin: 0 }}>
+              Global Preferences, Shift Timings, PQC Inspection Authority & Report Layout Configuration
             </p>
           </div>
         </div>
+
+        {/* ─── Tab Switcher ─── */}
+        <div style={{
+          display: 'inline-flex',
+          padding: 4,
+          borderRadius: 10,
+          background: 'var(--linen, #EEE9E1)',
+          border: '1px solid var(--silk, #E8E2D9)',
+          gap: 4
+        }}>
+          <button
+            type="button"
+            onClick={() => {
+              setCurrentTab('system');
+              setSearchParams(prev => { prev.delete('tab'); return prev; });
+            }}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 6,
+              border: 'none',
+              background: currentTab === 'system' ? '#FFFFFF' : 'transparent',
+              color: currentTab === 'system' ? 'var(--charcoal, #1C1A18)' : 'var(--slate, #4A4540)',
+              fontWeight: currentTab === 'system' ? 700 : 500,
+              fontSize: 12,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: currentTab === 'system' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Settings size={14} />
+            System & Reports
+          </button>
+
+          {/* Authority tab: only visible when user has authority or is admin/superadmin */}
+          {hasAuthorityOrAdmin && (
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentTab('authority');
+                setSearchParams(prev => { prev.set('tab', 'authority'); return prev; });
+              }}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 6,
+                border: 'none',
+                background: currentTab === 'authority' ? 'var(--copper-bronze, #8B6914)' : 'transparent',
+                color: currentTab === 'authority' ? '#FFFFFF' : 'var(--slate, #4A4540)',
+                fontWeight: currentTab === 'authority' ? 700 : 500,
+                fontSize: 12,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: currentTab === 'authority' ? '0 1px 3px rgba(139, 105, 20, 0.25)' : 'none',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <ShieldCheck size={14} />
+              Authority Control
+            </button>
+          )}
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24, alignItems: 'flex-start' }}>
+      {currentTab === 'authority' ? (
+        <PqcAuthoritySettings />
+      ) : (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 24, alignItems: 'flex-start' }}>
         
         {/* Left Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -164,6 +248,7 @@ export default function PqcSettingsPage() {
         </div>
 
       </div>
+      )}
     </div>
   );
 }
@@ -175,10 +260,13 @@ function ReportConfigEditor() {
     customerName: '',
     docNo: '',
     revNo: '',
-    issueDate: ''
+    issueDate: '',
+    inspectionIntervalHours: 1,
+    defaultShiftHours: 8,
   });
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  const [savingFrequency, setSavingFrequency] = React.useState(false);
 
   React.useEffect(() => {
     fetchConfig();
@@ -189,7 +277,13 @@ function ReportConfigEditor() {
       setLoading(true);
       const { reportConfigApi } = await import('../../api/reportConfig.api');
       const res = await reportConfigApi.get();
-      if (res.data) setConfig(res.data);
+      if (res.data) {
+        setConfig({
+          ...res.data,
+          inspectionIntervalHours: res.data.inspectionIntervalHours ?? 1,
+          defaultShiftHours: res.data.defaultShiftHours ?? 8,
+        });
+      }
     } catch (error) {
       toast.error('Failed to load report configuration');
     } finally {
@@ -208,6 +302,38 @@ function ReportConfigEditor() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSaveFrequency = async (customConfig?: any) => {
+    try {
+      setSavingFrequency(true);
+      const targetConfig = customConfig || config;
+      const { reportConfigApi } = await import('../../api/reportConfig.api');
+      const res = await reportConfigApi.save(targetConfig);
+      if (res.data) {
+        setConfig(res.data);
+      } else if (customConfig) {
+        setConfig(customConfig);
+      }
+      const interval = Number(targetConfig.inspectionIntervalHours) || 1;
+      const shift = Number(targetConfig.defaultShiftHours) || 8;
+      const cols = Math.max(1, Math.round(shift / (interval > 0 ? interval : 1)));
+      toast.success(`Saved: Inspection frequency set to every ${interval} hr(s) (${cols} observation columns)`);
+    } catch (error) {
+      toast.error('Failed to save inspection frequency');
+    } finally {
+      setSavingFrequency(false);
+    }
+  };
+
+  const handleApplyPreset = (presetInterval: number, presetShift: number) => {
+    const updated = {
+      ...config,
+      inspectionIntervalHours: presetInterval,
+      defaultShiftHours: presetShift,
+    };
+    setConfig(updated);
+    handleSaveFrequency(updated);
   };
 
   const renderDocConfig = (title: string, prefix: string) => {
@@ -232,6 +358,189 @@ function ReportConfigEditor() {
             <input type="text" placeholder="e.g. 01.01.2024" value={config[dateKey] || ''} onChange={e => setConfig({...config, [dateKey]: e.target.value})} className="input" style={{ fontSize: 12, padding: '6px 10px', minHeight: 32 }} />
           </div>
         </div>
+
+        {prefix === 'inProcess' && (
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--dust)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Clock size={16} color="var(--copper-bronze)" />
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--charcoal)' }}>
+                  Shift Inspection Frequency & Observation Columns
+                </span>
+              </div>
+              <span className="badge badge-queued" style={{ fontSize: 11, padding: '3px 8px' }}>
+                {Math.max(1, Math.round((Number(config.defaultShiftHours) || 8) / (Number(config.inspectionIntervalHours) || 1)))} Observation Columns
+              </span>
+            </div>
+
+            <p style={{ fontSize: 11, color: 'var(--ash)', margin: '0 0 12px 0', lineHeight: 1.4 }}>
+              Configure how often in-process inspections occur during the shift. This dynamically sets the observation columns displayed on the In-Process Inspection Report.
+            </p>
+
+            {/* Quick Presets */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+              {[
+                { label: 'Every 1 Hour (8 Columns / 8h Shift)', interval: 1, shift: 8 },
+                { label: 'Every 2 Hours (4 Columns / 8h Shift)', interval: 2, shift: 8 },
+                { label: 'Every 4 Hours (2 Columns / 8h Shift)', interval: 4, shift: 8 },
+                { label: 'Every 30 Mins (16 Columns / 8h Shift)', interval: 0.5, shift: 8 },
+              ].map(preset => {
+                const isSelected = Number(config.inspectionIntervalHours || 1) === preset.interval && Number(config.defaultShiftHours || 8) === preset.shift;
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => handleApplyPreset(preset.interval, preset.shift)}
+                    disabled={saving || savingFrequency}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: (saving || savingFrequency) ? 'not-allowed' : 'pointer',
+                      border: isSelected ? '1.5px solid var(--copper-bronze)' : '1px solid var(--dust)',
+                      background: isSelected ? 'var(--silk)' : 'white',
+                      color: isSelected ? 'var(--copper-dark)' : 'var(--slate)',
+                      transition: 'all 0.15s ease',
+                      opacity: (saving || savingFrequency) ? 0.7 : 1,
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Interval & Shift Inputs */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--slate)', marginBottom: 4 }}>
+                  Inspection Interval (Hours)
+                </label>
+                <input
+                  type="number"
+                  min="0.5"
+                  max="24"
+                  step="0.5"
+                  placeholder="e.g. 1 or 2"
+                  value={config.inspectionIntervalHours ?? 1}
+                  onChange={e => {
+                    const val = parseFloat(e.target.value) || 1;
+                    setConfig({ ...config, inspectionIntervalHours: val });
+                  }}
+                  className="input"
+                  style={{ fontSize: 12, padding: '6px 10px', minHeight: 32 }}
+                />
+                <span style={{ fontSize: 10, color: 'var(--ash)', marginTop: 2, display: 'block' }}>
+                  Interval between inspection logs (e.g., 1 hr = 8 inspections in 8h shift, 2 hrs = 4 inspections)
+                </span>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--slate)', marginBottom: 4 }}>
+                  Default Shift Length (Hours)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="24"
+                  step="0.5"
+                  placeholder="e.g. 8"
+                  value={config.defaultShiftHours ?? 8}
+                  onChange={e => {
+                    const val = parseFloat(e.target.value) || 8;
+                    setConfig({ ...config, defaultShiftHours: val });
+                  }}
+                  className="input"
+                  style={{ fontSize: 12, padding: '6px 10px', minHeight: 32 }}
+                />
+                <span style={{ fontSize: 10, color: 'var(--ash)', marginTop: 2, display: 'block' }}>
+                  Standard shift duration used to calculate observation columns (default: 8 hours)
+                </span>
+              </div>
+            </div>
+
+            {/* Interactive Preview of Columns */}
+            <div style={{ marginTop: 12, padding: '10px 12px', background: 'white', borderRadius: 6, border: '1px solid var(--dust)' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--charcoal)', marginBottom: 6 }}>
+                Generated Report Observation Columns Preview:
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {(() => {
+                  const interval = Number(config.inspectionIntervalHours) || 1;
+                  const shift = Number(config.defaultShiftHours) || 8;
+                  const cols = Math.max(1, Math.round(shift / (interval > 0 ? interval : 1)));
+                  return Array.from({ length: cols }, (_, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '4px 8px',
+                        borderRadius: 4,
+                        background: 'var(--bone-white)',
+                        border: '1px solid var(--stone)',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: 'var(--charcoal)',
+                        textAlign: 'center',
+                        minWidth: 55,
+                      }}
+                    >
+                      <div>Col {idx + 1}</div>
+                      <div style={{ fontSize: 9, color: 'var(--slate)', fontWeight: 'normal' }}>
+                        {(idx + 1) * interval}h
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+
+            {/* Dedicated Save Action Bar for Inspection Frequency */}
+            <div
+              style={{
+                marginTop: 14,
+                padding: '12px 14px',
+                background: 'var(--silk)',
+                borderRadius: 6,
+                border: '1px solid var(--stone)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 12,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--charcoal)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Check size={14} color="var(--copper-bronze)" />
+                  Frequency: Every {config.inspectionIntervalHours ?? 1} hr(s) &bull; {Math.max(1, Math.round((Number(config.defaultShiftHours) || 8) / (Number(config.inspectionIntervalHours) || 1)))} columns in {config.defaultShiftHours ?? 8}h shift
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--slate)', marginTop: 2 }}>
+                  Presets save automatically when clicked. You can also edit values and click Save here.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => handleSaveFrequency()}
+                disabled={saving || savingFrequency}
+                style={{
+                  minHeight: 34,
+                  padding: '0 16px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  cursor: (saving || savingFrequency) ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <Save size={14} />
+                {savingFrequency ? 'Saving...' : 'Save Inspection Frequency'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   };

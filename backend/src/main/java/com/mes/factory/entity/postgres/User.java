@@ -51,6 +51,9 @@ public class User {
     @JsonIgnore
     private String passwordHash;
 
+    @Column(name = "assigned_password", length = 255)
+    private String assignedPassword;
+
     @Column(name = "full_name", nullable = false)
     private String fullName;
 
@@ -80,6 +83,10 @@ public class User {
     @Column(name = "can_manage_users")
     @Builder.Default
     private Boolean canManageUsers = false;
+
+    @Column(name = "can_backfill_pqc")
+    @Builder.Default
+    private Boolean canBackfillPqc = false;
 
     @Column(name = "last_login_at")
     private OffsetDateTime lastLoginAt;

@@ -47,9 +47,15 @@ public class PqcInspectionLog {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User inspector;
 
-    @CreationTimestamp
-    @Column(name = "log_time", updatable = false)
+    @Column(name = "log_time", nullable = false)
     private OffsetDateTime logTime;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.logTime == null) {
+            this.logTime = OffsetDateTime.now();
+        }
+    }
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "shift_id")
@@ -102,4 +108,30 @@ public class PqcInspectionLog {
 
     @Column(name = "reviewer_remarks", columnDefinition = "TEXT")
     private String reviewerRemarks;
+
+    @Column(name = "incident_type", length = 100)
+    private String incidentType;
+
+    @Column(name = "incident_duration_mins")
+    private Integer incidentDurationMins;
+
+    @Column(name = "incident_remarks", columnDefinition = "TEXT")
+    private String incidentRemarks;
+
+    @Column(name = "slot_index")
+    private Integer slotIndex;
+
+    @Column(name = "is_escalated")
+    @Builder.Default
+    private Boolean isEscalated = false;
+
+    @Column(name = "escalated_to", length = 100)
+    private String escalatedTo;
+
+    @Column(name = "escalation_reason", columnDefinition = "TEXT")
+    private String escalationReason;
+
+    @Column(name = "is_backfill")
+    @Builder.Default
+    private Boolean isBackfill = false;
 }

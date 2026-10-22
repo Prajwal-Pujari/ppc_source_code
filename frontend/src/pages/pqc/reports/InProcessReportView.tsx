@@ -2,6 +2,23 @@ import React from 'react';
 import type { QualityReportDto, PqcMeasurement } from '@/types/domain.types';
 
 export default function InProcessReportView({ data, config }: { data: QualityReportDto, config?: any }) {
+  const [fetchedConfig, setFetchedConfig] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    if (!config?.inspectionIntervalHours && !data?.inspectionIntervalHours) {
+      import('@/api/reportConfig.api').then(({ reportConfigApi }) => {
+        reportConfigApi.get().then(res => {
+          if (res.data) setFetchedConfig(res.data);
+        }).catch(() => {});
+      });
+    }
+  }, [config?.inspectionIntervalHours, data?.inspectionIntervalHours]);
+
+  const activeConfig = { ...fetchedConfig, ...config };
+  const intervalHours = Number(activeConfig?.inspectionIntervalHours ?? data?.inspectionIntervalHours ?? 1);
+  const shiftHours = Number(activeConfig?.defaultShiftHours ?? data?.defaultShiftHours ?? 8);
+  const configuredCols = Math.max(1, Math.round(shiftHours / (intervalHours > 0 ? intervalHours : 1)));
+
   // Helper to format specification
   const getSpecString = (m: PqcMeasurement) => {
     if (m.minValue !== undefined && m.minValue !== null && m.maxValue !== undefined && m.maxValue !== null) {
@@ -23,6 +40,25 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
     return '';
   };
 
+  // Helper to format date as DD-MM-YYYY
+  const formatReportDate = (dInput: any): string => {
+    if (!dInput) return '';
+    const str = String(dInput).trim();
+    if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
+      return str;
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      const [y, m, d] = str.split('-');
+      return `${d}-${m}-${y}`;
+    }
+    const d = new Date(dInput);
+    if (isNaN(d.getTime())) return str;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
   // Helper to format actual value
   const formatActualValue = (val: any, expected?: string) => {
     if (val === null || val === undefined || val === '') return '-';
@@ -41,7 +77,7 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
 
   data.operations?.forEach(op => {
     op.batches?.forEach(b => {
-      uniqueDates.add(new Date(b.logTime).toLocaleDateString());
+      uniqueDates.add(formatReportDate(b.logTime));
       if (b.inspectorName) uniqueOperators.add(b.inspectorName);
       if (b.shiftName) uniqueShifts.add(b.shiftName);
       if (b.machineName) uniqueMachines.add(b.machineName);
@@ -50,7 +86,7 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
 
   const datesArray = Array.from(uniqueDates).sort();
   const dateDisplay = datesArray.length === 0
-    ? new Date(data.generatedAt).toLocaleDateString()
+    ? formatReportDate(data.generatedAt)
     : datesArray.length === 1
       ? datesArray[0]
       : `${datesArray[0]} to ${datesArray[datesArray.length - 1]}`;
@@ -59,12 +95,23 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
   const shiftDisplay = Array.from(uniqueShifts).join(', ') || '-';
   const machineDisplay = Array.from(uniqueMachines).join(', ') || '-';
 
+  // Matched approval fallback if not passed directly in config
+  const currentApproval = activeConfig?.activeApproval || (
+    data.approvals && data.approvals.length > 0
+      ? data.approvals.find((a: any) => {
+          const aDate = formatReportDate(a.inspectionDate);
+          return datesArray.includes(aDate) && (!a.shiftName || uniqueShifts.has(a.shiftName));
+        }) || data.approvals[0]
+      : undefined
+  );
+
   // --- 1. Flatten all rows ---
   type RowDef =
     | { type: 'opHeader'; op: any; isContinued?: boolean }
     | { type: 'timeHeader'; op: any; isContinued?: boolean }
     | { type: 'param'; op: any; param: PqcMeasurement }
     | { type: 'qtyRow'; op: any; label: string; field: 'inspectedQty' | 'reworkQty' | 'rejectedQty' | 'scrapQty' }
+    | { type: 'incidentRow'; op: any; label: string }
     | { type: 'empty' };
 
   // --- Chunk rows into pages operation by operation ---
@@ -73,7 +120,14 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
 
   data.operations.forEach(op => {
     const uniqueParamsMap = new Map<string, PqcMeasurement>();
-    op.batches.forEach(b => {
+    if (op.configuredParameters && op.configuredParameters.length > 0) {
+      op.configuredParameters.forEach((cp: any) => {
+        if (cp.questionId) {
+          uniqueParamsMap.set(cp.questionId, cp);
+        }
+      });
+    }
+    op.batches?.forEach(b => {
       b.measurements?.forEach(m => {
         if (!uniqueParamsMap.has(m.questionId)) {
           uniqueParamsMap.set(m.questionId, m);
@@ -89,7 +143,8 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
         { type: 'qtyRow', op, label: 'Produced Actual', field: 'inspectedQty' },
         { type: 'qtyRow', op, label: 'Rework', field: 'reworkQty' },
         { type: 'qtyRow', op, label: 'Reject', field: 'rejectedQty' },
-        { type: 'qtyRow', op, label: 'Scrap', field: 'scrapQty' }
+        { type: 'qtyRow', op, label: 'Scrap', field: 'scrapQty' },
+        { type: 'incidentRow', op, label: 'Breakdown / Incident' }
       ];
 
       let rowsRemaining = [...opRows];
@@ -104,9 +159,9 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
         if (rowsRemaining.length <= limit) {
           takeCount = rowsRemaining.length;
         } else {
-          // Prevent leaving just 1 to 4 quantity rows stranded alone on the next page
-          if (rowsRemaining.length - limit <= 4 && limit > 6) {
-            takeCount = rowsRemaining.length - 4;
+          // Prevent leaving just 1 to 5 quantity/incident rows stranded alone on the next page
+          if (rowsRemaining.length - limit <= 5 && limit > 6) {
+            takeCount = rowsRemaining.length - 5;
           }
         }
 
@@ -190,8 +245,18 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
         `}
       </style>
 
-      {pages.map((page, pageIdx) => (
-        <div key={pageIdx} className="pdf-page">
+      {pages.map((page, pageIdx) => {
+        const activeOp = (page.rows.find(r => 'op' in r && (r as any).op) as any)?.op;
+        const opCodeDisplay = activeOp
+          ? (activeOp.operationCode
+              ? (activeOp.operationName ? `${activeOp.operationCode} - ${activeOp.operationName}` : activeOp.operationCode)
+              : (activeOp.sequenceOrder ? `OP-${activeOp.sequenceOrder}${activeOp.operationName ? ` - ${activeOp.operationName}` : ''}` : (activeOp.operationName || 'Continuous')))
+          : (data.operations && data.operations.length > 0
+              ? data.operations.map(o => o.operationCode ? `${o.operationCode} - ${o.operationName}` : o.operationName).filter(Boolean).join(', ')
+              : 'Continuous');
+
+        return (
+          <div key={pageIdx} className="pdf-page">
 
           {/* HEADER SECTION (Now on every page) */}
           <table className="cert-table" style={{ borderBottom: 'none' }}>
@@ -199,8 +264,8 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
               <tr>
                 <td rowSpan={2} style={{ width: '10%' }}>
                   <div style={{ height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                    {(data.customerLogo || config?.customerLogo) ? (
-                      <img src={(data.customerLogo || config?.customerLogo) as string} alt="Logo" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                    {(data.customerLogo || activeConfig?.customerLogo) ? (
+                      <img src={(data.customerLogo || activeConfig?.customerLogo) as string} alt="Logo" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                     ) : (
                       <span style={{ fontWeight: 'bold', color: '#666' }}>LOGO</span>
                     )}
@@ -208,9 +273,9 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                 </td>
                 <td rowSpan={2} colSpan={3} style={{ width: '65%', fontSize: '18px', fontWeight: 'bold' }}>IN-PROCESS INSPECTION REPORT</td>
                 <td colSpan={2} className="left-align" style={{ width: '25%', fontSize: '10px', verticalAlign: 'top', padding: '4px' }}>
-                  <div><strong>Doc. No:-</strong> {data.docNo || config?.inProcessDocNo || config?.docNo || ''}</div>
-                  <div><strong>Rev.No./Date:-</strong> {data.revNo || config?.inProcessRevNo || config?.revNo || ''}</div>
-                  <div><strong>Issue Date:-</strong> {data.issueDate || config?.inProcessIssueDate || config?.issueDate || ''}</div>
+                  <div><strong>Doc. No:-</strong> {data.docNo || activeConfig?.inProcessDocNo || activeConfig?.docNo || ''}</div>
+                  <div><strong>Rev.No./Date:-</strong> {data.revNo || activeConfig?.inProcessRevNo || activeConfig?.revNo || ''}</div>
+                  <div><strong>Issue Date:-</strong> {data.issueDate || activeConfig?.inProcessIssueDate || activeConfig?.issueDate || ''}</div>
                 </td>
               </tr>
               <tr>
@@ -219,12 +284,12 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
               <tr>
                 <td colSpan={2} className="left-align" style={{ width: '40%' }}><strong>Part No./Name:</strong> {data.partName}</td>
                 <td colSpan={2} className="left-align" style={{ width: '30%' }}><strong>Operator Name:</strong> {operatorDisplay}</td>
-                <td className="left-align" style={{ width: '20%' }}><strong>Inspection Date(s):</strong> {dateDisplay}</td>
+                <td className="left-align" style={{ width: '20%' }}><strong>{datesArray.length <= 1 ? 'Inspection Date:' : 'Inspection Date(s):'}</strong> {dateDisplay}</td>
                 <td className="left-align" style={{ width: '10%' }}><strong>Shift:</strong> {shiftDisplay}</td>
               </tr>
               <tr>
                 <td colSpan={2} className="left-align"><strong>Drg. Reference/Model:</strong> {data.serialNumber || data.gaugeId}</td>
-                <td colSpan={2} className="left-align"><strong>Setup/Opr. No.:</strong> Continuous</td>
+                <td colSpan={2} className="left-align"><strong>Setup/Opr. No.:</strong> {opCodeDisplay}</td>
                 <td colSpan={2} className="left-align"><strong>M/C Name/No.:</strong> {machineDisplay}</td>
               </tr>
             </tbody>
@@ -238,7 +303,7 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
             <tbody>
               {(() => {
                 const activeOp = (page.rows.find(r => 'op' in r && (r as any).op) as any)?.op;
-                const obsCount = Math.max(8, activeOp?.batches?.length || 8);
+                const obsCount = Math.max(configuredCols, activeOp?.batches?.length || 0);
                 const totalCols = 6 + obsCount;
                 const obsColWidth = `${(37 / obsCount).toFixed(2)}%`;
 
@@ -268,10 +333,23 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                           <th style={{ borderTop: 'none', paddingTop: 0 }}></th>
                           {[...Array(obsCount)].map((_, i) => {
                             const batch = row.op.batches?.[i];
-                            const headerVal = batch ? new Date(batch.logTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : String(i + 1);
+                            const hasIncident = !!batch?.incidentType;
                             return (
-                              <th key={`obs-th-${rIdx}-${i}`} style={{ width: obsColWidth, height: '24px', fontSize: batch ? '11px' : '13px', fontWeight: 'bold', color: '#000', whiteSpace: 'nowrap' }}>
-                                {headerVal}
+                              <th
+                                key={`obs-th-${rIdx}-${i}`}
+                                style={{
+                                  width: obsColWidth,
+                                  height: '24px',
+                                  fontSize: batch ? '11px' : '13px',
+                                  fontWeight: 'bold',
+                                  color: hasIncident ? '#991b1b' : '#000',
+                                  backgroundColor: hasIncident ? '#fee2e2' : undefined,
+                                  borderLeft: hasIncident ? '1.5px solid #dc2626' : undefined,
+                                  borderRight: hasIncident ? '1.5px solid #dc2626' : undefined,
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                {batch ? new Date(batch.logTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : String(i + 1)}
                               </th>
                             );
                           })}
@@ -290,6 +368,7 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                         <td>{data.partName || '-'}</td>
                         {[...Array(obsCount)].map((_, bIndex) => {
                           const batch = row.op.batches[bIndex];
+                          const hasIncident = !!batch?.incidentType;
                           let val = '';
                           if (batch) {
                             const m = batch.measurements?.find((x: any) => x.questionId === row.param.questionId);
@@ -299,7 +378,20 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                               val = '-';
                             }
                           }
-                          return <td key={bIndex}>{val}</td>;
+                          return (
+                            <td
+                              key={bIndex}
+                              style={{
+                                backgroundColor: hasIncident ? '#fef2f2' : undefined,
+                                color: hasIncident ? '#991b1b' : undefined,
+                                fontWeight: hasIncident ? 'bold' : 'normal',
+                                borderLeft: hasIncident ? '1.5px solid #dc2626' : undefined,
+                                borderRight: hasIncident ? '1.5px solid #dc2626' : undefined
+                              }}
+                            >
+                              {val}
+                            </td>
+                          );
                         })}
                         <td></td>
                       </tr>
@@ -314,19 +406,67 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                         </td>
                         {[...Array(obsCount)].map((_, bIndex) => {
                           const batch = row.op.batches[bIndex];
+                          const hasIncident = !!batch?.incidentType;
                           let val = '';
                           if (batch && batch[row.field] != null) {
                             val = batch[row.field].toString();
                           }
                           const isBad = (row.field === 'rejectedQty' || row.field === 'scrapQty') && val !== '' && val !== '0';
                           return (
-                            <td key={`qty-obs-${bIndex}`} className="bold" style={{ color: isBad ? '#ef4444' : 'inherit' }}>
+                            <td
+                              key={`qty-obs-${bIndex}`}
+                              className="bold"
+                              style={{
+                                color: isBad || hasIncident ? '#991b1b' : 'inherit',
+                                backgroundColor: hasIncident ? '#fef2f2' : undefined,
+                                borderLeft: hasIncident ? '1.5px solid #dc2626' : undefined,
+                                borderRight: hasIncident ? '1.5px solid #dc2626' : undefined
+                              }}
+                            >
                               {val}
                             </td>
                           );
                         })}
                         <td className="bold" style={{ textAlign: 'center', color: 'var(--copper-bronze)' }}>
                           {total > 0 ? total : ''}
+                        </td>
+                      </tr>
+                    );
+                  }
+                  if (row.type === 'incidentRow') {
+                    const incidents = row.op.batches.filter((b: any) => b.incidentType);
+                    const totalIncidentCount = incidents.length;
+                    return (
+                      <tr key={`incident-${rIdx}`} style={{ backgroundColor: totalIncidentCount > 0 ? '#fff5f5' : '#faf9f6' }}>
+                        <td colSpan={5} className="bold" style={{ textAlign: 'right', paddingRight: '12px', color: totalIncidentCount > 0 ? '#8b3a3a' : 'inherit' }}>
+                          {row.label}
+                        </td>
+                        {[...Array(obsCount)].map((_, bIndex) => {
+                          const batch = row.op.batches[bIndex];
+                          if (!batch || !batch.incidentType) {
+                            return <td key={`inc-obs-${bIndex}`} style={{ color: '#aaa', fontSize: '11px' }}>-</td>;
+                          }
+                          return (
+                            <td
+                              key={`inc-obs-${bIndex}`}
+                              className="bold"
+                              style={{
+                                color: '#7f1d1d',
+                                backgroundColor: '#fee2e2',
+                                fontSize: '10px',
+                                padding: '2px 4px',
+                                lineHeight: 1.2,
+                                borderLeft: '1.5px solid #dc2626',
+                                borderRight: '1.5px solid #dc2626'
+                              }}
+                            >
+                              <div style={{ fontWeight: 'bold' }}>{batch.incidentType}</div>
+                              {batch.incidentDurationMins ? <div style={{ fontSize: '9px', color: '#991b1b' }}>({batch.incidentDurationMins}m)</div> : null}
+                            </td>
+                          );
+                        })}
+                        <td className="bold" style={{ textAlign: 'center', color: totalIncidentCount > 0 ? '#8b3a3a' : '#888', fontSize: '11px' }}>
+                          {totalIncidentCount > 0 ? `${totalIncidentCount}` : '-'}
                         </td>
                       </tr>
                     );
@@ -339,7 +479,21 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                         <td></td>
                         <td></td>
                         <td></td>
-                        {[...Array(obsCount)].map((_, j) => <td key={`empty-obs-${rIdx}-${j}`} style={{ height: '24px' }}></td>)}
+                        {[...Array(obsCount)].map((_, j) => {
+                          const batch = (page.rows.find(r => r.type === 'opHeader' || r.type === 'qtyRow') as any)?.op?.batches?.[j];
+                          const hasIncident = !!batch?.incidentType;
+                          return (
+                            <td
+                              key={`empty-obs-${rIdx}-${j}`}
+                              style={{
+                                height: '24px',
+                                backgroundColor: hasIncident ? '#fef2f2' : undefined,
+                                borderLeft: hasIncident ? '1.5px solid #dc2626' : undefined,
+                                borderRight: hasIncident ? '1.5px solid #dc2626' : undefined
+                              }}
+                            ></td>
+                          );
+                        })}
                         <td></td>
                       </tr>
                     );
@@ -361,13 +515,52 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
             <table className="cert-table" style={{ borderTop: 'none', marginTop: 0 }}>
               <tbody>
                 <tr>
-                  <td colSpan={1} rowSpan={3} className="left-align" style={{ verticalAlign: 'top', width: '60%', borderTop: 'none' }}>
+                  <td colSpan={1} rowSpan={3} className="left-align" style={{ verticalAlign: 'top', width: '60%', borderTop: 'none', padding: '8px' }}>
                     <strong>Remarks(Rework/Tool Change/Dimensional Issue/Other):-</strong>
+                    {(() => {
+                      const op = (page.rows.find(r => r.type === 'opHeader' || r.type === 'qtyRow' || r.type === 'incidentRow') as any)?.op;
+                      const batchesWithIncidents = op?.batches?.filter((b: any) => b.incidentType || b.incidentRemarks) || [];
+                      const batchesWithRemarks = op?.batches?.filter((b: any) => b.remarks && !b.incidentType) || [];
+
+                      if (batchesWithIncidents.length === 0 && batchesWithRemarks.length === 0) {
+                        return null;
+                      }
+
+                      return (
+                        <div style={{ marginTop: 6, fontSize: '11px', lineHeight: 1.4 }}>
+                          {batchesWithIncidents.length > 0 && (
+                            <div style={{ marginBottom: 4 }}>
+                              <span style={{ color: '#8b3a3a', fontWeight: 'bold' }}>Breakdown / Incident Log:</span>
+                              <div style={{ marginTop: 2 }}>
+                                {batchesWithIncidents.map((b: any, idx: number) => (
+                                  <div key={idx} style={{ color: '#8b3a3a', marginBottom: 2 }}>
+                                    - <strong>{b.incidentType || 'Incident'}</strong>
+                                    {b.incidentDurationMins ? ` [${b.incidentDurationMins} mins downtime]` : ''}
+                                    {b.incidentRemarks ? `: "${b.incidentRemarks}"` : ''}
+                                    {b.inspectorName ? ` (Reported by: ${b.inspectorName})` : ''}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {batchesWithRemarks.length > 0 && (
+                            <div>
+                              <span style={{ color: '#4a4540', fontWeight: 'bold' }}>Batch Observations:</span>
+                              {batchesWithRemarks.map((b: any, idx: number) => (
+                                <div key={idx} style={{ color: '#4a4540', fontStyle: 'italic' }}>
+                                  - {b.remarks}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td colSpan={1} className="left-align" style={{ height: '30px', verticalAlign: 'top', width: '40%', borderTop: 'none' }}>
                     <strong>Quality Remarks</strong>
-                    {config?.activeApproval?.qualityRemark && (
-                      <div style={{ marginTop: 4, fontSize: 11, color: 'var(--charcoal)' }}>{config.activeApproval.qualityRemark}</div>
+                    {currentApproval?.qualityRemark && (
+                      <div style={{ marginTop: 4, fontSize: 11, color: 'var(--charcoal)' }}>{currentApproval.qualityRemark}</div>
                     )}
                   </td>
                 </tr>
@@ -382,19 +575,19 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                       <div style={{ width: 120 }}>
                         <strong>Inspector Sign</strong>
                       </div>
-                      {config?.activeApproval?.signature && (
+                      {currentApproval?.signature && (
                         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
                           <img
-                            src={config.activeApproval.signature}
+                            src={currentApproval.signature}
                             alt="Signature"
                             style={{ maxHeight: '44px', maxWidth: '150px', objectFit: 'contain' }}
                           />
                         </div>
                       )}
-                      {config?.activeApproval && (
+                      {currentApproval && (
                         <div style={{ fontSize: 10, color: 'var(--slate)', textAlign: 'right', minWidth: 150 }}>
-                          <div style={{ fontWeight: 600, color: 'var(--charcoal)' }}>{config.activeApproval.inspectorName}</div>
-                          <div>{new Date(config.activeApproval.approvedAt).toLocaleDateString()} {new Date(config.activeApproval.approvedAt).toLocaleTimeString()}</div>
+                          <div style={{ fontWeight: 600, color: 'var(--charcoal)' }}>{currentApproval.inspectorName}</div>
+                          <div>{new Date(currentApproval.approvedAt).toLocaleDateString()} {new Date(currentApproval.approvedAt).toLocaleTimeString()}</div>
                         </div>
                       )}
                     </div>
@@ -405,14 +598,14 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
                     <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'flex-end' }}>
                       <div style={{ flex: 1, paddingRight: 20 }}>
                         <span><strong>Additional Note:-</strong></span>
-                        {config?.activeApproval?.additionalNote && (
-                          <div style={{ marginTop: 4, fontSize: 11, color: 'var(--charcoal)' }}>{config.activeApproval.additionalNote}</div>
+                        {currentApproval?.additionalNote && (
+                          <div style={{ marginTop: 4, fontSize: 11, color: 'var(--charcoal)' }}>{currentApproval.additionalNote}</div>
                         )}
                       </div>
                       <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        {config?.activeApproval && (
+                        {currentApproval && (
                           <span><strong>Approved By: </strong> 
-                            {`${config.activeApproval.inspectorName} (${config.activeApproval.approverDesignation || 'Quality Head'})`}
+                            {`${currentApproval.inspectorName} (${currentApproval.approverDesignation || 'Quality Head'})`}
                           </span>
                         )}
                       </div>
@@ -428,8 +621,9 @@ export default function InProcessReportView({ data, config }: { data: QualityRep
               *** END OF CERTIFICATE ***
             </div>
           )}
-        </div>
-      ))}
+          </div>
+        );
+      })}
     </div>
   );
 }

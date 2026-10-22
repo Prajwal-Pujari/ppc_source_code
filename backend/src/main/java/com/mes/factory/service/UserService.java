@@ -52,12 +52,28 @@ public class UserService {
                 .fullName(request.getFullName())
                 .username(request.getUsername())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .assignedPassword(request.getPassword())
                 .role(request.getRole())
                 .canManageUsers(request.getRole() == UserRole.SUPERVISOR && request.isCanManageUsers())
+                .canBackfillPqc(request.isCanBackfillPqc())
                 .isActive(true)
                 .build();
 
         return userRepository.save(newUser);
+    }
+
+    @Transactional
+    public User resetPassword(UUID userId, String newPassword, CustomUserDetails currentUser) {
+        if (!UserRole.ADMIN.name().equals(currentUser.getRole())) {
+            throw new SecurityException("Only Administrators can reset user passwords");
+        }
+
+        User user = userRepository.findByIdAndFactoryId(userId, currentUser.getFactoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setAssignedPassword(newPassword);
+        return userRepository.save(user);
     }
 
     @Transactional
@@ -75,6 +91,19 @@ public class UserService {
         }
 
         user.setCanManageUsers(canManage);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User togglePqcAuthority(UUID userId, boolean hasAuthority, CustomUserDetails currentUser) {
+        if (!UserRole.ADMIN.name().equals(currentUser.getRole())) {
+            throw new SecurityException("Only Administrators can modify user inspection authority");
+        }
+
+        User user = userRepository.findByIdAndFactoryId(userId, currentUser.getFactoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        user.setCanBackfillPqc(hasAuthority);
         return userRepository.save(user);
     }
 

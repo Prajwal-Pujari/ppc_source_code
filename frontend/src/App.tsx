@@ -4,7 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import AppLayout from '@/components/layout/AppLayout';
 import PqcLayout from '@/components/layout/PqcLayout';
-import { ProtectedRoute } from '@/components/layout/AuthGuards';
+import { ProtectedRoute, RequireRole } from '@/components/layout/AuthGuards';
 import LoginPage from '@/pages/auth/LoginPage';
 import DashboardPage from '@/pages/dashboard/DashboardPage';
 import MyTasksPage from '@/pages/dashboard/MyTasksPage';
@@ -29,6 +29,7 @@ import MachineSetupMasterPage from '@/pages/master/MachineSetupMasterPage';
 import PqcReportDashboard from './pages/pqc/PqcReportDashboard';
 import PqcApprovalsDashboard from './pages/pqc/PqcApprovalsDashboard';
 import PqcScrapReportPage from './pages/pqc/PqcScrapReportPage';
+import PqcBreakdownReportPage from './pages/pqc/PqcBreakdownReportPage';
 import PqcSetupReportDashboard from './pages/pqc/PqcSetupReportDashboard';
 import PqcMasterDossierPage from './pages/pqc/PqcMasterDossierPage';
 import PqcDashboardPage from '@/pages/pqc/PqcDashboardPage';
@@ -46,6 +47,8 @@ import { LpaIndependentChecklistsPage } from '@/pages/lpa/LpaIndependentChecklis
 import { LpaNcManagementPage } from '@/pages/lpa/LpaNcManagementPage';
 import { LpaBulkScheduleFlowPage } from '@/pages/lpa/LpaBulkScheduleFlowPage';
 import { ModuleSettingsPage } from '@/pages/settings/ModuleSettingsPage';
+import { useInspectionUnlockMonitor } from '@/hooks/useInspectionUnlockMonitor';
+import { InspectionUnlockModal } from '@/components/common/InspectionUnlockModal';
 import { Toaster } from 'react-hot-toast';
 import './index.css';
 
@@ -54,14 +57,33 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <Toaster position="top-right" />
       <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
+        <AppRoutes />
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+}
 
-          <Route element={<ProtectedRoute />}>
+function AppRoutes() {
+  useInspectionUnlockMonitor();
+
+  return (
+    <>
+      <InspectionUnlockModal />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+
+        <Route element={<ProtectedRoute />}>
             {/* ── MES Module (Default / Root) ── */}
             <Route element={<AppLayout />}>
               <Route path="/" element={<RoleRedirect />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <RequireRole roles={['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER']}>
+                    <DashboardPage />
+                  </RequireRole>
+                }
+              />
               <Route path="/my-tasks" element={<Navigate to="/tasks/my" replace />} />
               <Route path="/completed-tasks" element={<Navigate to="/tasks/completed" replace />} />
               <Route path="/tasks/my" element={<MyTasksPage />} />
@@ -81,6 +103,7 @@ export default function App() {
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/reports" element={<PqcReportDashboard />} />
               <Route path="/nc-records" element={<NcRecordsPage />} />
+              <Route path="/breakdowns" element={<PqcBreakdownReportPage />} />
               <Route path="/master/gauges" element={<GaugeMasterPage />} />
               <Route path="/master/operations" element={<OperationMasterPage />} />
               <Route path="/master/customers" element={<CustomerMasterPage />} />
@@ -90,6 +113,7 @@ export default function App() {
               <Route path="/settings/users" element={<UserManagementPage />} />
               <Route path="/settings/modules" element={<ModuleSettingsPage />} />
               <Route path="/settings/reports" element={<PqcSettingsPage />} />
+              <Route path="/settings/authority" element={<PqcSettingsPage initialTab="authority" />} />
               <Route path="/inspection" element={<InspectorLiveEntryPage />} />
             </Route>
 
@@ -106,6 +130,8 @@ export default function App() {
               <Route path="/pqc/jobcards/:id/verify" element={<JobCardVerificationPage />} />
               <Route path="/pqc/machine-schedule" element={<MachineSchedulePage />} />
               <Route path="/pqc/inspect" element={<InspectorLiveEntryPage />} />
+              <Route path="/pqc/breakdowns" element={<PqcBreakdownReportPage />} />
+              <Route path="/pqc/incidents" element={<PqcBreakdownReportPage />} />
               <Route path="/pqc/reports" element={<PqcReportDashboard />} />
               <Route path="/pqc/scrap-report" element={<PqcScrapReportPage />} />
               <Route path="/pqc/setup-report" element={<PqcSetupReportDashboard />} />
@@ -147,10 +173,9 @@ export default function App() {
 
           <Route path="*" element={<RoleRedirect />} />
         </Routes>
-      </BrowserRouter>
-    </QueryClientProvider>
-  );
-}
+      </>
+    );
+  }
 
 function PlaceholderPage({ title }: { title: string }) {
   return (

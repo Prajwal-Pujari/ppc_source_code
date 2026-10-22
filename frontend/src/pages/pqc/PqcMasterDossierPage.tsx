@@ -12,7 +12,29 @@ import { reportConfigApi, type ReportConfiguration } from '@/api/reportConfig.ap
 
 import { JobCardDossierView } from '@/components/ui/JobCardDossierView';
 
+import { Calendar } from 'lucide-react';
+
+const formatReportDate = (dInput: any): string => {
+  if (!dInput) return '';
+  const str = String(dInput).trim();
+  if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
+    return str;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const [y, m, d] = str.split('-');
+    return `${d}-${m}-${y}`;
+  }
+  const d = new Date(dInput);
+  if (isNaN(d.getTime())) return str;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
 function GaugeDossier({ gaugeId, reportConfig }: { gaugeId: string, reportConfig: any }) {
+  const [selectedSessionKey, setSelectedSessionKey] = useState<string>('ALL');
+
   const { data: reportData } = useQuery({
     queryKey: ['pqc-report', gaugeId, 'IN_PROCESS'],
     queryFn: async () => {
@@ -29,13 +51,92 @@ function GaugeDossier({ gaugeId, reportConfig }: { gaugeId: string, reportConfig
     }
   });
 
-  // We don't have direct access to setup data state here, but we can assume SetupReportView returns null
-  const hasInProcess = reportData && reportData.operations && reportData.operations.length > 0;
+  // Extract distinct Day + Shift sessions so reports are never clubbed
+  const sessions = React.useMemo(() => {
+    if (!reportData?.operations) return [];
+    const map = new Map<string, {
+      key: string;
+      dateStr: string;
+      shiftName: string;
+      firstLogTime: number;
+      batchCount: number;
+      inspectorNames: Set<string>;
+      machineNames: Set<string>;
+    }>();
+
+    reportData.operations.forEach((op: any) => {
+      op.batches?.forEach((b: any) => {
+        const dateStr = formatReportDate(b.logTime);
+        const shiftName = b.shiftName || 'Standard Shift';
+        const key = `${dateStr}__${shiftName}`;
+        const logEpoch = new Date(b.logTime).getTime();
+
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            dateStr,
+            shiftName,
+            firstLogTime: isNaN(logEpoch) ? 0 : logEpoch,
+            batchCount: 1,
+            inspectorNames: new Set(b.inspectorName ? [b.inspectorName] : []),
+            machineNames: new Set(b.machineName ? [b.machineName] : [])
+          });
+        } else {
+          const item = map.get(key)!;
+          item.batchCount++;
+          if (b.inspectorName) item.inspectorNames.add(b.inspectorName);
+          if (b.machineName) item.machineNames.add(b.machineName);
+          if (!isNaN(logEpoch) && logEpoch < item.firstLogTime) {
+            item.firstLogTime = logEpoch;
+          }
+        }
+      });
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.firstLogTime - b.firstLogTime);
+  }, [reportData]);
+
+  // Build clean independent report strictly for a specific session
+  const getSessionReport = (session: typeof sessions[0]) => {
+    const dataClone = JSON.parse(JSON.stringify(reportData)) as any;
+
+    let matchedApproval = undefined;
+    if (dataClone.approvals) {
+      matchedApproval = dataClone.approvals.find(
+        (a: any) =>
+          (a.inspectionDate === session.dateStr || formatReportDate(a.inspectionDate) === session.dateStr) &&
+          (!a.shiftName || a.shiftName === session.shiftName)
+      ) || dataClone.approvals.find(
+        (a: any) => a.inspectionDate === session.dateStr || formatReportDate(a.inspectionDate) === session.dateStr
+      );
+    }
+
+    dataClone.operations = (dataClone.operations || []).map((op: any) => {
+      const filteredBatches = (op.batches || []).filter((b: any) => {
+        const d = formatReportDate(b.logTime);
+        const s = b.shiftName || 'Standard Shift';
+        return d === session.dateStr && s === session.shiftName;
+      });
+      return {
+        ...op,
+        batches: filteredBatches
+      };
+    }).filter((op: any) => op.batches && op.batches.length > 0);
+
+    return { sessionReport: dataClone, matchedApproval };
+  };
+
+  const hasInProcess = sessions.length > 0 || (reportData && reportData.operations && reportData.operations.length > 0);
   const hasPdir = pdirData && pdirData.operations && pdirData.operations.length > 0;
-  
-  // Since SetupReportView manages its own state, we'll just render it, and if it's empty it returns null.
-  // If we know definitely in-process and PDIR are empty, we just let it render. 
-  // It's fine if it's completely empty, the user just won't see giant placeholders.
+  const isInspectionDone = reportData?.isInspectionCompleted ?? (
+    reportData?.gaugeStatus === 'COMPLETED' ||
+    (reportData?.operations && reportData.operations.length > 0 &&
+      reportData.operations.every((op: any) => op.operationStatus === 'COMPLETED'))
+  );
+
+  const sessionsToRender = selectedSessionKey === 'ALL'
+    ? sessions
+    : sessions.filter(s => s.key === selectedSessionKey);
 
   return (
     <div style={{ marginBottom: 60, paddingBottom: 40, borderBottom: '2px dashed var(--stone)' }}>
@@ -45,16 +146,146 @@ function GaugeDossier({ gaugeId, reportConfig }: { gaugeId: string, reportConfig
       <div style={{ marginBottom: 24 }}>
         <SetupReportView gaugeId={gaugeId} hideIfEmpty={true} />
       </div>
-      {hasInProcess && (
+
+      {/* In-Process Inspection Reports: Day-wise & Shift-wise Separation */}
+      {sessions.length > 0 ? (
+        <div style={{ marginTop: 28 }}>
+          {/* Shift Session Selector Pills (Only shown when multiple sessions exist) */}
+          {sessions.length > 1 && (
+            <div className="no-print" style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              flexWrap: 'wrap',
+              marginBottom: 16,
+              padding: '12px 16px',
+              background: 'white',
+              borderRadius: 8,
+              border: '1px solid var(--silk)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+            }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--midnight)', display: 'flex', alignItems: 'center', gap: 6, marginRight: 6 }}>
+                <Calendar size={14} color="var(--copper-bronze)" />
+                Shift Reports ({sessions.length}):
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedSessionKey('ALL')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: selectedSessionKey === 'ALL' ? '1.5px solid var(--copper-bronze)' : '1px solid var(--stone)',
+                  background: selectedSessionKey === 'ALL' ? 'var(--copper-bronze)' : 'white',
+                  color: selectedSessionKey === 'ALL' ? 'white' : 'var(--slate)',
+                  transition: 'all 0.15s'
+                }}
+              >
+                All Shifts ({sessions.length} Separate Sheets)
+              </button>
+              {sessions.map(s => {
+                const isSelected = selectedSessionKey === s.key;
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => setSelectedSessionKey(s.key)}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: 20,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: isSelected ? '1.5px solid var(--copper-bronze)' : '1px solid var(--stone)',
+                      background: isSelected ? 'var(--copper-bronze)' : 'white',
+                      color: isSelected ? 'white' : 'var(--slate)',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    {s.dateStr} • {s.shiftName}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Render Each Day + Shift As An Independent Certificate */}
+          {sessionsToRender.map((session, sIdx) => {
+            const { sessionReport, matchedApproval } = getSessionReport(session);
+            return (
+              <div key={session.key} style={{ marginTop: sIdx > 0 ? 36 : 0, marginBottom: 24 }}>
+                {sessions.length > 1 && (
+                  <div className="no-print" style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '10px 16px',
+                    background: 'var(--linen)',
+                    border: '1px solid var(--sand-dark)',
+                    borderRadius: 8,
+                    marginBottom: 12
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <Calendar size={15} color="var(--copper-bronze)" />
+                      <strong style={{ fontSize: 13, color: 'var(--midnight)' }}>
+                        Shift Session {sessions.indexOf(session) + 1} of {sessions.length}: {session.dateStr}
+                      </strong>
+                      <span style={{
+                        fontSize: 11,
+                        padding: '2px 8px',
+                        borderRadius: 10,
+                        background: 'white',
+                        border: '1px solid var(--stone)',
+                        fontWeight: 600,
+                        color: 'var(--copper-bronze)'
+                      }}>
+                        {session.shiftName}
+                      </span>
+                      {session.inspectorNames.size > 0 && (
+                        <span style={{ fontSize: 12, color: 'var(--slate)' }}>
+                          Inspector: <strong style={{ color: 'var(--charcoal)' }}>{Array.from(session.inspectorNames).join(', ')}</strong>
+                        </span>
+                      )}
+                      {session.machineNames.size > 0 && (
+                        <span style={{ fontSize: 12, color: 'var(--slate)' }}>
+                          M/C: <strong style={{ color: 'var(--charcoal)' }}>{Array.from(session.machineNames).join(', ')}</strong>
+                        </span>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 12, color: 'var(--charcoal)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                      {session.batchCount} inspection slot{session.batchCount > 1 ? 's' : ''} logged
+                    </span>
+                  </div>
+                )}
+                <InProcessReportView
+                  data={sessionReport}
+                  config={{ ...reportConfig, activeApproval: matchedApproval }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      ) : (hasInProcess && reportData) ? (
         <div style={{ marginTop: 24 }}>
           <InProcessReportView data={reportData} config={reportConfig} />
         </div>
-      )}
+      ) : null}
+
+      {/* PDIR Report */}
       {hasPdir && (
-        <div style={{ marginTop: 24 }}>
-          <PdirReportView data={pdirData} config={reportConfig} />
-        </div>
+        isInspectionDone ? (
+          <div style={{ marginTop: 28 }}>
+            <PdirReportView data={pdirData} config={reportConfig} />
+          </div>
+        ) : (
+          <div style={{ marginTop: 24, padding: '14px 18px', background: 'var(--bone-white)', border: '1px dashed var(--stone)', borderRadius: 8, fontSize: 13, color: 'var(--slate)' }}>
+            <strong>PDIR (Pre-Dispatch Inspection Report):</strong> Pending completion of in-process inspections across all operations.
+          </div>
+        )
       )}
+
       {!hasInProcess && !hasPdir && (
         <div style={{ padding: 20, textAlign: 'center', color: 'var(--ash)', fontStyle: 'italic', fontSize: 13 }}>
           * No In-Process or PDIR inspection records found for this part.
@@ -205,10 +436,10 @@ export default function PqcMasterDossierPage() {
             Master Quality Dossier
           </h1>
           <p style={{ margin: '4px 0 0', color: 'var(--slate)', fontSize: 13 }}>
-            Consolidated printable quality reports for completed orders.
+            Complete Day-wise and Shift-wise printable quality dossier for completed orders.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <button
             onClick={() => setIsMobileDrawerOpen(true)}
             className="btn btn-secondary mobile-only"
@@ -309,12 +540,12 @@ export default function PqcMasterDossierPage() {
         </div>
 
         {/* Right Content */}
-        <div className="print-full" style={{ flex: 1, overflowY: 'auto', background: '#f8f9fa', padding: 32 }}>
+        <div className="print-full" style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', background: '#f8f9fa', padding: '16px 20px' }}>
           {!selectedPoId ? (
             <div className="no-print" style={{ textAlign: 'center', marginTop: 100, color: 'var(--ash)' }}>
               <Package size={48} style={{ opacity: 0.3, margin: '0 auto 16px' }} />
               <h3 style={{ margin: '0 0 8px', color: 'var(--slate)' }}>Select a Purchase Order</h3>
-              <p style={{ margin: 0, fontSize: 14 }}>Select a completed PO from the left to view the consolidated dossier.</p>
+              <p style={{ margin: 0, fontSize: 14 }}>Select a completed PO from the left to view the quality dossier.</p>
             </div>
           ) : (
             <div style={{ maxWidth: '210mm', margin: '0 auto' }}>

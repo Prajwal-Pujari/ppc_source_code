@@ -4,7 +4,8 @@ import { useUiStore } from '@/store/uiStore';
 import { getDashboardSummary, getDailyProduction } from '@/api/analytics.api';
 import { getPurchaseOrders } from '@/api/purchase-orders.api';
 import { getGauges } from '@/api/gauges.api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
+import { useAuthStore } from '@/store/authStore';
 import { Package, Wrench, Users, AlertTriangle, Clock, Gauge, Plus, ArrowRight, CalendarDays, TrendingUp, RefreshCw, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, AreaChart, Area, CartesianGrid } from 'recharts';
 
@@ -18,6 +19,11 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function DashboardPage() {
+  const user = useAuthStore((s) => s.user);
+  if (user?.role === 'WORKER') {
+    return <Navigate to="/tasks/my" replace />;
+  }
+
   const setPageTitle = useUiStore((s: any) => s.setPageTitle);
   const navigate = useNavigate();
   const [dateRange, setDateRange] = useState(() => {

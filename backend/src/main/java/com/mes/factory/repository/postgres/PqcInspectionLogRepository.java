@@ -15,6 +15,14 @@ import java.util.UUID;
 public interface PqcInspectionLogRepository extends JpaRepository<PqcInspectionLog, UUID> {
     List<PqcInspectionLog> findByGaugeOperationIdOrderByLogTimeDesc(UUID gaugeOperationId);
     List<PqcInspectionLog> findByGaugeOperationIdOrderByLogTimeAsc(UUID gaugeOperationId);
+    List<PqcInspectionLog> findByGaugeOperationIdAndShiftIdOrderByLogTimeAsc(UUID gaugeOperationId, UUID shiftId);
+
+    @Query("SELECT l FROM PqcInspectionLog l LEFT JOIN FETCH l.inspector WHERE l.gaugeOperation.id = :operationId AND l.shift.id = :shiftId AND l.logTime >= :startTime AND l.logTime <= :endTime ORDER BY l.logTime ASC")
+    List<PqcInspectionLog> findByGaugeOperationIdAndShiftIdAndLogTimeBetweenOrderByLogTimeAsc(
+            @Param("operationId") UUID operationId,
+            @Param("shiftId") UUID shiftId,
+            @Param("startTime") OffsetDateTime startTime,
+            @Param("endTime") OffsetDateTime endTime);
     @Query("SELECT l FROM PqcInspectionLog l " +
            "JOIN FETCH l.gauge g " +
            "LEFT JOIN FETCH g.purchaseOrder po " +
@@ -25,6 +33,18 @@ public interface PqcInspectionLogRepository extends JpaRepository<PqcInspectionL
            "WHERE g.factory.id = :factoryId AND l.scrapQty > :scrapQty " +
            "ORDER BY l.logTime DESC")
     List<PqcInspectionLog> findScrapLogsWithDetails(@Param("factoryId") UUID factoryId, @Param("scrapQty") Integer scrapQty);
+
+    @Query("SELECT l FROM PqcInspectionLog l " +
+           "JOIN FETCH l.gauge g " +
+           "LEFT JOIN FETCH g.purchaseOrder po " +
+           "LEFT JOIN FETCH po.customer " +
+           "JOIN FETCH l.gaugeOperation go " +
+           "LEFT JOIN FETCH l.machine m " +
+           "LEFT JOIN FETCH l.shift s " +
+           "JOIN FETCH l.inspector i " +
+           "WHERE g.factory.id = :factoryId AND l.incidentType IS NOT NULL AND TRIM(l.incidentType) != '' " +
+           "ORDER BY l.logTime DESC")
+    List<PqcInspectionLog> findIncidentLogsWithDetails(@Param("factoryId") UUID factoryId);
 
     @Query("SELECT COALESCE(SUM(l.passedQty), 0) FROM PqcInspectionLog l WHERE l.gaugeOperation.id = :operationId")
     int sumPassedQtyByOperationId(UUID operationId);

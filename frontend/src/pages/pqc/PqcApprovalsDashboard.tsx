@@ -18,6 +18,7 @@ export default function PqcApprovalsDashboard() {
   const [qualityRemark, setQualityRemark] = useState('');
   const [additionalNote, setAdditionalNote] = useState('');
   const [approverDesignation, setApproverDesignation] = useState('Quality Head');
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   // Fetch all POs
   const { data: pos = [], isLoading: posLoading } = useQuery({
@@ -43,6 +44,15 @@ export default function PqcApprovalsDashboard() {
     queryFn: async () => {
       const res = await shiftsApi.getAll();
       return res.data ?? [];
+    }
+  });
+
+  const { data: reportConfig } = useQuery({
+    queryKey: ['report-config'],
+    queryFn: async () => {
+      const { reportConfigApi } = await import('@/api/reportConfig.api');
+      const res = await reportConfigApi.get();
+      return res.data ?? null;
     }
   });
 
@@ -130,7 +140,7 @@ export default function PqcApprovalsDashboard() {
       {/* ─── Header ─── */}
       <div className="hide-on-print mobile-flex-wrap mobile-p-16" style={{
         padding: '20px 28px', background: 'white', borderBottom: '1px solid var(--silk)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12
       }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--charcoal)', display: 'flex', alignItems: 'center', gap: 10, margin: 0 }}>
@@ -141,12 +151,26 @@ export default function PqcApprovalsDashboard() {
             Review and approve production shifts for parts.
           </p>
         </div>
+
+        <button
+          onClick={() => setIsMobileDrawerOpen(true)}
+          className="btn btn-secondary mobile-only"
+          style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}
+        >
+          <Package size={16} /> Select PO
+        </button>
       </div>
+
+      {/* Drawer Overlay for tablet/mobile */}
+      <div
+        className={`po-drawer-overlay ${isMobileDrawerOpen ? 'open' : ''}`}
+        onClick={() => setIsMobileDrawerOpen(false)}
+      />
 
       {/* ─── Body ─── */}
       <div className="mobile-stack" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* ─── Left panel: PO list ─── */}
-        <div className="hide-on-print mobile-w-full" style={{
+        <div className={`hide-on-print po-sidebar-drawer ${isMobileDrawerOpen ? 'open' : ''}`} style={{
           width: 340, minWidth: 340, background: 'white', borderRight: '1px solid var(--silk)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}>
@@ -235,7 +259,10 @@ export default function PqcApprovalsDashboard() {
                           return (
                             <button
                               key={g.id}
-                              onClick={() => setSelectedGaugeId(g.id)}
+                              onClick={() => {
+                                setSelectedGaugeId(g.id);
+                                setIsMobileDrawerOpen(false);
+                              }}
                               style={{
                                 width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                 padding: '12px 14px 12px 16px', cursor: 'pointer',
@@ -445,9 +472,9 @@ export default function PqcApprovalsDashboard() {
             <h3 style={{ margin: 0, color: 'var(--charcoal)' }}>Report Preview: {viewReportFor.date} ({viewReportFor.shiftName} Shift)</h3>
             <button onClick={() => setViewReportFor(null)} className="btn btn-outline" style={{ padding: '6px 16px', borderRadius: 6 }}>Close</button>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', justifyContent: 'center' }}>
-            <div style={{ transform: 'scale(0.9)', transformOrigin: 'top center' }}>
-              <InProcessReportView data={filteredReportData.data} config={{ activeApproval: filteredReportData.matchedApproval }} />
+          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch', padding: 16, display: 'flex', justifyContent: 'center' }}>
+            <div style={{ transform: 'scale(0.9)', transformOrigin: 'top center', minWidth: 700 }}>
+              <InProcessReportView data={filteredReportData.data} config={{ ...reportConfig, activeApproval: filteredReportData.matchedApproval }} />
             </div>
           </div>
         </div>

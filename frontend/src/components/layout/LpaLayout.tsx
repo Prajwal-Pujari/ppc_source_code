@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
 import { useNotificationStore } from '@/store/notificationStore';
@@ -80,6 +80,11 @@ export function LpaLayout() {
     clearAuth();
     navigate('/login');
   };
+
+  // Prevent WORKER role from directly accessing LPA audit modules
+  if (user?.role === 'WORKER') {
+    return <Navigate to="/tasks/my" replace />;
+  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: 'var(--cream)' }}>

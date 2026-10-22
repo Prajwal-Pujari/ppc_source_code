@@ -48,8 +48,10 @@ public class PqcController {
     @GetMapping("/inspections/progress/{operationId}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','QUALITY_INSPECTOR','WORKER')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCompletionProgress(
-            @PathVariable UUID operationId) {
-        Map<String, Object> progress = pqcInspectionService.getCompletionProgress(operationId);
+            @PathVariable UUID operationId,
+            @RequestParam(required = false) UUID shiftId,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate shiftDate) {
+        Map<String, Object> progress = pqcInspectionService.getCompletionProgress(operationId, shiftId, shiftDate);
         return ResponseEntity.ok(ApiResponse.success(progress, "Progress retrieved"));
     }
 
@@ -64,6 +66,26 @@ public class PqcController {
     @PutMapping("/scrap-report/{id}/remarks")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<ApiResponse<PqcInspectionLog>> updateScrapRemarks(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> request) {
+        PqcInspectionLog log = inspectionLogRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Log not found"));
+        log.setReviewerRemarks(request.get("remarks"));
+        inspectionLogRepository.save(log);
+        return ResponseEntity.ok(ApiResponse.success(log, "Remarks updated successfully"));
+    }
+
+    @GetMapping("/incident-report")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','QUALITY_INSPECTOR','WORKER')")
+    public ResponseEntity<ApiResponse<List<PqcInspectionLog>>> getIncidentReport(
+            @AuthenticationPrincipal CustomUserDetails user) {
+        List<PqcInspectionLog> logs = inspectionLogRepository.findIncidentLogsWithDetails(user.getFactoryId());
+        return ResponseEntity.ok(ApiResponse.success(logs));
+    }
+
+    @PutMapping("/incident-report/{id}/remarks")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<ApiResponse<PqcInspectionLog>> updateIncidentRemarks(
             @PathVariable UUID id,
             @RequestBody Map<String, String> request) {
         PqcInspectionLog log = inspectionLogRepository.findById(id)

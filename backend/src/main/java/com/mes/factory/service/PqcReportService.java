@@ -22,7 +22,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class PqcReportService {
 
     private final GaugeRepository gaugeRepository;
@@ -33,6 +32,24 @@ public class PqcReportService {
     private final PqcShiftApprovalRepository approvalRepository;
     private final PqcQuestionRepository questionRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
+
+    public PqcReportService(GaugeRepository gaugeRepository,
+                            GaugeOperationRepository gaugeOperationRepository,
+                            PqcInspectionLogRepository inspectionLogRepository,
+                            PqcQuestionSetRepository questionSetRepository,
+                            ReportConfigurationRepository reportConfigurationRepository,
+                            PqcShiftApprovalRepository approvalRepository,
+                            PqcQuestionRepository questionRepository,
+                            PurchaseOrderRepository purchaseOrderRepository) {
+        this.gaugeRepository = gaugeRepository;
+        this.gaugeOperationRepository = gaugeOperationRepository;
+        this.inspectionLogRepository = inspectionLogRepository;
+        this.questionSetRepository = questionSetRepository;
+        this.reportConfigurationRepository = reportConfigurationRepository;
+        this.approvalRepository = approvalRepository;
+        this.questionRepository = questionRepository;
+        this.purchaseOrderRepository = purchaseOrderRepository;
+    }
 
     @Transactional
     public QualityReportDto generateReport(UUID gaugeId, String reportType, UUID shiftId, UUID operationId,
@@ -94,6 +111,12 @@ public class PqcReportService {
             }
         }
 
+        List<GaugeOperation> allGaugeOps = gaugeOperationRepository.findByGaugeIdOrderBySequenceOrder(gaugeId);
+        long remainingOps = gaugeOperationRepository.countRemainingByGaugeId(gaugeId);
+        long completedOps = gaugeOperationRepository.countCompletedByGaugeId(gaugeId);
+        int totalOps = allGaugeOps.size();
+        boolean isAllCompleted = (gauge.getStatus() == GaugeStatus.COMPLETED) || (totalOps > 0 && remainingOps == 0);
+
         QualityReportDto.QualityReportDtoBuilder reportBuilder = QualityReportDto.builder()
                 .poId(po.getId())
                 .poNumber(po.getPoNumber())
@@ -108,7 +131,13 @@ public class PqcReportService {
                 .customerLogo(logo)
                 .docNo(docNo)
                 .revNo(revNo)
-                .issueDate(issueDate);
+                .issueDate(issueDate)
+                .inspectionIntervalHours(rc != null && rc.getInspectionIntervalHours() != null ? rc.getInspectionIntervalHours() : 1.0)
+                .defaultShiftHours(rc != null && rc.getDefaultShiftHours() != null ? rc.getDefaultShiftHours() : 8.0)
+                .gaugeStatus(gauge.getStatus() != null ? gauge.getStatus().name() : "IN_PRODUCTION")
+                .isInspectionCompleted(isAllCompleted)
+                .totalOperations(totalOps)
+                .completedOperations((int) completedOps);
 
         List<PqcShiftApproval> approvals = approvalRepository.findByGaugeId(gaugeId);
         List<QualityReportDto.ApprovalDto> approvalDtos = approvals.stream()
@@ -126,7 +155,7 @@ public class PqcReportService {
                 .collect(Collectors.toList());
         reportBuilder.approvals(approvalDtos);
 
-        List<GaugeOperation> operations = gaugeOperationRepository.findByGaugeIdOrderBySequenceOrder(gaugeId);
+        List<GaugeOperation> operations = allGaugeOps;
         if (operationId != null) {
             operations = operations.stream().filter(op -> op.getId().equals(operationId)).collect(Collectors.toList());
         }
@@ -180,10 +209,6 @@ public class PqcReportService {
                     }
                 }
             });
-
-            if (logs.isEmpty() && configuredParams.isEmpty()) {
-                continue;
-            }
 
             List<QualityReportDto.BatchLogDto> batchDtos = new ArrayList<>();
             for (PqcInspectionLog log : logs) {
@@ -302,13 +327,23 @@ public class PqcReportService {
                         .remarks(log.getRemarks())
                         .shiftName(log.getShift() != null ? log.getShift().getShiftName() : null)
                         .machineName(log.getMachine() != null ? log.getMachine().getMachineCode() : null)
+                        .incidentType(log.getIncidentType())
+                        .incidentDurationMins(log.getIncidentDurationMins())
+                        .incidentRemarks(log.getIncidentRemarks())
                         .measurements(measurements)
                         .build());
+            }
+
+            String opCode = null;
+            if (op.getOperationMaster() != null && op.getOperationMaster().getOperationCode() != null) {
+                opCode = op.getOperationMaster().getOperationCode();
             }
 
             opDtos.add(QualityReportDto.OperationLogDto.builder()
                     .operationId(op.getId())
                     .operationName(op.getOperationName())
+                    .operationCode(opCode)
+                    .operationStatus(op.getStatus() != null ? op.getStatus().name() : "PENDING")
                     .sequenceOrder(op.getSequenceOrder())
                     .batches(batchDtos)
                     .configuredParameters(configuredParams)

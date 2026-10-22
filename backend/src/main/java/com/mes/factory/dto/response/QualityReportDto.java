@@ -26,6 +26,13 @@ public class QualityReportDto {
     private String docNo;
     private String revNo;
     private String issueDate;
+    private Double inspectionIntervalHours;
+    private Double defaultShiftHours;
+
+    private String gaugeStatus;
+    private Boolean isInspectionCompleted;
+    private Integer totalOperations;
+    private Integer completedOperations;
 
     private List<ApprovalDto> approvals;
     private List<OperationLogDto> operations;
@@ -49,6 +56,8 @@ public class QualityReportDto {
     public static class OperationLogDto {
         private UUID operationId;
         private String operationName;
+        private String operationCode;
+        private String operationStatus;
         private Integer sequenceOrder;
         private List<BatchLogDto> batches;
         private List<MeasurementDto> configuredParameters;
@@ -68,6 +77,9 @@ public class QualityReportDto {
         private String remarks;
         private String shiftName;
         private String machineName;
+        private String incidentType;
+        private Integer incidentDurationMins;
+        private String incidentRemarks;
         private List<MeasurementDto> measurements;
     }
 

@@ -60,6 +60,13 @@ public class ReportConfigurationService {
         config.setLayoutRevNo(dto.getLayoutRevNo());
         config.setLayoutIssueDate(dto.getLayoutIssueDate());
 
+        if (dto.getInspectionIntervalHours() != null) {
+            config.setInspectionIntervalHours(dto.getInspectionIntervalHours());
+        }
+        if (dto.getDefaultShiftHours() != null) {
+            config.setDefaultShiftHours(dto.getDefaultShiftHours());
+        }
+
         config = reportConfigurationRepository.save(config);
         return mapToDto(config);
     }
@@ -87,6 +94,8 @@ public class ReportConfigurationService {
                 .layoutDocNo(entity.getLayoutDocNo())
                 .layoutRevNo(entity.getLayoutRevNo())
                 .layoutIssueDate(entity.getLayoutIssueDate())
+                .inspectionIntervalHours(entity.getInspectionIntervalHours() != null ? entity.getInspectionIntervalHours() : 1.0)
+                .defaultShiftHours(entity.getDefaultShiftHours() != null ? entity.getDefaultShiftHours() : 8.0)
                 .build();
     }
 }

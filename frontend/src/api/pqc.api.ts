@@ -14,6 +14,14 @@ export interface PqcInspectionLogRequest {
   measurementData?: Record<string, any>;
   questionAnswers?: Record<string, any>[];
   remarks?: string;
+  incidentType?: string;
+  incidentDurationMins?: number;
+  incidentRemarks?: string;
+  slotIndex?: number;
+  isBackfill?: boolean;
+  logTime?: string;
+  isEscalated?: boolean;
+  escalationReason?: string;
 }
 
 export const pqcApi = {
@@ -23,8 +31,13 @@ export const pqcApi = {
     return response.data;
   },
   
-  getCompletionProgress: async (operationId: string): Promise<{ data: CompletionProgress }> => {
-    const response = await api.get(`/pqc/inspections/progress/${operationId}`);
+  getCompletionProgress: async (operationId: string, shiftId?: string, shiftDate?: string): Promise<{ data: CompletionProgress }> => {
+    const params: Record<string, string> = {};
+    if (shiftId) params.shiftId = shiftId;
+    if (shiftDate) params.shiftDate = shiftDate;
+    const response = await api.get(`/pqc/inspections/progress/${operationId}`, {
+      params: Object.keys(params).length > 0 ? params : undefined
+    });
     return response.data;
   },
 
@@ -35,6 +48,17 @@ export const pqcApi = {
 
   updateScrapRemarks: async (logId: string, remarks: string): Promise<{ data: any }> => {
     const response = await api.put(`/pqc/scrap-report/${logId}/remarks`, { remarks });
+    return response.data;
+  },
+
+  // Incident & Breakdown Reports
+  getIncidentReport: async (): Promise<{ data: any[] }> => {
+    const response = await api.get('/pqc/incident-report');
+    return response.data;
+  },
+
+  updateIncidentRemarks: async (logId: string, remarks: string): Promise<{ data: any }> => {
+    const response = await api.put(`/pqc/incident-report/${logId}/remarks`, { remarks });
     return response.data;
   },
 

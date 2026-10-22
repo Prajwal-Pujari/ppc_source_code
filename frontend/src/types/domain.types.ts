@@ -15,9 +15,12 @@ export interface User {
   role: UserRole;
   isActive: boolean;
   canManageUsers: boolean;
+  canBackfillPqc?: boolean;
+  employeeCode?: string;
   department?: string;
   phone?: string;
   signature?: string;
+  assignedPassword?: string;
 }
 export interface PurchaseOrder {
   customerName: string;
@@ -205,6 +208,29 @@ export interface PqcQuestionSet {
   createdAt?: string;
 }
 
+export interface HourlyInspectionSlot {
+  slotNumber: number;
+  targetHour: number;
+  scheduledTime?: string;
+  status: 'LOGGED' | 'ACTIVE' | 'LOCKED' | 'MISSED';
+  logId?: string;
+  logTime?: string;
+  inspectorName?: string;
+  actualQty?: number;
+  passedQty?: number;
+  rejectedQty?: number;
+  reworkQty?: number;
+  scrapQty?: number;
+  isFailed?: boolean;
+  isEscalated?: boolean;
+  escalationReason?: string;
+  incidentType?: string;
+  incidentRemarks?: string;
+  isBackfill?: boolean;
+  unlockTime?: string;
+  secondsUntilUnlock?: number;
+}
+
 export interface CompletionProgress {
   operationId: string;
   operationName: string;
@@ -212,6 +238,24 @@ export interface CompletionProgress {
   totalPassedQty: number;
   totalActualQty: number;
   readyForCompletion: boolean;
+  inspectionIntervalHours?: number;
+  intervalHours?: number;
+  defaultShiftHours?: number;
+  maxSlots?: number;
+  totalLoggedSlots?: number;
+  isLocked?: boolean;
+  unlockTime?: string | null;
+  secondsUntilUnlock?: number;
+  isOverdue?: boolean;
+  missedIntervalCount?: number;
+  lastInspectionTime?: string | null;
+  lastInspectorName?: string | null;
+  lastInspectorId?: string | null;
+  firstInspectorName?: string | null;
+  firstInspectorId?: string | null;
+  shiftName?: string | null;
+  shiftId?: string | null;
+  slots?: HourlyInspectionSlot[];
 }
 
 export interface PqcMeasurement {
@@ -238,12 +282,17 @@ export interface PqcBatchLog {
   remarks?: string;
   shiftName?: string;
   machineName?: string;
+  incidentType?: string;
+  incidentDurationMins?: number;
+  incidentRemarks?: string;
   measurements: PqcMeasurement[];
 }
 
 export interface QualityReportOperation {
   operationId: string;
   operationName: string;
+  operationCode?: string;
+  operationStatus?: string;
   sequenceOrder: number;
   batches: PqcBatchLog[];
   configuredParameters?: PqcMeasurement[];
@@ -274,6 +323,12 @@ export interface QualityReportDto {
   docNo?: string;
   revNo?: string;
   issueDate?: string;
+  inspectionIntervalHours?: number;
+  defaultShiftHours?: number;
+  gaugeStatus?: string;
+  isInspectionCompleted?: boolean;
+  totalOperations?: number;
+  completedOperations?: number;
   approvals: ApprovalDto[];
   operations: QualityReportOperation[];
 }

@@ -3,17 +3,24 @@ import { getUsersApi, toggleUserPermissionApi } from '@/api/users.api';
 import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import type { User } from '@/types/domain.types';
-import { Plus, Shield, User as UserIcon, Settings2, RefreshCw, PenTool } from 'lucide-react';
+import { Plus, Shield, User as UserIcon, Settings2, RefreshCw, PenTool, KeyRound, Eye, EyeOff } from 'lucide-react';
 import UserCreateForm from './components/UserCreateForm';
 import SignatureModal from './components/SignatureModal';
+import PasswordResetModal from './components/PasswordResetModal';
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [signatureModalUser, setSignatureModalUser] = useState<{id: string, name: string, signature?: string} | null>(null);
+  const [resetModalUser, setResetModalUser] = useState<{ id: string; name: string; username: string } | null>(null);
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
   const currentUser = useAuthStore((s) => s.user);
   const addNotification = useNotificationStore((s) => s.addNotification);
+
+  const togglePasswordVisibility = (userId: string) => {
+    setVisiblePasswords(prev => ({ ...prev, [userId]: !prev[userId] }));
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -96,12 +103,32 @@ export default function UserManagementPage() {
         />
       )}
 
+      {resetModalUser && (
+        <PasswordResetModal
+          user={resetModalUser}
+          onClose={() => setResetModalUser(null)}
+          onSuccess={(newPwd) => {
+            if (newPwd) {
+              setUsers(prev => prev.map(u => u.id === resetModalUser.id ? { ...u, assignedPassword: newPwd } : u));
+              setVisiblePasswords(prev => ({ ...prev, [resetModalUser.id]: true }));
+            }
+            setResetModalUser(null);
+            fetchUsers();
+          }}
+        />
+      )}
+
       <div style={{ background: 'white', borderRadius: 12, boxShadow: 'var(--shadow-card)', border: '1px solid var(--border)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bone-white)', borderBottom: '1px solid var(--border)' }}>
               <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--slate)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Personnel</th>
               <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--slate)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Role</th>
+              {isAdmin && (
+                <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--copper-dark)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Password (Admin)
+                </th>
+              )}
               <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--slate)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
               <th style={{ padding: '16px 24px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: 'var(--slate)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Permissions</th>
             </tr>
@@ -109,11 +136,11 @@ export default function UserManagementPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={4} style={{ padding: 40, textAlign: 'center', color: 'var(--slate)' }}>Loading personnel data...</td>
+                <td colSpan={isAdmin ? 5 : 4} style={{ padding: 40, textAlign: 'center', color: 'var(--slate)' }}>Loading personnel data...</td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ padding: 40, textAlign: 'center', color: 'var(--slate)' }}>No users found.</td>
+                <td colSpan={isAdmin ? 5 : 4} style={{ padding: 40, textAlign: 'center', color: 'var(--slate)' }}>No users found.</td>
               </tr>
             ) : (
               users.map((user) => (
@@ -147,6 +174,43 @@ export default function UserManagementPage() {
                       )}
                     </div>
                   </td>
+                  {isAdmin && (
+                    <td style={{ padding: '16px 24px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ 
+                          fontFamily: 'monospace', 
+                          fontSize: 13, 
+                          background: 'var(--warm-white)', 
+                          padding: '4px 8px', 
+                          borderRadius: 6, 
+                          border: '1px solid var(--border)',
+                          color: visiblePasswords[user.id] ? 'var(--charcoal)' : 'var(--ash)',
+                          letterSpacing: visiblePasswords[user.id] ? 'normal' : '0.15em',
+                          minWidth: 90,
+                          textAlign: 'center',
+                          display: 'inline-block'
+                        }}>
+                          {visiblePasswords[user.id] ? (user.assignedPassword || 'Not set') : '••••••••'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => togglePasswordVisibility(user.id)}
+                          title={visiblePasswords[user.id] ? "Hide password" : "Show password"}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--slate)', padding: 4, display: 'flex', alignItems: 'center' }}
+                        >
+                          {visiblePasswords[user.id] ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setResetModalUser({ id: user.id, name: user.fullName, username: user.username })}
+                          title="Change / Reset password"
+                          style={{ background: 'rgba(184, 115, 51, 0.1)', border: 'none', borderRadius: 6, cursor: 'pointer', color: 'var(--copper-dark)', padding: '5px 8px', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600 }}
+                        >
+                          <KeyRound size={13} /> Reset
+                        </button>
+                      </div>
+                    </td>
+                  )}
                   <td style={{ padding: '16px 24px' }}>
                     <span style={{ 
                       padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600,

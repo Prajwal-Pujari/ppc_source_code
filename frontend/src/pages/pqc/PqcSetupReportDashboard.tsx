@@ -275,7 +275,7 @@ export default function PqcSetupReportDashboard() {
           </button>
           {selectedGaugeId && (
             <>
-              <button onClick={() => setSelectedGaugeId(null)} className="btn-secondary desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 6, border: '1px solid var(--stone)', background: 'white', cursor: 'pointer' }}>
+              <button onClick={() => setSelectedGaugeId(null)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 6, border: '1px solid var(--stone)', background: 'white', cursor: 'pointer' }}>
                 <X size={16} /> Close
               </button>
             <button onClick={() => exportPdf('view')} disabled={!!isExporting} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 6, border: '1px solid var(--stone)', background: 'white', cursor: isExporting ? 'not-allowed' : 'pointer', opacity: isExporting ? 0.7 : 1 }}>
@@ -513,7 +513,7 @@ export default function PqcSetupReportDashboard() {
                         cursor: 'pointer', fontWeight: 600, fontSize: 13
                       }}
                     >
-                      Consolidated Master Report
+                      All Shifts ({subReports.length} Separate Sheets)
                     </button>
                     {subReports.map(sub => {
                       const key = `${sub.date}_${sub.shiftName}`;

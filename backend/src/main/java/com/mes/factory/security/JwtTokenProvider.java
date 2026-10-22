@@ -49,7 +49,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .setSubject(username)
                 .claim("user_id", userId.toString())
-                .claim("factory_id", factoryId.toString())
+                .claim("factory_id", factoryId != null ? factoryId.toString() : null)
                 .claim("role", role)
                 .claim("full_name", fullName)
                 .claim("employee_code", employeeCode)
@@ -60,10 +60,25 @@ public class JwtTokenProvider {
     }
 
     public String generateRefreshToken(UUID userId) {
-        String refreshToken = UUID.randomUUID().toString();
-        String redisKey = "refresh:" + refreshToken;
-        redisTemplate.opsForValue().set(redisKey, userId.toString(),
-                refreshTokenExpirationMs, TimeUnit.MILLISECONDS);
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + refreshTokenExpirationMs);
+
+        String refreshToken = Jwts.builder()
+                .setSubject(userId.toString())
+                .claim("token_type", "refresh")
+                .claim("user_id", userId.toString())
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+
+        try {
+            String redisKey = "refresh:" + refreshToken;
+            redisTemplate.opsForValue().set(redisKey, userId.toString(),
+                    refreshTokenExpirationMs, TimeUnit.MILLISECONDS);
+        } catch (Exception e) {
+            log.warn("Could not save refresh token to Redis: {}", e.getMessage());
+        }
         return refreshToken;
     }
 
@@ -84,13 +99,13 @@ public class JwtTokenProvider {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return !isTokenBlacklisted(token);
         } catch (MalformedJwtException e) {
-            log.error("Invalid JWT token: {}", e.getMessage());
+            log.warn("Invalid JWT token: {}", e.getMessage());
         } catch (ExpiredJwtException e) {
-            log.error("Expired JWT token: {}", e.getMessage());
+            log.debug("Expired JWT token: {}", e.getMessage());
         } catch (UnsupportedJwtException e) {
-            log.error("Unsupported JWT token: {}", e.getMessage());
+            log.warn("Unsupported JWT token: {}", e.getMessage());
         } catch (IllegalArgumentException e) {
-            log.error("JWT claims string is empty: {}", e.getMessage());
+            log.warn("JWT claims string is empty: {}", e.getMessage());
         }
         return false;
     }
@@ -112,11 +127,64 @@ public class JwtTokenProvider {
     }
 
     public String validateRefreshTokenAndGetUserId(String refreshToken) {
-        String redisKey = "refresh:" + refreshToken;
-        return redisTemplate.opsForValue().get(redisKey);
+        if (refreshToken == null || refreshToken.trim().isEmpty()) {
+            return null;
+        }
+
+        // 1. Check if token is explicitly blacklisted in Redis
+        if (isTokenBlacklisted(refreshToken)) {
+            return null;
+        }
+
+        // 2. Fast-path lookup from Redis
+        try {
+            String redisKey = "refresh:" + refreshToken;
+            String userId = redisTemplate.opsForValue().get(redisKey);
+            if (userId != null) {
+                return userId;
+            }
+        } catch (Exception e) {
+            log.warn("Redis lookup failed for refresh token: {}", e.getMessage());
+        }
+
+        // 3. Fallback: Validate as signed JWT if Redis was restarted or cache was evicted
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(refreshToken)
+                    .getBody();
+
+            String tokenType = claims.get("token_type", String.class);
+            if ("refresh".equals(tokenType)) {
+                String userId = claims.get("user_id", String.class);
+                if (userId == null) {
+                    userId = claims.getSubject();
+                }
+                if (userId != null && claims.getExpiration() != null) {
+                    long remainingMs = claims.getExpiration().getTime() - System.currentTimeMillis();
+                    if (remainingMs > 0) {
+                        try {
+                            redisTemplate.opsForValue().set("refresh:" + refreshToken, userId,
+                                    remainingMs, TimeUnit.MILLISECONDS);
+                        } catch (Exception ignored) {}
+                    }
+                    return userId;
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Refresh token JWT validation failed: {}", e.getMessage());
+        }
+
+        return null;
     }
 
     public void deleteRefreshToken(String refreshToken) {
-        redisTemplate.delete("refresh:" + refreshToken);
+        if (refreshToken != null) {
+            blacklistToken(refreshToken);
+            try {
+                redisTemplate.delete("refresh:" + refreshToken);
+            } catch (Exception ignored) {}
+        }
     }
 }

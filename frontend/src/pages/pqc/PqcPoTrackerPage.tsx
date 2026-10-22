@@ -289,14 +289,9 @@ export default function PqcPoTrackerPage() {
     <div style={{ maxWidth: 1600, margin: '0 auto', paddingBottom: 48, display: 'flex', flexDirection: 'column', gap: 24 }}>
       
       {/* ── Header Overview & Sync Controls ── */}
-      <div style={{
-        padding: '28px 32px', borderRadius: 16,
-        background: 'linear-gradient(135deg, rgba(250,248,245,0.98), rgba(245,240,235,0.98))',
-        border: '1px solid var(--silk)', boxShadow: '0 10px 30px rgba(0,0,0,0.03)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20
-      }}>
+      <div className="pqc-po-header-banner">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
             <span style={{
               background: 'rgba(184, 115, 51, 0.15)', color: 'var(--copper-bronze)',
               padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700,
@@ -308,16 +303,16 @@ export default function PqcPoTrackerPage() {
               • Real-Time Shop Floor & PQC Synchronization
             </span>
           </div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--charcoal)', letterSpacing: '-0.02em', margin: '0 0 6px 0' }}>
+          <h1 style={{ fontSize: 'clamp(20px, 3.5vw, 28px)', fontWeight: 800, color: 'var(--charcoal)', letterSpacing: '-0.02em', margin: '0 0 6px 0' }}>
             Monthly PO Production & Quality Tracker
           </h1>
-          <p style={{ fontSize: 14, color: 'var(--slate)', margin: 0, maxWidth: 740, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 13, color: 'var(--slate)', margin: 0, maxWidth: 740, lineHeight: 1.5 }}>
             Monitor monthly production order counts, actual vs. planned volume, inspection pass rates, and scrap tallies. 
             Filter by customer and active shop floor status to track order progress from draft to completion.
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="pqc-header-actions">
           <button
             onClick={() => fetchOrders(true)}
             disabled={syncing}
@@ -452,7 +447,7 @@ export default function PqcPoTrackerPage() {
       </div>
 
       {/* ── Monthly Summary KPI Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 16 }}>
         
         {/* Total POs Card */}
         <div style={{
@@ -671,8 +666,8 @@ export default function PqcPoTrackerPage() {
             </div>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%' }}>
+            <table style={{ width: '100%', minWidth: 840, borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--cream)', borderBottom: '2px solid var(--silk)', color: 'var(--dust)', textTransform: 'uppercase', fontSize: 11, letterSpacing: '0.06em' }}>
                   <th style={{ padding: '14px 20px' }}>Order / PO Details</th>
@@ -914,9 +909,9 @@ export default function PqcPoTrackerPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
         }}>
           <div style={{
-            background: 'var(--warm-white)', borderRadius: 16, width: '100%', maxWidth: 500,
+            background: 'var(--warm-white)', borderRadius: 16, width: '100%', maxWidth: 'min(500px, 94vw)',
             boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '1px solid var(--silk)',
-            display: 'flex', flexDirection: 'column', maxHeight: '85vh'
+            display: 'flex', flexDirection: 'column', maxHeight: '88vh'
           }}>
             <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--silk)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>

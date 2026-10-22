@@ -96,7 +96,7 @@ export default function PqcScrapReportPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 40, height: 'calc(100vh - var(--header-height) - 48px)' }}>
       
       {/* ━━━ Header Cards (Grounded & Minimal) ━━━ */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 16 }}>
         {/* Incident Card */}
         <div style={{ background: 'var(--bone-white)', borderRadius: 12, padding: '20px 24px', border: '1px solid var(--silk)', display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(201, 42, 42, 0.08)', color: '#C92A2A', border: '1px solid rgba(201, 42, 42, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -140,12 +140,12 @@ export default function PqcScrapReportPage() {
       <div style={{ background: 'white', border: '1px solid var(--silk)', borderRadius: 12, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
         
         {/* Toolbar */}
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--silk)', background: 'var(--bone-white)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--silk)', background: 'var(--bone-white)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--charcoal)' }}>Detailed Scrap Registry</h2>
           </div>
           
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <select 
               value={selectedMonth} 
               onChange={e => setSelectedMonth(e.target.value)}
@@ -183,15 +183,15 @@ export default function PqcScrapReportPage() {
               <div style={{ fontSize: 13, color: 'var(--ash)', marginTop: 8, maxWidth: 400, margin: '8px auto 0' }}>No scrapped components match the selected filters.</div>
             </div>
           ) : (
-            <div style={{ overflowY: 'auto', flex: 1 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+            <div className="pqc-responsive-table-container" style={{ overflowY: 'auto', flex: 1 }}>
+              <table style={{ width: '100%', minWidth: 780, borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--cream)', boxShadow: '0 1px 0 var(--silk)' }}>
                   <tr style={{ color: 'var(--dust)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>
-                    <th style={{ padding: '12px 20px', fontWeight: 700 }}>Record Details</th>
-                    <th style={{ padding: '12px 20px', fontWeight: 700 }}>Part & Order</th>
-                    <th style={{ padding: '12px 20px', fontWeight: 700 }}>Operation & Machine</th>
-                    <th style={{ padding: '12px 20px', fontWeight: 700, textAlign: 'right' }}>Scrap Qty</th>
-                    <th style={{ padding: '12px 20px', fontWeight: 700 }}>Defect Root Cause & Remarks</th>
+                    <th style={{ padding: '12px 20px', fontWeight: 700, whiteSpace: 'nowrap' }}>Record Details</th>
+                    <th style={{ padding: '12px 20px', fontWeight: 700, whiteSpace: 'nowrap' }}>Part & Order</th>
+                    <th style={{ padding: '12px 20px', fontWeight: 700, whiteSpace: 'nowrap' }}>Operation & Machine</th>
+                    <th style={{ padding: '12px 20px', fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap' }}>Scrap Qty</th>
+                    <th style={{ padding: '12px 20px', fontWeight: 700, whiteSpace: 'nowrap' }}>Defect Root Cause & Remarks</th>
                   </tr>
                 </thead>
                 <tbody>

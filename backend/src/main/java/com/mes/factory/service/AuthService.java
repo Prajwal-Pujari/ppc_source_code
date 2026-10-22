@@ -9,6 +9,7 @@ import com.mes.factory.security.JwtTokenProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -83,6 +84,7 @@ public class AuthService {
                             .mesEnabled(mesEnabled)
                             .pqcEnabled(pqcEnabled)
                             .lpaEnabled(lpaEnabled)
+                            .canBackfillPqc(userDetails.isCanBackfillPqc())
                             .build())
                     .build();
 
@@ -96,11 +98,11 @@ public class AuthService {
     public AuthResponse refreshToken(String refreshToken) {
         String userId = tokenProvider.validateRefreshTokenAndGetUserId(refreshToken);
         if (userId == null) {
-            throw new RuntimeException("Invalid or expired refresh token");
+            throw new BadCredentialsException("Invalid or expired refresh token");
         }
 
         User user = userRepository.findById(java.util.UUID.fromString(userId))
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new BadCredentialsException("User not found"));
 
         String newAccessToken = tokenProvider.generateAccessToken(
                 user.getId(),
@@ -132,6 +134,7 @@ public class AuthService {
                         .mesEnabled(mesEnabled)
                         .pqcEnabled(pqcEnabled)
                         .lpaEnabled(lpaEnabled)
+                        .canBackfillPqc(Boolean.TRUE.equals(user.getCanBackfillPqc()))
                         .build())
                 .build();
     }

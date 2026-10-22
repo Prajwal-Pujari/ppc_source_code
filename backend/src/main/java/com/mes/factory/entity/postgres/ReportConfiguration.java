@@ -105,6 +105,14 @@ public class ReportConfiguration {
     @Column(name = "layout_issue_date", length = 100)
     private String layoutIssueDate;
 
+    @Column(name = "inspection_interval_hours")
+    @Builder.Default
+    private Double inspectionIntervalHours = 1.0;
+
+    @Column(name = "default_shift_hours")
+    @Builder.Default
+    private Double defaultShiftHours = 8.0;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;

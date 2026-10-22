@@ -11,6 +11,7 @@ interface UserInfo {
   mesEnabled?: boolean;
   pqcEnabled?: boolean;
   lpaEnabled?: boolean;
+  canBackfillPqc?: boolean;
 }
 
 interface AuthState {
@@ -21,6 +22,7 @@ interface AuthState {
   setAuth: (user: UserInfo, accessToken: string, refreshToken: string) => void;
   clearAuth: () => void;
   updateAccessToken: (token: string) => void;
+  updateUser: (fields: Partial<UserInfo>) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -35,6 +37,10 @@ export const useAuthStore = create<AuthState>()(
       clearAuth: () =>
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false }),
       updateAccessToken: (token) => set({ accessToken: token }),
+      updateUser: (fields) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, ...fields } : null,
+        })),
     }),
     { name: 'mes-auth' }
   )

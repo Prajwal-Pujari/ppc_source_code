@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, Printer, Download, ChevronRight, ChevronDown, FileCheck, CheckCircle2, Package, Loader2, X } from 'lucide-react';
+import { Search, FileText, Printer, Download, ChevronRight, ChevronDown, FileCheck, CheckCircle2, Package, Loader2, X, Lock, Eye } from 'lucide-react';
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { getPurchaseOrders, getPurchaseOrderGauges } from '@/api/purchase-orders.api';
@@ -32,6 +32,7 @@ export default function PqcReportDashboard() {
   const [expandedPoId, setExpandedPoId] = useState<string | null>(null);
   const [selectedGaugeId, setSelectedGaugeId] = useState<string | null>(null);
   const [selectedReportType, setSelectedReportType] = useState<ReportType>('IN_PROCESS');
+  const [showPdirPreview, setShowPdirPreview] = useState(false);
   const [reportConfig, setReportConfig] = useState<ReportConfiguration | null>(null);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
@@ -83,43 +84,83 @@ export default function PqcReportDashboard() {
     retry: 1,
   });
 
+  const formatReportDate = (dInput: any): string => {
+    if (!dInput) return '';
+    const str = String(dInput).trim();
+    if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
+      return str;
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      const [y, m, d] = str.split('-');
+      return `${d}-${m}-${y}`;
+    }
+    const d = new Date(dInput);
+    if (isNaN(d.getTime())) return str;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
   const subReports = React.useMemo(() => {
     if (!reportData?.operations) return [];
-    const map = new Map<string, { date: string, shiftName: string }>();
+    const map = new Map<string, { date: string, shiftName: string, firstEpoch: number }>();
     reportData.operations.forEach(op => {
       op.batches?.forEach(b => {
         if (!b.shiftName) return;
-        const dateStr = new Date(b.logTime).toLocaleDateString();
-        const key = `${dateStr}_${b.shiftName}`;
+        const dateStr = formatReportDate(b.logTime);
+        const key = `${dateStr}__${b.shiftName}`;
+        const epoch = new Date(b.logTime).getTime();
         if (!map.has(key)) {
-          map.set(key, { date: dateStr, shiftName: b.shiftName });
+          map.set(key, { date: dateStr, shiftName: b.shiftName, firstEpoch: isNaN(epoch) ? 0 : epoch });
+        } else {
+          const item = map.get(key)!;
+          if (!isNaN(epoch) && epoch < item.firstEpoch) item.firstEpoch = epoch;
         }
       });
     });
-    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+    return Array.from(map.values()).sort((a, b) => a.firstEpoch - b.firstEpoch);
+  }, [reportData]);
+
+  const getSubReportData = React.useCallback((sub: { date: string, shiftName: string }) => {
+    if (!reportData) return { data: null, matchedApproval: undefined };
+    const dataClone = JSON.parse(JSON.stringify(reportData)) as QualityReportDto;
+    let matchedApproval = undefined;
+    if (dataClone.approvals) {
+      matchedApproval = dataClone.approvals.find((a: any) => {
+        const aDate = formatReportDate(a.inspectionDate);
+        return aDate === sub.date && (!a.shiftName || a.shiftName === sub.shiftName);
+      }) || dataClone.approvals.find((a: any) => formatReportDate(a.inspectionDate) === sub.date);
+    }
+    dataClone.operations = (dataClone.operations || []).map(op => {
+      const filteredBatches = (op.batches || []).filter(b => {
+        const d = formatReportDate(b.logTime);
+        return d === sub.date && b.shiftName === sub.shiftName;
+      });
+      return { ...op, batches: filteredBatches };
+    }).filter(op => op.batches.length > 0);
+    return { data: dataClone, matchedApproval };
   }, [reportData]);
 
   const filteredReportData = React.useMemo(() => {
-    if (!reportData || activeSubReport === 'ALL') return { data: reportData, matchedApproval: undefined };
-    const [filterDate, filterShift] = activeSubReport.split('_');
-    const dataClone = JSON.parse(JSON.stringify(reportData)) as QualityReportDto;
-
-    let matchedApproval = undefined;
-
-    if (dataClone.approvals) {
-      matchedApproval = dataClone.approvals.find((a: any) => a.inspectionDate === filterDate && a.shiftName === filterShift)
-        || dataClone.approvals.find((a: any) => a.inspectionDate === filterDate);
+    if (!reportData) return { data: null, matchedApproval: undefined };
+    if (activeSubReport === 'ALL') {
+      if (subReports.length === 1) {
+        return getSubReportData(subReports[0]);
+      }
+      return { data: reportData, matchedApproval: undefined };
     }
+    const [filterDate, filterShift] = activeSubReport.split('__');
+    return getSubReportData({ date: filterDate, shiftName: filterShift });
+  }, [reportData, activeSubReport, subReports, getSubReportData]);
 
-    dataClone.operations = dataClone.operations.map(op => {
-      op.batches = (op.batches || []).filter(b => {
-        const d = new Date(b.logTime).toLocaleDateString();
-        return d === filterDate && b.shiftName === filterShift;
-      });
-      return op;
-    }).filter(op => op.batches.length > 0);
-    return { data: dataClone, matchedApproval };
-  }, [reportData, activeSubReport]);
+  const isInspectionDone = React.useMemo(() => {
+    if (!reportData) return false;
+    if (typeof reportData.isInspectionCompleted === 'boolean') return reportData.isInspectionCompleted;
+    if (reportData.gaugeStatus === 'COMPLETED') return true;
+    if (!reportData.operations || reportData.operations.length === 0) return false;
+    return reportData.operations.every(op => op.operationStatus === 'COMPLETED');
+  }, [reportData]);
 
   const handleTogglePo = (poId: string) => {
     if (expandedPoId === poId) {
@@ -131,6 +172,7 @@ export default function PqcReportDashboard() {
 
   const handleSelectGauge = (gaugeId: string) => {
     setSelectedGaugeId(gaugeId);
+    setShowPdirPreview(false);
     setIsMobileDrawerOpen(false);
   };
 
@@ -279,7 +321,7 @@ export default function PqcReportDashboard() {
             </button>
             {selectedGaugeId && (
               <>
-                <button onClick={() => setSelectedGaugeId(null)} className="btn-secondary desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 6, border: '1px solid var(--stone)', background: 'white', cursor: 'pointer' }}>
+                <button onClick={() => setSelectedGaugeId(null)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 6, border: '1px solid var(--stone)', background: 'white', cursor: 'pointer' }}>
                   <X size={16} /> Close
                 </button>
             <button onClick={() => exportPdf('view')} disabled={!!isExporting} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 6, border: '1px solid var(--stone)', background: 'white', cursor: isExporting ? 'not-allowed' : 'pointer', opacity: isExporting ? 0.7 : 1 }}>
@@ -504,23 +546,46 @@ export default function PqcReportDashboard() {
 
               {/* Report type tabs */}
               <div className="hide-on-print" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
-                {reportTypes.map(rt => (
-                  <button
-                    key={rt.id}
-                    type="button"
-                    onClick={() => setSelectedReportType(rt.id)}
-                    style={{
-                      padding: '8px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                      cursor: 'pointer', transition: 'all 0.15s',
-                      border: selectedReportType === rt.id ? '2px solid var(--copper-bronze)' : '1px solid var(--stone)',
-                      background: selectedReportType === rt.id ? 'white' : 'var(--warm-white)',
-                      color: selectedReportType === rt.id ? 'var(--copper-bronze)' : 'var(--slate)',
-                      boxShadow: selectedReportType === rt.id ? '0 2px 8px rgba(139,105,20,0.12)' : 'none',
-                    }}
-                  >
-                    {rt.label}
-                  </button>
-                ))}
+                {reportTypes.map(rt => {
+                  const isSelected = selectedReportType === rt.id;
+                  const isPdir = rt.id === 'PDIR';
+                  return (
+                    <button
+                      key={rt.id}
+                      type="button"
+                      onClick={() => setSelectedReportType(rt.id)}
+                      style={{
+                        padding: '8px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                        cursor: 'pointer', transition: 'all 0.15s',
+                        border: isSelected ? '2px solid var(--copper-bronze)' : '1px solid var(--stone)',
+                        background: isSelected ? 'white' : 'var(--warm-white)',
+                        color: isSelected ? 'var(--copper-bronze)' : 'var(--slate)',
+                        boxShadow: isSelected ? '0 2px 8px rgba(139,105,20,0.12)' : 'none',
+                        display: 'inline-flex', alignItems: 'center', gap: 6
+                      }}
+                    >
+                      {isPdir && !isInspectionDone && (
+                        <Lock size={12} color={isSelected ? 'var(--copper-bronze)' : 'var(--slate)'} />
+                      )}
+                      {isPdir && isInspectionDone && (
+                        <CheckCircle2 size={13} color="#166534" />
+                      )}
+                      <span>{rt.label}</span>
+                      {isPdir && !isInspectionDone && (
+                        <span style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: '1px 6px',
+                          borderRadius: 8,
+                          background: isSelected ? 'var(--linen)' : 'var(--silk)',
+                          color: isSelected ? 'var(--copper-bronze)' : 'var(--slate)'
+                        }}>
+                          Locked
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Report document */}
@@ -538,10 +603,10 @@ export default function PqcReportDashboard() {
                         cursor: 'pointer', fontWeight: 600, fontSize: 13
                       }}
                     >
-                      Consolidated Master Report
+                      All Shifts ({subReports.length} Separate Sheets)
                     </button>
                     {subReports.map(sub => {
-                      const key = `${sub.date}_${sub.shiftName}`;
+                      const key = `${sub.date}__${sub.shiftName}`;
                       return (
                         <button
                           key={key}
@@ -553,7 +618,7 @@ export default function PqcReportDashboard() {
                             cursor: 'pointer', fontWeight: 600, fontSize: 13
                           }}
                         >
-                          {sub.date} - {sub.shiftName}
+                          {sub.date} • {sub.shiftName}
                         </button>
                       );
                     })}
@@ -579,8 +644,158 @@ export default function PqcReportDashboard() {
                     </div>
                   ) : (
                     <>
-                      {selectedReportType === 'IN_PROCESS' && <InProcessReportView data={filteredReportData.data} config={{ ...reportConfig, activeApproval: filteredReportData.matchedApproval }} />}
-                      {selectedReportType === 'PDIR' && <PdirReportView data={filteredReportData.data} config={{ ...reportConfig, activeApproval: filteredReportData.matchedApproval }} />}
+                      {selectedReportType === 'IN_PROCESS' && (
+                        activeSubReport === 'ALL' && subReports.length > 1 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
+                            {subReports.map((sub, sIdx) => {
+                              const subResult = getSubReportData(sub);
+                              if (!subResult.data) return null;
+                              return (
+                                <div key={`${sub.date}__${sub.shiftName}`}>
+                                  <div className="hide-on-print" style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    padding: '10px 16px', background: 'var(--linen)', border: '1px solid var(--sand-dark)',
+                                    borderRadius: 8, marginBottom: 14
+                                  }}>
+                                    <strong style={{ fontSize: 13, color: 'var(--midnight)' }}>
+                                      Shift Report {sIdx + 1} of {subReports.length}: {sub.date} • {sub.shiftName}
+                                    </strong>
+                                  </div>
+                                  <InProcessReportView
+                                    data={subResult.data}
+                                    config={{ ...reportConfig, activeApproval: subResult.matchedApproval }}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <InProcessReportView
+                            data={filteredReportData.data}
+                            config={{ ...reportConfig, activeApproval: filteredReportData.matchedApproval }}
+                          />
+                        )
+                      )}
+                      {selectedReportType === 'PDIR' && (
+                        !isInspectionDone && !showPdirPreview ? (
+                          <div style={{
+                            background: 'white',
+                            border: '1px solid var(--silk)',
+                            borderRadius: 12,
+                            padding: '48px 32px',
+                            textAlign: 'center',
+                            maxWidth: 720,
+                            margin: '30px auto',
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
+                          }}>
+                            <div style={{
+                              width: 56, height: 56, borderRadius: '50%',
+                              background: 'var(--linen)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              margin: '0 auto 16px', color: 'var(--copper-bronze)'
+                            }}>
+                              <Lock size={28} />
+                            </div>
+                            <h2 style={{ fontSize: 19, fontWeight: 700, color: 'var(--charcoal)', marginBottom: 8 }}>
+                              Pre-Dispatch Inspection Report (PDIR) Locked
+                            </h2>
+                            <p style={{ fontSize: 13, color: 'var(--slate)', maxWidth: 520, margin: '0 auto 24px', lineHeight: 1.5 }}>
+                              PDIR is only released after all in-process inspections across all operations are completed.
+                            </p>
+
+                            {/* Operations breakdown */}
+                            <div style={{
+                              background: 'var(--bone-white)',
+                              border: '1px solid var(--stone)',
+                              borderRadius: 8,
+                              padding: '16px 20px',
+                              textAlign: 'left',
+                              marginBottom: 24
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, fontSize: 13, fontWeight: 600, color: 'var(--charcoal)' }}>
+                                <span>Operations Inspection Progress</span>
+                                <span style={{ color: 'var(--copper-bronze)' }}>
+                                  {(reportData?.operations || []).filter(o => o.operationStatus === 'COMPLETED').length} of {reportData?.operations?.length || 0} Completed
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                {reportData?.operations?.map((op, idx) => {
+                                  const status = op.operationStatus || 'PENDING';
+                                  const isOpCompleted = status === 'COMPLETED';
+                                  const isOpInProgress = status === 'IN_PROGRESS';
+                                  const statusLabel = isOpCompleted ? 'Completed' : (isOpInProgress ? 'In Progress' : 'Pending');
+                                  const bg = isOpCompleted ? '#EBF4EE' : (isOpInProgress ? '#FEF3C7' : '#F3F4F6');
+                                  const color = isOpCompleted ? '#166534' : (isOpInProgress ? '#92400E' : '#6B7280');
+                                  return (
+                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '7px 12px', background: 'white', borderRadius: 6, border: '1px solid var(--silk)' }}>
+                                      <span style={{ fontWeight: 600, color: 'var(--charcoal)' }}>
+                                        {op.operationCode ? `${op.operationCode} - ` : (op.sequenceOrder != null ? `OP${op.sequenceOrder + 1} - ` : '')}{op.operationName}
+                                      </span>
+                                      <span style={{
+                                        fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+                                        background: bg,
+                                        color: color
+                                      }}>
+                                        {statusLabel}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Buttons */}
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+                              <button
+                                onClick={() => setSelectedReportType('IN_PROCESS')}
+                                style={{
+                                  padding: '9px 18px', borderRadius: 6, fontSize: 13, fontWeight: 600,
+                                  border: '1px solid var(--stone)', background: 'white', color: 'var(--charcoal)', cursor: 'pointer'
+                                }}
+                              >
+                                View In-Process Report
+                              </button>
+                              <button
+                                onClick={() => setShowPdirPreview(true)}
+                                style={{
+                                  padding: '9px 18px', borderRadius: 6, fontSize: 13, fontWeight: 600,
+                                  border: '1px solid var(--copper-bronze)', background: 'var(--linen)',
+                                  color: 'var(--copper-bronze)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+                                }}
+                              >
+                                <Eye size={15} /> Supervisor Preview (10 Samples)
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {showPdirPreview && !isInspectionDone && (
+                              <div className="hide-on-print" style={{
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                padding: '10px 16px', background: '#FEF3C7', border: '1px solid #F59E0B',
+                                borderRadius: 6, marginBottom: 16, color: '#92400E', fontSize: 12
+                              }}>
+                                <span>
+                                  <strong>Supervisor Preview Mode:</strong> Showing draft PDIR sheet with 10 sample in-spec observations while in-process inspections are ongoing.
+                                </span>
+                                <button
+                                  onClick={() => setShowPdirPreview(false)}
+                                  style={{
+                                    padding: '4px 10px', borderRadius: 4, background: 'white',
+                                    border: '1px solid #F59E0B', color: '#92400E', fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                                  }}
+                                >
+                                  Return to Lock
+                                </button>
+                              </div>
+                            )}
+                            <PdirReportView
+                              data={filteredReportData.data}
+                              config={{ ...reportConfig, activeApproval: filteredReportData.matchedApproval }}
+                              isDraftPreview={!isInspectionDone}
+                            />
+                          </>
+                        )
+                      )}
                       {/* {selectedReportType === 'LAYOUT' && <LayoutReportView data={filteredReportData} />} */}
                       {/* {selectedReportType === 'FAI' && <FaiReportView data={filteredReportData} />} */}
                     </>

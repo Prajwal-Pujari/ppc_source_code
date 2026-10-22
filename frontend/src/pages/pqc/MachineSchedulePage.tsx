@@ -119,14 +119,9 @@ export default function MachineSchedulePage() {
     <div style={{ maxWidth: 1600, margin: '0 auto', paddingBottom: 48, display: 'flex', flexDirection: 'column', gap: 24 }} className="fade-in">
       
       {/* Header */}
-      <div style={{
-        padding: '28px 32px', borderRadius: 16,
-        background: 'linear-gradient(135deg, rgba(250,248,245,0.98), rgba(245,240,235,0.98))',
-        border: '1px solid var(--silk)', boxShadow: '0 10px 30px rgba(0,0,0,0.03)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20
-      }}>
+      <div className="pqc-po-header-banner">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
             <span style={{
               background: 'rgba(184, 115, 51, 0.15)', color: 'var(--copper-bronze)',
               padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700,
@@ -138,7 +133,7 @@ export default function MachineSchedulePage() {
               • Real-Time Machine Synchronization
             </span>
           </div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--charcoal)', letterSpacing: '-0.02em', margin: '0 0 6px 0' }}>
+          <h1 style={{ fontSize: 'clamp(20px, 3.5vw, 28px)', fontWeight: 800, color: 'var(--charcoal)', letterSpacing: '-0.02em', margin: '0 0 6px 0' }}>
             Live Machine Schedule
           </h1>
           <p style={{ fontSize: 14, color: 'var(--slate)', margin: 0, maxWidth: 740, lineHeight: 1.5 }}>
@@ -146,7 +141,7 @@ export default function MachineSchedulePage() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div className="pqc-header-actions">
           <div style={{ display: 'flex', background: 'var(--warm-white)', padding: 4, borderRadius: 8, border: '1px solid var(--silk)' }}>
             <button 
               onClick={() => setViewMode('LIVE')}
@@ -175,14 +170,14 @@ export default function MachineSchedulePage() {
       </div>
 
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: 20 }}>
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="card skeleton" style={{ height: 180 }}></div>
           ))}
         </div>
       ) : viewMode === 'CALENDAR' ? (
-        <div className="card" style={{ padding: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div className="card" style={{ padding: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
             <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--charcoal)', margin: 0 }}>
               {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
             </h2>
@@ -192,7 +187,7 @@ export default function MachineSchedulePage() {
             </div>
           </div>
           
-          <div style={{ width: '100%' }}>
+          <div className="calendar-scroll-wrapper">
             <div className="calendar-grid">
               {weekDays.map(wd => (
                 <div key={wd} className="calendar-day-header" style={{ padding: '12px 8px', background: 'var(--warm-white)', textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--slate)' }}>
@@ -280,11 +275,13 @@ export default function MachineSchedulePage() {
                                       const m = machines.find((mach: any) => mach.id === e.machineId || mach.machineName === e.machineName);
                                       const isMachineInUse = m?.currentStatus === 'IN_USE';
                                       
+                                      const isDone = Boolean(e.completed ?? e.isCompleted);
+                                      
                                       let bgColor = '#3B82F615';
                                       let borderColor = '#3B82F6';
                                       let textColor = 'var(--charcoal)';
                                       
-                                      if (e.completed) {
+                                      if (isDone) {
                                         bgColor = 'rgba(16, 185, 129, 0.15)';
                                         borderColor = '#10B981';
                                         textColor = '#047857';
@@ -294,8 +291,8 @@ export default function MachineSchedulePage() {
                                       }
                                       
                                       return (
-                                        <div key={idx} style={{ padding: '3px 6px', background: bgColor, borderRadius: 4, borderLeft: `2px solid ${borderColor}`, fontSize: 10, color: textColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }} title={`${e.machineName} (${e.operationName})`}>
-                                          <strong>{e.machineName}</strong> {e.completed && <span style={{fontSize: 9, fontWeight: 600, color: '#047857'}}>(Completed)</span>} <span style={{color: e.completed ? '#10B981' : 'var(--slate)'}}>{e.partName}</span>
+                                        <div key={idx} style={{ padding: '3px 6px', background: bgColor, borderRadius: 4, borderLeft: `2px solid ${borderColor}`, fontSize: 10, color: textColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }} title={`${e.machineName} - ${e.operationName} (${e.partName})`}>
+                                          <strong>{e.machineName}</strong> {isDone && <span style={{fontSize: 9, fontWeight: 600, color: '#047857'}}>(Done)</span>} <span style={{color: isDone ? '#10B981' : 'var(--slate)'}}>{e.operationName ? `[${e.operationName}]` : e.partName}</span>
                                         </div>
                                       );
                                     })}
@@ -463,11 +460,13 @@ export default function MachineSchedulePage() {
                 const m = machines.find((mach: any) => mach.id === e.machineId || mach.machineName === e.machineName);
                 const isMachineInUse = m?.currentStatus === 'IN_USE';
                 
+                const isDone = Boolean(e.completed ?? e.isCompleted);
+                
                 let bgColor = '#3B82F615';
                 let borderColor = '#3B82F6';
                 let textColor = 'var(--charcoal)';
                 
-                if (e.completed) {
+                if (isDone) {
                   bgColor = 'rgba(16, 185, 129, 0.15)';
                   borderColor = '#10B981';
                   textColor = '#047857';
@@ -483,13 +482,13 @@ export default function MachineSchedulePage() {
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <strong style={{ fontSize: 14, color: textColor }}>{e.machineName}</strong>
-                      {e.completed && <span style={{fontSize: 11, fontWeight: 600, color: '#047857', background: '#fff', padding: '2px 6px', borderRadius: 12}}>Completed</span>}
+                      {isDone && <span style={{fontSize: 11, fontWeight: 600, color: '#047857', background: '#fff', padding: '2px 6px', borderRadius: 12}}>Completed</span>}
                     </div>
-                    <div style={{ fontSize: 13, color: e.completed ? '#10B981' : 'var(--slate)' }}>
-                      <strong>Part:</strong> {e.partName}
+                    <div style={{ fontSize: 13, color: isDone ? '#10B981' : 'var(--slate)' }}>
+                      <strong>Operation:</strong> {e.operationName}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--ash)' }}>
-                      <strong>Op:</strong> {e.operationName}
+                      <strong>Part:</strong> {e.partName}
                     </div>
                   </div>
                 );

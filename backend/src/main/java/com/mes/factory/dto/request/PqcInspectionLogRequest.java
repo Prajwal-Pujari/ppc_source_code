@@ -39,4 +39,20 @@ public class PqcInspectionLogRequest {
     private List<Map<String, Object>> questionAnswers;
 
     private String remarks;
+
+    private String incidentType;
+
+    private Integer incidentDurationMins;
+
+    private String incidentRemarks;
+    
+    private Integer slotIndex;
+
+    private Boolean isBackfill;
+
+    private java.time.OffsetDateTime logTime;
+
+    private Boolean isEscalated;
+
+    private String escalationReason;
 }

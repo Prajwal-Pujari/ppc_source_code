@@ -92,8 +92,8 @@ export default function PqcQuestionSetMasterPage() {
   }, {});
 
   return (
-    <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 960, margin: '0 auto', width: '100%' }} className="animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="pqc-page-container animate-fade-in" style={{ maxWidth: 1040 }}>
+      <div className="pqc-header-flex">
         <div>
           <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)' }}>Operations & Question Sets</h2>
           <p style={{ fontSize: 12, color: 'var(--ash)', marginTop: 2 }}>Assign multiple inspection checklists per operation</p>
@@ -113,7 +113,7 @@ export default function PqcQuestionSetMasterPage() {
         </div>
       </div>
 
-      <div className="table-container">
+      <div className="pqc-responsive-table-container">
         <table>
           <thead>
             <tr>
@@ -409,7 +409,7 @@ function ManageQuestionSetsModal({
     >
       <div
         className="card"
-        style={{ width: 860, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        style={{ width: 'min(860px, 94vw)', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Header ── */}

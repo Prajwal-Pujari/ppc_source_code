@@ -108,7 +108,7 @@ export default function PqcDashboardPage() {
     <div style={{ padding: '24px 28px' }}>
 
       {/* ── Page Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24 }}>
+      <div className="pqc-header-flex">
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 600, color: 'var(--charcoal)', letterSpacing: '-0.02em', margin: 0 }}>
             PQC Dashboard
@@ -142,7 +142,7 @@ export default function PqcDashboardPage() {
 
       {/* ── Loading / Error ── */}
       {isLoading && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24 }}>
+        <div className="pqc-stat-grid">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="skeleton" style={{ height: 110, borderRadius: 8 }} />
           ))}
@@ -158,7 +158,7 @@ export default function PqcDashboardPage() {
       {!isLoading && !isError && (
         <>
           {/* ── Stat Cards Row ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24 }}>
+          <div className="pqc-stat-grid">
             {stats.map(card => {
               const Icon = card.icon;
               return (
@@ -181,7 +181,7 @@ export default function PqcDashboardPage() {
           </div>
 
           {/* ── Charts Row ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 24 }}>
+          <div className="pqc-charts-grid">
 
             {/* Hourly Production Bar Chart */}
             <div className="card glass-panel" style={{ padding: 24 }}>
@@ -227,7 +227,7 @@ export default function PqcDashboardPage() {
               {rejectionBreakdown.length === 0 ? (
                 <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ash)', fontSize: 13, background: 'var(--bone-white)', borderRadius: 6, border: '1px dashed var(--stone)', flexDirection: 'column', gap: 8 }}>
                   <CheckCircle2 size={32} color="#3A6B4A" style={{ opacity: 0.4 }} />
-                  No rejections! 🎉
+                  No rejections recorded
                 </div>
               ) : (
                 <div>
@@ -268,7 +268,7 @@ export default function PqcDashboardPage() {
           </div>
 
           {/* ── Bottom Row ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div className="pqc-bottom-grid">
 
             {/* Yield Gauge */}
             <div className="card glass-panel" style={{ padding: 24 }}>
@@ -304,8 +304,8 @@ export default function PqcDashboardPage() {
                   No inspections logged yet.
                 </div>
               ) : (
-                <div style={{ maxHeight: 280, overflowY: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <div className="pqc-responsive-table-container" style={{ maxHeight: 280, overflowY: 'auto' }}>
+                  <table style={{ width: '100%', minWidth: 620, borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
                       <tr style={{ borderBottom: '2px solid var(--silk)', position: 'sticky', top: 0, background: 'white' }}>
                         <th style={thS}>Time</th>

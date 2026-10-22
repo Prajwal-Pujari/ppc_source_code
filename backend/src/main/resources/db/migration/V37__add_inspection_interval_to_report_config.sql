@@ -1,0 +1,3 @@
+ALTER TABLE report_configuration 
+ADD COLUMN IF NOT EXISTS inspection_interval_hours DOUBLE PRECISION DEFAULT 1.0,
+ADD COLUMN IF NOT EXISTS default_shift_hours DOUBLE PRECISION DEFAULT 8.0;

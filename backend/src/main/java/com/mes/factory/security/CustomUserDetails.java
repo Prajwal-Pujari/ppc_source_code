@@ -18,10 +18,12 @@ public class CustomUserDetails implements UserDetails {
     private final String fullName;
     private final String employeeCode;
     private final boolean active;
+    private final boolean canBackfillPqc;
 
     // Manual constructor instead of Lombok
     public CustomUserDetails(UUID userId, UUID factoryId, String username, String password,
-                              String role, String fullName, String employeeCode, boolean active) {
+                              String role, String fullName, String employeeCode, boolean active,
+                              boolean canBackfillPqc) {
         this.userId = userId;
         this.factoryId = factoryId;
         this.username = username;
@@ -30,6 +32,7 @@ public class CustomUserDetails implements UserDetails {
         this.fullName = fullName;
         this.employeeCode = employeeCode;
         this.active = active;
+        this.canBackfillPqc = canBackfillPqc;
     }
 
     // Manual getters (no Lombok conflict)
@@ -38,6 +41,7 @@ public class CustomUserDetails implements UserDetails {
     public String getRole() { return role; }
     public String getFullName() { return fullName; }
     public String getEmployeeCode() { return employeeCode; }
+    public boolean isCanBackfillPqc() { return canBackfillPqc; }
 
     // Manual builder
     public static Builder builder() { return new Builder(); }
@@ -51,6 +55,7 @@ public class CustomUserDetails implements UserDetails {
         private String fullName;
         private String employeeCode;
         private boolean active;
+        private boolean canBackfillPqc;
 
         public Builder userId(UUID userId) { this.userId = userId; return this; }
         public Builder factoryId(UUID factoryId) { this.factoryId = factoryId; return this; }
@@ -60,10 +65,11 @@ public class CustomUserDetails implements UserDetails {
         public Builder fullName(String fullName) { this.fullName = fullName; return this; }
         public Builder employeeCode(String employeeCode) { this.employeeCode = employeeCode; return this; }
         public Builder active(boolean active) { this.active = active; return this; }
+        public Builder canBackfillPqc(boolean canBackfillPqc) { this.canBackfillPqc = canBackfillPqc; return this; }
 
         public CustomUserDetails build() {
             return new CustomUserDetails(userId, factoryId, username, password,
-                    role, fullName, employeeCode, active);
+                    role, fullName, employeeCode, active, canBackfillPqc);
         }
     }
 

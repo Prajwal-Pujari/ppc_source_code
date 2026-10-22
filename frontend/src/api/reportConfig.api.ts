@@ -32,6 +32,10 @@ export interface ReportConfiguration {
   layoutDocNo: string | null;
   layoutRevNo: string | null;
   layoutIssueDate: string | null;
+
+  // In-Process Inspection Interval
+  inspectionIntervalHours?: number | null;
+  defaultShiftHours?: number | null;
 }
 
 export const reportConfigApi = {

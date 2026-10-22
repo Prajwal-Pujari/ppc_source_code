@@ -32,6 +32,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .fullName(user.getFullName())
                 .employeeCode(user.getEmployeeCode())
                 .active(user.getIsActive())
+                .canBackfillPqc(Boolean.TRUE.equals(user.getCanBackfillPqc()))
                 .build();
     }
 }
