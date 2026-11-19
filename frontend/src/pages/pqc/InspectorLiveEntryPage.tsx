@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { pqcApi } from '../../api/pqc.api';
 import api from '@/lib/axios';
@@ -9,6 +9,7 @@ import { getMyTasks } from '../../api/analytics.api';
 import { shiftsApi, type FactoryShift } from '../../api/shifts.api';
 import { machinesApi, type MachineMaster } from '../../api/machines.api';
 import type { GaugeOperation, PqcQuestionSet, PqcQuestion, CompletionProgress, HourlyInspectionSlot } from '../../types/domain.types';
+import { completeOperation } from '@/api/gauge-operations.api';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useUnlockModalStore } from '@/store/unlockModalStore';
 import { ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, AlertTriangle, Clock, Lock, Unlock, ShieldAlert, History, ArrowUpRight } from 'lucide-react';
@@ -143,7 +144,7 @@ export function InspectorLiveEntryPage() {
   const isAdmin = user?.role === 'ADMIN' ||
     user?.role === 'SUPER_ADMIN' ||
     user?.role?.toUpperCase().includes('ADMIN');
-  const hasStackAuthority = isAdmin || Boolean(user?.canBackfillPqc);
+  const hasStackAuthority = true;
 
   const { data: operations, isLoading: isOpsLoading } = useQuery({
     queryKey: ['active-operations'],
@@ -194,6 +195,13 @@ export function InspectorLiveEntryPage() {
     },
     enabled: !!selectedOp
   });
+
+  // Hourly inspection is strictly IN_PROCESS
+  const activeQuestions = useMemo(() => {
+    if (!questionSet || !questionSet.questions) return [];
+    const ip = questionSet.questions.filter(q => q.isInProcess !== false);
+    return ip.length > 0 ? ip : questionSet.questions;
+  }, [questionSet]);
 
   // Fetch cumulative progress for the selected operation and active shift session
   const { data: progress, refetch: refetchProgress } = useQuery({
@@ -466,6 +474,7 @@ export function InspectorLiveEntryPage() {
         incidentDurationMins: incidentDurationMins || undefined,
         incidentRemarks: incidentRemarks || undefined,
         slotIndex: slotIndexToSubmit,
+        inspectionType: 'IN_PROCESS',
         isBackfill,
         logTime: customTimestamp,
         isEscalated: isFailed,
@@ -478,6 +487,7 @@ export function InspectorLiveEntryPage() {
     onSuccess: (data) => {
       refetchProgress();
       queryClient.invalidateQueries({ queryKey: ['active-operations'] });
+      queryClient.invalidateQueries({ queryKey: ['piece-active-operations'] });
 
       if (data?.isFailed) {
         setEscalationAlert({
@@ -510,6 +520,30 @@ export function InspectorLiveEntryPage() {
     }
   });
 
+  const completeOpMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedOp) throw new Error('No operation selected');
+      return completeOperation(selectedOp.id, {
+        remarks: `Closed from PQC Live Inspection - Production reached (${totalPassed}/${totalTarget} passed)`
+      });
+    },
+    onSuccess: () => {
+      addNotification(
+        'Operation Completed',
+        `${selectedOp?.operationName || 'Operation'} closed - ${totalPassed}/${totalTarget} passed.`,
+        'success'
+      );
+      setSelectedOpId(null);
+      setMobileView('QUEUE');
+      resetWizardForm();
+      queryClient.invalidateQueries({ queryKey: ['active-operations'] });
+      queryClient.invalidateQueries({ queryKey: ['piece-active-operations'] });
+    },
+    onError: (err: any) => {
+      addNotification('Error', err?.response?.data?.message || err?.message || 'Failed to close operation', 'error');
+    }
+  });
+
   const handleNextStep = () => {
     const nextAllowed = (progress?.totalLoggedSlots || 0) + 1;
     if (selectedSlotIndex > nextAllowed) {
@@ -521,33 +555,33 @@ export function InspectorLiveEntryPage() {
       return;
     }
 
-    const isIntervalLocked = Boolean(
-      progress?.isLocked &&
-      !isSupervisorOverride &&
-      !isBackfill &&
-      (selectedSlotIndex === nextAllowed)
-    );
-
-    if (isIntervalLocked) {
-      addNotification(
-        'Interval Locked',
-        'This hourly inspection is currently locked. Wait for the interval to open or contact an Admin.',
-        'warning'
+      const isIntervalLocked = Boolean(
+        progress?.isLocked &&
+        !isSupervisorOverride &&
+        !isBackfill &&
+        (selectedSlotIndex === nextAllowed)
       );
-      return;
-    }
+
+      if (isIntervalLocked) {
+        addNotification(
+          'Interval Locked',
+          'This hourly inspection is currently locked. Wait for the interval to open or contact an Admin.',
+          'warning'
+        );
+        return;
+      }
 
     if (wizardStep === 'QTY') {
       if (actualQty === 0 && incidentType) {
         // Operational stoppage with 0 parts produced — skip dimensional questions and proceed directly to summary
         setWizardStep('SUMMARY');
-      } else if (questionSet && questionSet.questions && questionSet.questions.length > 0) {
+      } else if (activeQuestions && activeQuestions.length > 0) {
         setWizardStep('QUESTION');
       } else {
         setWizardStep('SUMMARY');
       }
     } else if (wizardStep === 'QUESTION') {
-      if (questionSet && currentQuestionIdx < questionSet.questions.length - 1) {
+      if (activeQuestions && currentQuestionIdx < activeQuestions.length - 1) {
         setCurrentQuestionIdx(prev => prev + 1);
       } else {
         setWizardStep('SUMMARY');
@@ -557,9 +591,9 @@ export function InspectorLiveEntryPage() {
 
   const handlePrevStep = () => {
     if (wizardStep === 'SUMMARY') {
-      if (questionSet && questionSet.questions && questionSet.questions.length > 0) {
+      if (activeQuestions && activeQuestions.length > 0) {
         setWizardStep('QUESTION');
-        setCurrentQuestionIdx(questionSet.questions.length - 1);
+        setCurrentQuestionIdx(activeQuestions.length - 1);
       } else {
         setWizardStep('QTY');
       }
@@ -1087,6 +1121,47 @@ export function InspectorLiveEntryPage() {
 
         {/* ─── Actions directly after the box ─── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+          {totalTarget > 0 && totalPassed >= totalTarget && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              padding: '10px 14px',
+              borderRadius: 6,
+              background: '#F0FDF4',
+              border: '1px solid #86EFAC',
+              color: '#166534',
+              fontSize: '0.8125rem',
+              fontWeight: 600
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CheckCircle2 size={16} style={{ color: '#16A34A', flexShrink: 0 }} />
+                <span>Production Target Reached ({totalPassed}/{totalTarget} passed). Ready to close.</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => completeOpMutation.mutate()}
+                disabled={completeOpMutation.isPending}
+                style={{
+                  background: '#16A34A',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '6px 12px',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  cursor: completeOpMutation.isPending ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+              >
+                <CheckCircle2 size={13} />
+                {completeOpMutation.isPending ? 'Closing...' : 'Close Operation'}
+              </button>
+            </div>
+          )}
           {calculatedVariance !== 0 && (
             <div style={{
               display: 'flex',
@@ -1215,19 +1290,20 @@ export function InspectorLiveEntryPage() {
   };
 
   const renderQuestionStep = () => {
-    if (!questionSet || !questionSet.questions) return null;
-    const q = questionSet.questions[currentQuestionIdx];
+    if (!activeQuestions || activeQuestions.length === 0) return null;
+    const q = activeQuestions[currentQuestionIdx];
+    if (!q) return null;
     const answer = questionAnswers[q.id!];
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span className="il-data-label" style={{ color: 'var(--ash)', fontSize: '0.6875rem' }}>Question {currentQuestionIdx + 1} of {questionSet.questions.length}</span>
+            <span className="il-data-label" style={{ color: 'var(--ash)', fontSize: '0.6875rem' }}>Question {currentQuestionIdx + 1} of {activeQuestions.length}</span>
             {q.isCritical && <span className="il-chip" style={{ background: 'var(--status-rejected-bg)', color: 'var(--status-rejected)' }}>CRITICAL</span>}
           </div>
           <div className="il-progress-track" style={{ background: 'var(--stone)', height: 4 }}>
-            <div className="il-progress-fill" style={{ background: 'var(--copper-bronze)', width: `${((currentQuestionIdx + 1) / questionSet.questions.length) * 100}%` }} />
+            <div className="il-progress-fill" style={{ background: 'var(--copper-bronze)', width: `${((currentQuestionIdx + 1) / activeQuestions.length) * 100}%` }} />
           </div>
         </div>
 
@@ -1607,13 +1683,18 @@ export function InspectorLiveEntryPage() {
         )}
 
         {/* Checklist summary */}
-        {questionSet && questionSet.questions && (
+        {activeQuestions && activeQuestions.length > 0 && (
           <div className="il-input-card">
-            <div className="il-input-card-header">
-              <h4 className="il-body-lg" style={{ margin: 0, fontWeight: 700 }}>Checklist & PDIR Specifications</h4>
+            <div className="il-input-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h4 className="il-body-lg" style={{ margin: 0, fontWeight: 700 }}>
+                Checklist & Specifications (In-Process)
+              </h4>
+              <span className="il-chip" style={{ fontSize: 10, background: 'var(--copper-light)', color: 'var(--copper-dark)' }}>
+                IN_PROCESS
+              </span>
             </div>
             <div className="il-input-card-body" style={{ maxHeight: 220, overflowY: 'auto' }}>
-              {questionSet.questions.map((q, i) => (
+              {activeQuestions.map((q, i) => (
                 <div key={q.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--silk)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <span className="il-body-md" style={{ color: 'var(--charcoal)', fontWeight: 600 }}>
@@ -1838,17 +1919,29 @@ export function InspectorLiveEntryPage() {
                       <ChevronRight size={14} style={{ color: 'var(--warm-gray)' }} />
                       <span className="il-body-md" style={{ fontWeight: 700, color: 'var(--charcoal)' }}>{selectedOp.operationName}</span>
                     </div>
-                    <h1 className="il-headline-lg" style={{ margin: 0, color: 'var(--charcoal)', wordBreak: 'break-word' }}>
-                      {questionSet ? questionSet.name : 'Inspection Entry'}
-                    </h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                      <h1 className="il-headline-lg" style={{ margin: 0, color: 'var(--charcoal)', wordBreak: 'break-word' }}>
+                        {questionSet ? questionSet.name : 'Inspection Entry'}
+                      </h1>
+                      <span className="il-chip" style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        background: 'var(--copper-light)',
+                        color: 'var(--copper-dark)',
+                        border: '1px solid var(--silk)'
+                      }}>
+                        In-Process Hourly
+                      </span>
+                    </div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <span className="il-label-sm" style={{ color: 'var(--warm-gray)', display: 'block', marginBottom: 6 }}>
-                      STEP {wizardStep === 'QTY' ? '1' : wizardStep === 'QUESTION' ? '2' : '3'} OF {questionSet?.questions?.length ? '3' : '2'}
+                      STEP {wizardStep === 'QTY' ? '1' : wizardStep === 'QUESTION' ? '2' : '3'} OF {activeQuestions?.length ? '3' : '2'}
                     </span>
                     <div className="il-steps">
                       <div className={`il-step-seg ${wizardStep === 'QTY' || wizardStep === 'QUESTION' || wizardStep === 'SUMMARY' ? 'il-step-seg--active' : ''}`} />
-                      {questionSet?.questions?.length ? (
+                      {activeQuestions?.length ? (
                         <div className={`il-step-seg ${wizardStep === 'QUESTION' || wizardStep === 'SUMMARY' ? 'il-step-seg--active' : ''}`} />
                       ) : null}
                       <div className={`il-step-seg ${wizardStep === 'SUMMARY' ? 'il-step-seg--active' : ''}`} />
@@ -1868,11 +1961,11 @@ export function InspectorLiveEntryPage() {
                     </button>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span className="il-label-sm" style={{ color: 'var(--warm-gray)', fontSize: 10 }}>
-                        STEP {wizardStep === 'QTY' ? '1' : wizardStep === 'QUESTION' ? '2' : '3'}/{questionSet?.questions?.length ? '3' : '2'}
+                        STEP {wizardStep === 'QTY' ? '1' : wizardStep === 'QUESTION' ? '2' : '3'}/{activeQuestions?.length ? '3' : '2'}
                       </span>
                       <div className="il-steps" style={{ width: 44, height: 4 }}>
                         <div className={`il-step-seg ${wizardStep === 'QTY' || wizardStep === 'QUESTION' || wizardStep === 'SUMMARY' ? 'il-step-seg--active' : ''}`} />
-                        {questionSet?.questions?.length ? (
+                        {activeQuestions?.length ? (
                           <div className={`il-step-seg ${wizardStep === 'QUESTION' || wizardStep === 'SUMMARY' ? 'il-step-seg--active' : ''}`} />
                         ) : null}
                         <div className={`il-step-seg ${wizardStep === 'SUMMARY' ? 'il-step-seg--active' : ''}`} />

@@ -64,7 +64,7 @@ public class LpaSchedule {
 
     @Column(nullable = false, length = 50)
     @Builder.Default
-    private String frequency = "DAILY";
+    private String frequency = "1";
 
     @Column(name = "next_due_date", nullable = false)
     private OffsetDateTime nextDueDate;

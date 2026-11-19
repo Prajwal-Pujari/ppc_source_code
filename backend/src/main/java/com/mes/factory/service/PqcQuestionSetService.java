@@ -104,6 +104,9 @@ public class PqcQuestionSetService {
                         .isCritical(item.getIsCritical() != null ? item.getIsCritical() : false)
                         .checkingMethod(item.getCheckingMethod() != null ? item.getCheckingMethod() : "D.V.C")
                         .showInPdir(item.getShowInPdir() != null ? item.getShowInPdir() : true)
+                        .isFirstPiece(item.getIsFirstPiece() != null ? item.getIsFirstPiece() : true)
+                        .isLastPiece(item.getIsLastPiece() != null ? item.getIsLastPiece() : true)
+                        .isInProcess(item.getIsInProcess() != null ? item.getIsInProcess() : true)
                         .build();
                 questions.add(q);
                 seq++;
@@ -153,6 +156,9 @@ public class PqcQuestionSetService {
                         .isCritical(item.getIsCritical() != null ? item.getIsCritical() : false)
                         .checkingMethod(item.getCheckingMethod() != null ? item.getCheckingMethod() : "D.V.C")
                         .showInPdir(item.getShowInPdir() != null ? item.getShowInPdir() : true)
+                        .isFirstPiece(item.getIsFirstPiece() != null ? item.getIsFirstPiece() : true)
+                        .isLastPiece(item.getIsLastPiece() != null ? item.getIsLastPiece() : true)
+                        .isInProcess(item.getIsInProcess() != null ? item.getIsInProcess() : true)
                         .build();
                 set.getQuestions().add(q);
                 seq++;
@@ -316,6 +322,9 @@ public class PqcQuestionSetService {
                                 .isCritical(colF.toLowerCase().contains("dia") || colF.toLowerCase().contains("width"))
                                 .checkingMethod(colI.isEmpty() ? "D.V.C" : colI)
                                 .showInPdir(true)
+                                .isFirstPiece(true)
+                                .isLastPiece(true)
+                                .isInProcess(true)
                                 .build();
                         questionRepository.save(q);
                         questionsCreated++;
@@ -663,6 +672,9 @@ public class PqcQuestionSetService {
                                         .isCritical(qPreview.getIsCritical() != null && qPreview.getIsCritical())
                                         .checkingMethod(qPreview.getCheckingMethod())
                                         .showInPdir(true)
+                                        .isFirstPiece(true)
+                                        .isLastPiece(true)
+                                        .isInProcess(true)
                                         .build();
                                 questionRepository.save(q);
                                 questionsCreated++;

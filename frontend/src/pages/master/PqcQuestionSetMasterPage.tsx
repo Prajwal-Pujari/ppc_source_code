@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, Pencil, Trash2, ChevronDown, ChevronRight,
   Check, Save, X, Settings, Search, AlertCircle, ClipboardList, Copy, BookOpen,
-  Upload, FileSpreadsheet, Loader
+  Upload, FileSpreadsheet, Loader, ShieldCheck, Clock, Flag
 } from 'lucide-react';
 import { pqcApi } from '../../api/pqc.api';
 import { getOperationMasters } from '../../api/operation-master.api';
@@ -572,9 +572,11 @@ function ManageQuestionSetsModal({
                     background: 'var(--warm-white)', position: 'relative',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--copper-bronze)', fontFamily: 'monospace' }}>
-                        Q{String(index + 1).padStart(2, '0')}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--copper-bronze)', fontFamily: 'monospace' }}>
+                          Q{String(index + 1).padStart(2, '0')}
+                        </span>
+                      </div>
                       <button
                         type="button"
                         onClick={() => removeQuestion(index)}

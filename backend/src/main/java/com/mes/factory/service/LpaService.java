@@ -165,7 +165,7 @@ public class LpaService {
                 .operationMaster(op)
                 .gaugeMaster(gm)
                 .machineMaster(mm)
-                .defaultFrequency(request.getDefaultFrequency() != null ? request.getDefaultFrequency() : "DAILY")
+                .defaultFrequency(request.getDefaultFrequency() != null && !request.getDefaultFrequency().trim().isEmpty() ? request.getDefaultFrequency().trim() : "1")
                 .isActive(true)
                 .createdBy(user)
                 .build();
@@ -214,7 +214,7 @@ public class LpaService {
 
         qs.setName(request.getName());
         qs.setDescription(request.getDescription());
-        qs.setDefaultFrequency(request.getDefaultFrequency() != null ? request.getDefaultFrequency() : "DAILY");
+        qs.setDefaultFrequency(request.getDefaultFrequency() != null && !request.getDefaultFrequency().trim().isEmpty() ? request.getDefaultFrequency().trim() : "1");
         qs.setAuditType(request.getAuditType());
 
         // LpaAuditLogAnswer maps question_id as a UUID column (not a foreign key constraint), 
@@ -287,7 +287,7 @@ public class LpaService {
                 .machineMaster(mm)
                 .assignedTo(assignedTo)
                 .assignedRole(request.getAssignedRole())
-                .frequency(request.getFrequency() != null ? request.getFrequency() : "DAILY")
+                .frequency(request.getFrequency() != null && !request.getFrequency().trim().isEmpty() ? request.getFrequency().trim() : (qs.getDefaultFrequency() != null ? qs.getDefaultFrequency() : "1"))
                 .nextDueDate(request.getNextDueDate() != null ? request.getNextDueDate() : OffsetDateTime.now())
                 .status("SCHEDULED")
                 .isActive(true)
@@ -444,20 +444,30 @@ public class LpaService {
 
             OffsetDateTime nextDue = schedule.getNextDueDate();
             if (nextDue == null) nextDue = OffsetDateTime.now();
-            String freq = schedule.getFrequency() != null ? schedule.getFrequency().toUpperCase() : "DAILY";
-            switch (freq) {
-                case "WEEKLY":
-                    nextDue = nextDue.plusWeeks(1);
-                    break;
-                case "MONTHLY":
-                    nextDue = nextDue.plusMonths(1);
-                    break;
-                case "SHIFT_WISE":
-                    nextDue = nextDue.plusHours(8);
-                    break;
-                default:
+            String freq = schedule.getFrequency() != null ? schedule.getFrequency().trim() : "1";
+            try {
+                String numericOnly = freq.replaceAll("[^0-9]", "");
+                int days = numericOnly.isEmpty() ? 1 : Integer.parseInt(numericOnly);
+                if (days > 0) {
+                    nextDue = nextDue.plusDays(days);
+                } else {
                     nextDue = nextDue.plusDays(1);
-                    break;
+                }
+            } catch (Exception e) {
+                switch (freq.toUpperCase()) {
+                    case "WEEKLY":
+                        nextDue = nextDue.plusWeeks(1);
+                        break;
+                    case "MONTHLY":
+                        nextDue = nextDue.plusMonths(1);
+                        break;
+                    case "SHIFT_WISE":
+                        nextDue = nextDue.plusHours(8);
+                        break;
+                    default:
+                        nextDue = nextDue.plusDays(1);
+                        break;
+                }
             }
             schedule.setNextDueDate(nextDue);
             schedule.setStatus("SCHEDULED");

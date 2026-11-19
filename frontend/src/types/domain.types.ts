@@ -96,10 +96,22 @@ export interface GaugeOperation {
     id: string; 
     serialNumber: string; 
     gaugeTypeName: string; 
+    categoryCode?: string;
     nominalSize: number;
     batchQuantity?: number;
     materialGrade?: string;
-    poLineItem?: { lineNotes?: string };
+    gaugeMaster?: {
+      id?: string;
+      categoryCode?: string;
+      gaugeTypeName?: string;
+    };
+    poLineItem?: { 
+      lineNotes?: string;
+      categoryCode?: string;
+      gaugeMaster?: {
+        categoryCode?: string;
+      };
+    };
     purchaseOrder?: any;
   };
   machineMaster?: {
@@ -194,6 +206,9 @@ export interface PqcQuestion {
   isCritical: boolean;
   checkingMethod?: string;
   showInPdir?: boolean;
+  isFirstPiece?: boolean;
+  isLastPiece?: boolean;
+  isInProcess?: boolean;
   isActive?: boolean;
 }
 
@@ -231,6 +246,19 @@ export interface HourlyInspectionSlot {
   secondsUntilUnlock?: number;
 }
 
+export interface PieceInspectionInfo {
+  status: 'PENDING' | 'PASSED' | 'FAILED' | 'LOCKED' | 'NOT_STARTED' | 'MISSED' | string;
+  isFailed?: boolean;
+  logId?: string;
+  logTime?: string;
+  inspectorName?: string;
+  actualQty?: number;
+  passedQty?: number;
+  rejectedQty?: number;
+  reworkQty?: number;
+  scrapQty?: number;
+}
+
 export interface CompletionProgress {
   operationId: string;
   operationName: string;
@@ -256,6 +284,8 @@ export interface CompletionProgress {
   shiftName?: string | null;
   shiftId?: string | null;
   slots?: HourlyInspectionSlot[];
+  firstPiece?: PieceInspectionInfo;
+  lastPiece?: PieceInspectionInfo;
 }
 
 export interface PqcMeasurement {

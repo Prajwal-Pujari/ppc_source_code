@@ -15,14 +15,17 @@ const pqcNavItems = [
   { label: 'Monthly PO Tracker', path: '/pqc/po-tracker', icon: 'calendar_month' },
   { label: 'Purchase Orders', path: '/pqc/po', icon: 'inventory_2' },
   { label: 'Job Cards', path: '/pqc/jobcards', icon: 'assignment' },
-  { label: 'Inspections', path: '/pqc/inspect', icon: 'content_paste_search' },
+  { label: 'Hourly Inspections', path: '/pqc/inspect', icon: 'schedule' },
+  { label: '1st & Last Piece Inspection', path: '/pqc/piece-inspection', icon: 'verified' },
   { label: 'Breakdowns & Incidents', path: '/pqc/breakdowns', icon: 'report_problem' },
   { label: 'Reports', path: '/pqc/reports', icon: 'description' },
+  { label: '1st & Last Piece Report', path: '/pqc/piece-report', icon: 'assignment_turned_in' },
   { label: 'Scrap Report', path: '/pqc/scrap-report', icon: 'delete_forever' },
   { label: 'Setup Report', path: '/pqc/setup-report', icon: 'settings_applications' },
   { label: 'Master Quality Dossier', path: '/pqc/dossier', icon: 'folder_special' },
   { label: 'Shift Approvals', path: '/pqc/approvals', icon: 'verified_user' },
   { label: 'Question Sets', path: '/pqc/question-sets', icon: 'checklist' },
+  { label: '1st & Last Piece Checklists', path: '/pqc/piece-question-sets', icon: 'fact_check' },
   { label: 'Part / Product Master', path: '/pqc/gauges', icon: 'straighten' },
   { label: 'Operations', path: '/pqc/operations', icon: 'build' },
   { label: 'Machine Master', path: '/pqc/machines', icon: 'precision_manufacturing' },
@@ -90,7 +93,7 @@ export default function PqcLayout() {
         />
       )}
 
-      {/* ── PQC Sidebar ── */}
+      {/* â”€â”€ PQC Sidebar â”€â”€ */}
       <aside
         className="responsive-sidebar"
         style={{
@@ -193,7 +196,7 @@ export default function PqcLayout() {
         </div>
       </aside>
 
-      {/* ── Main Content ── */}
+      {/* â”€â”€ Main Content â”€â”€ */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
         <header

@@ -11,6 +11,34 @@ export const LpaAuditType = {
 
 export type LpaAuditType = keyof typeof LpaAuditType;
 
+/**
+ * Normalizes any frequency string (including legacy text like 'DAILY', 'WEEKLY')
+ * into a numeric days string e.g. "1", "7", "30".
+ */
+export const normalizeFrequencyToNumber = (freq?: string | number | null): string => {
+  if (freq === undefined || freq === null) return '1';
+  const str = String(freq).trim();
+  if (!str) return '1';
+  const upper = str.toUpperCase();
+  if (upper === 'DAILY' || upper === 'SHIFT_WISE') return '1';
+  if (upper === 'WEEKLY') return '7';
+  if (upper === 'MONTHLY') return '30';
+  if (upper === 'QUARTERLY') return '90';
+  if (upper === 'YEARLY') return '365';
+  const num = str.replace(/[^0-9]/g, '');
+  return num || '1';
+};
+
+/**
+ * Returns a human-friendly label for display, e.g. "1 Day", "7 Days", "30 Days".
+ */
+export const formatFrequency = (freq?: string | number | null): string => {
+  const num = normalizeFrequencyToNumber(freq);
+  const n = parseInt(num, 10);
+  if (isNaN(n) || n <= 1) return '1 Day';
+  return `${n} Days`;
+};
+
 export interface LpaQuestionItem {
   id?: string;
   sequenceOrder?: number;

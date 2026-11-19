@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { lpaApi, type LpaSchedule, type LpaQuestionSet, type LpaQuestionItem } from '@/api/lpa.api';
+import { lpaApi, formatFrequency, type LpaSchedule, type LpaQuestionSet, type LpaQuestionItem } from '@/api/lpa.api';
 import { getUsersApi } from '@/api/users.api';
 import {
   CheckCircle2, AlertTriangle, ShieldAlert, Award, Play, Check, X,
@@ -363,7 +363,7 @@ export function LpaExecutePage({ auditType }: { auditType?: string }) {
                           fontSize: 12, fontWeight: 600, padding: '4px 8px', borderRadius: 4, 
                           background: 'var(--warm-white)', border: '1px solid var(--silk)' 
                         }}>
-                          {s.frequency}
+                          {formatFrequency(s.frequency)}
                         </span>
                       </td>
                       <td>

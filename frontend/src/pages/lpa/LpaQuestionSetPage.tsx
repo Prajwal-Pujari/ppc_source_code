@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { lpaApi, type LpaQuestionSet, type LpaQuestionItem, type LpaAuditType } from '@/api/lpa.api';
+import { lpaApi, normalizeFrequencyToNumber, formatFrequency, type LpaQuestionSet, type LpaQuestionItem, type LpaAuditType } from '@/api/lpa.api';
 import { getGaugeMasters, getGaugeMasterOperations } from '@/api/gauge-master.api';
 import { getOperationMasters } from '@/api/operation-master.api';
 import { machinesApi, type MachineMaster } from '@/api/machines.api';
@@ -219,7 +219,7 @@ export function LpaQuestionSetPage() {
                     {qs.auditType}
                   </span>
                   <span style={{ fontSize: 11, color: 'var(--ash)', fontFamily: 'monospace' }}>
-                    {qs.defaultFrequency || 'DAILY'}
+                    {formatFrequency(qs.defaultFrequency)}
                   </span>
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--charcoal)' }}>{qs.name}</div>
@@ -386,7 +386,7 @@ export function LpaQuestionSetPage() {
                                         )}
                                       </div>
                                       <div style={{ fontSize: 12, color: 'var(--slate)', display: 'flex', gap: 14 }}>
-                                        <span>Freq: <strong style={{ color: 'var(--charcoal)' }}>{qs.defaultFrequency || 'DAILY'}</strong></span>
+                                        <span>Freq: <strong style={{ color: 'var(--charcoal)' }}>{formatFrequency(qs.defaultFrequency)}</strong></span>
                                         <span>Checkpoints: <strong style={{ color: 'var(--charcoal)' }}>{qs.questions?.length || 0}</strong> items</span>
                                       </div>
                                     </div>
@@ -526,7 +526,7 @@ export function LpaQuestionSetPage() {
                                         )}
                                       </div>
                                       <div style={{ fontSize: 12, color: 'var(--slate)', display: 'flex', gap: 14 }}>
-                                        <span>Freq: <strong style={{ color: 'var(--charcoal)' }}>{qs.defaultFrequency || 'DAILY'}</strong></span>
+                                        <span>Freq: <strong style={{ color: 'var(--charcoal)' }}>{formatFrequency(qs.defaultFrequency)}</strong></span>
                                         <span>Checkpoints: <strong style={{ color: 'var(--charcoal)' }}>{qs.questions?.length || 0}</strong> items</span>
                                       </div>
                                     </div>
@@ -642,6 +642,12 @@ function ManageLpaChecklistsModal({
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (questionSets.length === 0) {
+      handleCreateNew();
+    }
+  }, []);
+
   // Question Library State
   const [showLibrary, setShowLibrary] = useState(false);
   const [libSearch, setLibSearch] = useState('');
@@ -671,10 +677,10 @@ function ManageLpaChecklistsModal({
 
       if (assignedOps.length > 0) {
         setAvailableOperations(assignedOps);
-        // Automatically select the first assigned operation if currently selected operation is not in assigned list
+        // If an operation was already selected and it's not in the new assigned list, reset to All Operations
         const currentOpId = editingSet.operationMaster?.id;
-        if (!currentOpId || !assignedOps.some((o: any) => o.id === currentOpId)) {
-          setEditingSet(prev => prev ? ({ ...prev, operationMaster: assignedOps[0] }) : null);
+        if (currentOpId && !assignedOps.some((o: any) => o.id === currentOpId)) {
+          setEditingSet(prev => prev ? ({ ...prev, operationMaster: undefined }) : null);
         }
       } else {
         // If no specific operations mapped to this part, fall back to all operations
@@ -713,13 +719,13 @@ function ManageLpaChecklistsModal({
   };
 
   const handleCreateNew = () => {
-    const initialPart = gaugeMaster || (allOperations.length === 0 && gaugeMasters.length > 0 ? gaugeMasters[0] : undefined);
-    const initialOp = operation || (allOperations.length > 0 ? allOperations[0] : undefined);
+    const initialPart = gaugeMaster || undefined;
+    const initialOp = operation || undefined;
 
     setEditingSet({
       name: '',
       auditType: 'LAYERED_PROCESS',
-      defaultFrequency: 'DAILY',
+      defaultFrequency: '1',
       gaugeMaster: initialPart,
       operationMaster: initialOp,
       questions: [
@@ -761,7 +767,7 @@ function ManageLpaChecklistsModal({
         auditType: editingSet.auditType || 'LAYERED_PROCESS',
         name: editingSet.name,
         description: editingSet.description || '',
-        defaultFrequency: editingSet.defaultFrequency || 'DAILY',
+        defaultFrequency: normalizeFrequencyToNumber(editingSet.defaultFrequency),
         gaugeMasterId: editingSet.gaugeMaster?.id || null,
         operationMasterId: editingSet.operationMaster?.id || null,
         machineMasterId: editingSet.machineMaster?.id || null,
@@ -900,18 +906,49 @@ function ManageLpaChecklistsModal({
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--charcoal)', marginBottom: 6 }}>
-                    Default Frequency *
+                    Default Frequency (No. of Days) *
                   </label>
-                  <select
-                    value={editingSet.defaultFrequency || 'DAILY'}
-                    onChange={(e) => setEditingSet({ ...editingSet, defaultFrequency: e.target.value })}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--silk)', background: 'var(--cream)', fontSize: 13 }}
-                  >
-                    <option value="SHIFT_WISE">Shift-Wise (Every Shift)</option>
-                    <option value="DAILY">Daily</option>
-                    <option value="WEEKLY">Weekly</option>
-                    <option value="MONTHLY">Monthly</option>
-                  </select>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      placeholder="e.g. 1, 7, 30"
+                      value={normalizeFrequencyToNumber(editingSet.defaultFrequency)}
+                      onChange={(e) => setEditingSet({ ...editingSet, defaultFrequency: e.target.value })}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--silk)', background: 'var(--cream)', fontSize: 13, fontFamily: 'monospace' }}
+                      required
+                    />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--slate)', whiteSpace: 'nowrap' }}>
+                      day(s)
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                    {[
+                      { label: '1 (Daily)', val: '1' },
+                      { label: '7 (Weekly)', val: '7' },
+                      { label: '15 (Bi-Weekly)', val: '15' },
+                      { label: '30 (Monthly)', val: '30' },
+                    ].map(p => (
+                      <button
+                        key={p.val}
+                        type="button"
+                        onClick={() => setEditingSet({ ...editingSet, defaultFrequency: p.val })}
+                        style={{
+                          fontSize: 10,
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          background: normalizeFrequencyToNumber(editingSet.defaultFrequency) === p.val ? 'var(--copper-bronze)' : 'var(--warm-white)',
+                          color: normalizeFrequencyToNumber(editingSet.defaultFrequency) === p.val ? '#fff' : 'var(--slate)',
+                          border: '1px solid var(--silk)',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -1187,7 +1224,7 @@ function ManageLpaChecklistsModal({
                           ) : (
                             <span>Part: <strong style={{ color: 'var(--charcoal)' }}>{qs.gaugeMaster?.gaugeTypeName || 'All Parts'}</strong></span>
                           )}
-                          <span>Freq: <strong style={{ color: 'var(--charcoal)' }}>{qs.defaultFrequency || 'DAILY'}</strong></span>
+                          <span>Freq: <strong style={{ color: 'var(--charcoal)' }}>{formatFrequency(qs.defaultFrequency)}</strong></span>
                           <span>Checkpoints: <strong style={{ color: 'var(--charcoal)' }}>{qs.questions?.length || 0}</strong> items</span>
                         </div>
                       </div>

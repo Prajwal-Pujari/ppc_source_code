@@ -55,4 +55,6 @@ public class PqcInspectionLogRequest {
     private Boolean isEscalated;
 
     private String escalationReason;
+
+    private String inspectionType; // FIRST_PIECE, IN_PROCESS, LAST_PIECE
 }

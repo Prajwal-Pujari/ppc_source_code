@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { lpaApi, type LpaDashboardSummary, type LpaAuditType } from '@/api/lpa.api';
+import { lpaApi, formatFrequency, type LpaDashboardSummary, type LpaAuditType } from '@/api/lpa.api';
 import {
   CheckCircle2, AlertTriangle, Clock, TrendingUp, Award, Layers,
   Calendar, ArrowRight, Play, CheckCircle, ShieldAlert, ShieldCheck, Sparkles, Filter, Loader2
@@ -378,7 +378,7 @@ export function LpaDashboardPage() {
                           color: isOverdue ? '#dc2626' : 'var(--copper-bronze)',
                           textTransform: 'uppercase', letterSpacing: '0.05em',
                         }}>
-                          {isOverdue ? 'OVERDUE' : schedule.frequency}
+                          {isOverdue ? 'OVERDUE' : formatFrequency(schedule.frequency)}
                         </span>
                         <span style={{ fontSize: 11, color: 'var(--ash)', fontWeight: 600 }}>
                           Due: {new Date(schedule.nextDueDate).toLocaleDateString()}

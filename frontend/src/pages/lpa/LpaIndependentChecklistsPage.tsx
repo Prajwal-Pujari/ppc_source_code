@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { lpaApi } from '@/api/lpa.api';
+import { lpaApi, formatFrequency } from '@/api/lpa.api';
 import type { LpaAuditType, LpaQuestionSet } from '@/api/lpa.api';
 import { ShieldAlert, Box, Plus } from 'lucide-react';
 import { ManageIndependentChecklistModal } from '@/components/ui/ManageIndependentChecklistModal';
@@ -63,7 +63,7 @@ export function LpaIndependentChecklistsPage({ auditType }: { auditType: 'SYSTEM
                   {qs.auditType.replace('_', ' ')}
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--ash)', fontFamily: 'monospace' }}>
-                  {qs.defaultFrequency || 'MONTHLY'}
+                  {formatFrequency(qs.defaultFrequency)}
                 </span>
               </div>
               <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--charcoal)', marginTop: 4 }}>{qs.name}</div>

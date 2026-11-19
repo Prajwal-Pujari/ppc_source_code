@@ -24,7 +24,10 @@ import AssignOperationsPage from '@/pages/operations/AssignOperationsPage';
 import NcRecordsPage from '@/pages/nc/NcRecordsPage';
 import UserManagementPage from '@/pages/settings/UserManagementPage';
 import { InspectorLiveEntryPage } from '@/pages/pqc/InspectorLiveEntryPage';
+import FirstLastPieceInspectionPage from '@/pages/pqc/FirstLastPieceInspectionPage';
+import FirstLastPieceReportPage from '@/pages/pqc/FirstLastPieceReportPage';
 import PqcQuestionSetMasterPage from '@/pages/master/PqcQuestionSetMasterPage';
+import PieceQuestionSetMasterPage from '@/pages/master/PieceQuestionSetMasterPage';
 import MachineSetupMasterPage from '@/pages/master/MachineSetupMasterPage';
 import PqcReportDashboard from './pages/pqc/PqcReportDashboard';
 import PqcApprovalsDashboard from './pages/pqc/PqcApprovalsDashboard';
@@ -73,7 +76,7 @@ function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
 
         <Route element={<ProtectedRoute />}>
-            {/* ── MES Module (Default / Root) ── */}
+            {/* â”€â”€ MES Module (Default / Root) â”€â”€ */}
             <Route element={<AppLayout />}>
               <Route path="/" element={<RoleRedirect />} />
               <Route
@@ -109,15 +112,19 @@ function AppRoutes() {
               <Route path="/master/customers" element={<CustomerMasterPage />} />
               <Route path="/master/machines" element={<MachineMasterPage />} />
               <Route path="/master/pqc-question-sets" element={<PqcQuestionSetMasterPage />} />
+              <Route path="/master/piece-question-sets" element={<PieceQuestionSetMasterPage />} />
+              <Route path="/piece-question-sets" element={<PieceQuestionSetMasterPage />} />
               <Route path="/master/machine-setup" element={<MachineSetupMasterPage />} />
               <Route path="/settings/users" element={<UserManagementPage />} />
               <Route path="/settings/modules" element={<ModuleSettingsPage />} />
               <Route path="/settings/reports" element={<PqcSettingsPage />} />
               <Route path="/settings/authority" element={<PqcSettingsPage initialTab="authority" />} />
               <Route path="/inspection" element={<InspectorLiveEntryPage />} />
+              <Route path="/piece-inspection" element={<FirstLastPieceInspectionPage />} />
+              <Route path="/piece-report" element={<FirstLastPieceReportPage />} />
             </Route>
 
-            {/* 💎 PQC Module (/pqc/*) 💎 */}
+            {/* PQC Module (/pqc/*) */}
             <Route element={<PqcLayout />}>
               <Route path="/pqc/dashboard" element={<PqcDashboardPage />} />
               <Route path="/pqc/po-tracker" element={<PqcPoTrackerPage />} />
@@ -130,15 +137,18 @@ function AppRoutes() {
               <Route path="/pqc/jobcards/:id/verify" element={<JobCardVerificationPage />} />
               <Route path="/pqc/machine-schedule" element={<MachineSchedulePage />} />
               <Route path="/pqc/inspect" element={<InspectorLiveEntryPage />} />
+              <Route path="/pqc/piece-inspection" element={<FirstLastPieceInspectionPage />} />
               <Route path="/pqc/breakdowns" element={<PqcBreakdownReportPage />} />
               <Route path="/pqc/incidents" element={<PqcBreakdownReportPage />} />
               <Route path="/pqc/reports" element={<PqcReportDashboard />} />
+              <Route path="/pqc/piece-report" element={<FirstLastPieceReportPage />} />
               <Route path="/pqc/scrap-report" element={<PqcScrapReportPage />} />
               <Route path="/pqc/setup-report" element={<PqcSetupReportDashboard />} />
               <Route path="/pqc/dossier" element={<PqcMasterDossierPage />} />
               <Route path="/pqc/approvals" element={<PqcApprovalsDashboard />} />
               <Route path="/pqc/batch-records" element={<PlaceholderPage title="Batch Records" />} />
               <Route path="/pqc/question-sets" element={<PqcQuestionSetMasterPage />} />
+              <Route path="/pqc/piece-question-sets" element={<PieceQuestionSetMasterPage />} />
               <Route path="/pqc/gauges" element={<GaugeMasterPage />} />
               <Route path="/pqc/operations" element={<OperationMasterPage />} />
               <Route path="/pqc/machines" element={<MachineMasterPage />} />
@@ -149,7 +159,7 @@ function AppRoutes() {
               <Route path="/pqc/settings" element={<PqcSettingsPage />} />
             </Route>
 
-            {/* ── LPA Module (/lpa/*) ── */}
+            {/* â”€â”€ LPA Module (/lpa/*) â”€â”€ */}
             <Route element={<LpaLayout />}>
               <Route path="/lpa/dashboard" element={<LpaDashboardPage />} />
               <Route path="/lpa/ncs" element={<LpaNcManagementPage />} />

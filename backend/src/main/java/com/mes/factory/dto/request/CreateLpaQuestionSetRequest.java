@@ -30,7 +30,7 @@ public class CreateLpaQuestionSetRequest {
     private String importedPartName;
     private String importedOperationName;
 
-    private String defaultFrequency = "DAILY";
+    private String defaultFrequency = "1";
 
     @Valid
     private List<QuestionItem> questions;

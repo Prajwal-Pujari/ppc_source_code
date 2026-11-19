@@ -67,6 +67,12 @@ export default function HourlyInspectionStack({
     ? new Date(progress.lastInspectionTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '';
 
+  const currentSlot = slots.find(s => s.slotNumber === (selectedSlotIndex || nextAvailableSlot));
+  const isSlotLogged = currentSlot?.status === 'LOGGED';
+  const timeInfo = isSlotLogged
+    ? (currentSlot?.logTime ? new Date(currentSlot.logTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '')
+    : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
       {/* Shift Inspection Stack Bar - MES Master Chronometer Light Theme */}
@@ -83,35 +89,25 @@ export default function HourlyInspectionStack({
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Clock size={15} style={{ color: 'var(--copper-bronze, #8B6914)' }} />
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--charcoal, #1C1A18)' }}>
-              {progress.shiftName ? `${progress.shiftName} Inspection Stack` : 'Shift Inspection Stack'} ({loggedCount}/{maxSlots})
+              {progress.shiftName ? `${progress.shiftName} Hourly Inspection Stack` : 'Shift Hourly Inspection Stack'} ({loggedCount}/{maxSlots})
             </span>
           </div>
-          {(() => {
-            const currentSlot = slots.find(s => s.slotNumber === (selectedSlotIndex || nextAvailableSlot));
-            const isSlotLogged = currentSlot?.status === 'LOGGED';
-            const timeInfo = isSlotLogged
-              ? (currentSlot?.logTime ? new Date(currentSlot.logTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '')
-              : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-            return (
-              <span
-                style={{
-                  fontSize: 11,
-                  fontFamily: "'JetBrains Mono', monospace",
-                  color: isSlotLogged ? 'var(--status-completed, #3A6B4A)' : 'var(--copper-dark, #6F5100)',
-                  backgroundColor: isSlotLogged ? 'var(--status-completed-bg, #EBF4EE)' : 'var(--linen, #EEE9E1)',
-                  border: isSlotLogged ? '1px solid rgba(58, 107, 74, 0.3)' : '1px solid var(--silk, #E8E2D9)',
-                  padding: '3px 8px',
-                  borderRadius: 4,
-                }}
-              >
-                Slot #{selectedSlotIndex || nextAvailableSlot} &bull; {isSlotLogged ? `Logged at ${timeInfo}` : `Live from now (${timeInfo})`}
-              </span>
-            );
-          })()}
+          <span
+            style={{
+              fontSize: 11,
+              fontFamily: "'JetBrains Mono', monospace",
+              color: isSlotLogged ? 'var(--status-completed, #3A6B4A)' : 'var(--copper-dark, #6F5100)',
+              backgroundColor: isSlotLogged ? 'var(--status-completed-bg, #EBF4EE)' : 'var(--linen, #EEE9E1)',
+              border: isSlotLogged ? '1px solid rgba(58, 107, 74, 0.3)' : '1px solid var(--silk, #E8E2D9)',
+              padding: '3px 8px',
+              borderRadius: 4,
+            }}
+          >
+            Slot #{selectedSlotIndex || nextAvailableSlot} &bull; {isSlotLogged ? `Logged at ${timeInfo}` : `Live from now (${timeInfo})`}
+          </span>
         </div>
 
-        {/* Continuous Horizontal Segmented Bar (Single Bar, light modern MES theme) */}
+        {/* Continuous Horizontal Segmented Bar for Hourly Slots */}
         <div
           style={{
             display: 'flex',
@@ -131,8 +127,6 @@ export default function HourlyInspectionStack({
             const isActive = slot.slotNumber === nextAvailableSlot;
             const isMissed = slot.status === 'MISSED';
             const isFailed = slot.isFailed || slot.isEscalated;
-            // Any slot is clickable: logged slots display info, pending slots allow logging or skipping ahead
-            const isEnabled = true;
 
             // MES "Master Chronometer" subtle palette tokens
             let segBg = 'var(--warm-white, #F5F2ED)';
@@ -171,7 +165,9 @@ export default function HourlyInspectionStack({
               <button
                 key={slot.slotNumber}
                 type="button"
-                onClick={() => onSelectSlot && onSelectSlot(slot)}
+                onClick={() => {
+                  onSelectSlot && onSelectSlot(slot);
+                }}
                 style={{
                   flex: 1,
                   height: '100%',
@@ -213,9 +209,6 @@ export default function HourlyInspectionStack({
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: 'var(--copper-light, #FBF4E8)', border: '1px solid var(--copper-bronze, #8B6914)' }} /> Current
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: 'var(--status-in-progress-bg, #FBF4E8)', border: '1px solid rgba(198, 139, 47, 0.4)' }} /> Missed
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: 'var(--warm-white, #F5F2ED)', border: '1px solid var(--silk, #E8E2D9)', opacity: 0.5 }} /> Pending

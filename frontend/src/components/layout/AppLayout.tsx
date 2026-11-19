@@ -38,6 +38,7 @@ const navSections = [
     title: 'Quality',
     items: [
       { label: 'Inspection', path: '/inspection', icon: Shield, roles: ['WORKER', 'QUALITY_INSPECTOR', 'ADMIN', 'SUPERVISOR', 'VIEWER'] },
+      { label: '1st & Last Piece Inspection', path: '/piece-inspection', icon: ShieldCheck, roles: ['QUALITY_INSPECTOR', 'ADMIN', 'SUPERVISOR', 'VIEWER'] },
       { label: 'NC Records', path: '/nc-records', icon: AlertTriangle, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
       { label: 'Breakdowns', path: '/breakdowns', icon: Wrench, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
     ],
@@ -47,6 +48,7 @@ const navSections = [
     items: [
       { label: 'Analytics', path: '/analytics', icon: BarChart3, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
       { label: 'Reports', path: '/reports', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
+      { label: '1st & Last Piece Report', path: '/piece-report', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
       { label: 'Setup Report', path: '/pqc/setup-report', icon: Settings, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
       { label: 'Master Quality Dossier', path: '/pqc/dossier', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
     ],
@@ -59,6 +61,7 @@ const navSections = [
       { label: 'Customers', path: '/master/customers', icon: Users, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
       { label: 'Machine Master', path: '/master/machines', icon: Settings, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
       { label: 'Question Sets', path: '/master/pqc-question-sets', icon: CheckCheck, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
+      { label: '1st & Last Piece Checklists', path: '/master/piece-question-sets', icon: ShieldCheck, roles: ['ADMIN', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'VIEWER'] },
       { label: 'Machine Setup Checklists', path: '/master/machine-setup', icon: Wrench, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
     ],
   },

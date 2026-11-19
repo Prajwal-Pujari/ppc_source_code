@@ -67,6 +67,18 @@ public class PqcQuestion {
     @Builder.Default
     private Boolean showInPdir = true;
 
+    @Column(name = "is_first_piece")
+    @Builder.Default
+    private Boolean isFirstPiece = true;
+
+    @Column(name = "is_last_piece")
+    @Builder.Default
+    private Boolean isLastPiece = true;
+
+    @Column(name = "is_in_process")
+    @Builder.Default
+    private Boolean isInProcess = true;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;

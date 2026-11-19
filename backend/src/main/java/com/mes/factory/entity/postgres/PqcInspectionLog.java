@@ -134,4 +134,8 @@ public class PqcInspectionLog {
     @Column(name = "is_backfill")
     @Builder.Default
     private Boolean isBackfill = false;
+
+    @Column(name = "inspection_type", length = 30)
+    @Builder.Default
+    private String inspectionType = "IN_PROCESS";
 }

@@ -22,6 +22,7 @@ export interface PqcInspectionLogRequest {
   logTime?: string;
   isEscalated?: boolean;
   escalationReason?: string;
+  inspectionType?: 'FIRST_PIECE' | 'IN_PROCESS' | 'LAST_PIECE' | string;
 }
 
 export const pqcApi = {
@@ -59,6 +60,15 @@ export const pqcApi = {
 
   updateIncidentRemarks: async (logId: string, remarks: string): Promise<{ data: any }> => {
     const response = await api.put(`/pqc/incident-report/${logId}/remarks`, { remarks });
+    return response.data;
+  },
+
+  // Piece Inspections (1st Piece & Last Piece)
+  getPieceInspections: async (type?: 'FIRST_PIECE' | 'LAST_PIECE' | string, gaugeId?: string): Promise<{ data: any[] }> => {
+    const params: Record<string, string> = {};
+    if (type && type !== 'ALL') params.type = type;
+    if (gaugeId) params.gaugeId = gaugeId;
+    const response = await api.get('/pqc/piece-inspections', { params });
     return response.data;
   },
 

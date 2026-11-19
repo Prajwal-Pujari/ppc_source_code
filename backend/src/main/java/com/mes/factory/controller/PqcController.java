@@ -95,8 +95,25 @@ public class PqcController {
         return ResponseEntity.ok(ApiResponse.success(log, "Remarks updated successfully"));
     }
 
+    @GetMapping("/piece-inspections")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','QUALITY_INSPECTOR','WORKER','VIEWER')")
+    public ResponseEntity<ApiResponse<List<PqcInspectionLog>>> getPieceInspections(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) UUID gaugeId) {
+        List<PqcInspectionLog> logs;
+        if (gaugeId != null) {
+            logs = inspectionLogRepository.findPieceInspectionLogsByGaugeId(gaugeId);
+        } else if (type != null && !type.isBlank()) {
+            logs = inspectionLogRepository.findPieceInspectionLogsWithDetailsByType(user.getFactoryId(), type.toUpperCase());
+        } else {
+            logs = inspectionLogRepository.findPieceInspectionLogsWithDetails(user.getFactoryId());
+        }
+        return ResponseEntity.ok(ApiResponse.success(logs));
+    }
+
     /**
-     * PQC Dashboard — returns all stats in a single call.
+     * PQC Dashboard â€” returns all stats in a single call.
      */
     @GetMapping("/dashboard")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','QUALITY_INSPECTOR','WORKER')")
@@ -123,7 +140,7 @@ public class PqcController {
         List<PqcInspectionLog> logs = inspectionLogRepository.findAllSince(factoryId, since);
         List<UUID> finalOpIds = gaugeOperationRepository.findFinalOperationIdsByFactory(factoryId);
 
-        // ── Summary stats ──
+        // â”€â”€ Summary stats â”€â”€
         long planned = inspectionLogRepository.sumPlannedSince(factoryId, since);
         long produced = inspectionLogRepository.sumActualSince(factoryId, since);
         long rejected = inspectionLogRepository.sumRejectedSince(factoryId, since);
@@ -162,7 +179,7 @@ public class PqcController {
         summary.put("allTimeYield", Math.round(allTimeYield * 10.0) / 10.0);
         summary.put("ppm", ppm);
 
-        // ── Hourly breakdown (for bar chart) ──
+        // â”€â”€ Hourly breakdown (for bar chart) â”€â”€
         Map<String, Map<String, Object>> chartMap = new LinkedHashMap<>();
 
         for (PqcInspectionLog l : logs) {
@@ -200,7 +217,7 @@ public class PqcController {
         }
         List<Map<String, Object>> hourly = new ArrayList<>(chartMap.values());
 
-        // ── Rejection reasons breakdown (for pie chart) ──
+        // â”€â”€ Rejection reasons breakdown (for pie chart) â”€â”€
         Map<String, Long> reasonCounts = new LinkedHashMap<>();
         for (PqcInspectionLog l : logs) {
             boolean hasReasons = false;
@@ -226,7 +243,7 @@ public class PqcController {
         reasonCounts.forEach((reason, count) ->
                 rejectionBreakdown.add(Map.of("reason", reason, "count", count)));
 
-        // ── Recent inspections (last 10) ──
+        // â”€â”€ Recent inspections (last 10) â”€â”€
         List<PqcInspectionLog> recentLogs = inspectionLogRepository.findRecentByFactory(
                 factoryId, PageRequest.of(0, 10));
         List<Map<String, Object>> recent = new ArrayList<>();
@@ -234,10 +251,10 @@ public class PqcController {
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("id", l.getId().toString());
             entry.put("logTime", l.getLogTime().toString());
-            entry.put("inspectorName", l.getInspector() != null ? l.getInspector().getFullName() : "—");
-            entry.put("operationName", l.getGaugeOperation() != null ? l.getGaugeOperation().getOperationName() : "—");
-            entry.put("gaugeSN", l.getGauge() != null ? l.getGauge().getSerialNumber() : "—");
-            entry.put("gaugeType", l.getGauge() != null ? l.getGauge().getGaugeTypeName() : "—");
+            entry.put("inspectorName", l.getInspector() != null ? l.getInspector().getFullName() : "â€”");
+            entry.put("operationName", l.getGaugeOperation() != null ? l.getGaugeOperation().getOperationName() : "â€”");
+            entry.put("gaugeSN", l.getGauge() != null ? l.getGauge().getSerialNumber() : "â€”");
+            entry.put("gaugeType", l.getGauge() != null ? l.getGauge().getGaugeTypeName() : "â€”");
             entry.put("actualQty", l.getActualQty());
             entry.put("passedQty", l.getPassedQty());
             entry.put("rejectedQty", l.getRejectedQty());
@@ -247,7 +264,7 @@ public class PqcController {
             recent.add(entry);
         }
 
-        // ── Build final response ──
+        // â”€â”€ Build final response â”€â”€
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("summary", summary);
         result.put("hourly", hourly);

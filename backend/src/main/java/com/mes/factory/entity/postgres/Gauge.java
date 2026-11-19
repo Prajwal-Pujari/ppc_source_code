@@ -2,6 +2,7 @@ package com.mes.factory.entity.postgres;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -135,4 +136,18 @@ public class Gauge {
     @Builder.Default
     @JsonIgnore
     private List<NcRecord> ncRecords = new ArrayList<>();
+
+    @JsonProperty("categoryCode")
+    public String getCategoryCode() {
+        try {
+            if (this.gaugeMaster != null && this.gaugeMaster.getCategoryCode() != null && !this.gaugeMaster.getCategoryCode().isBlank()) {
+                return this.gaugeMaster.getCategoryCode();
+            }
+            if (this.poLineItem != null && this.poLineItem.getGaugeMaster() != null && this.poLineItem.getGaugeMaster().getCategoryCode() != null) {
+                return this.poLineItem.getGaugeMaster().getCategoryCode();
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
 }

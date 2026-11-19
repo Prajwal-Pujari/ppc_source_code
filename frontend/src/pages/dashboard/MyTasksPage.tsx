@@ -9,7 +9,7 @@ import { machinesApi, type MachineMaster } from '@/api/machines.api';
 import type { GaugeOperation } from '../../types/domain.types';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
-import { Play, CheckCircle, AlertTriangle, Clock, ListChecks, Loader, Wrench, ChevronDown, ChevronRight, FileText, Settings, X } from 'lucide-react';
+import { Play, CheckCircle, AlertTriangle, Clock, ListChecks, Loader, Wrench, ChevronDown, ChevronRight, FileText, Settings, X, Search, ClipboardList } from 'lucide-react';
 import OperationFlowLoader from '@/components/ui/loader/OperationFlowLoader';
 
 type TabKey = 'in_progress' | 'queued' | 'all';
@@ -29,6 +29,10 @@ const css = `
   .pulse-dot{animation:pulse-dot 1.5s ease-in-out infinite}
   .jc-panel{background:var(--bone-white);border:1px solid var(--silk);border-radius:10px;overflow:hidden;transition:box-shadow .2s}
   .jc-panel:hover{box-shadow:0 8px 30px rgba(48,49,47,.06)}
+  @media (max-width: 860px) {
+    .task-card-split { flex-direction: column !important; }
+    .task-card-split .task-card-left { width: 100% !important; border-right: none !important; border-bottom: 1px solid var(--silk) !important; }
+  }
 `;
 
 export default function MyTasksPage() {
@@ -37,6 +41,7 @@ export default function MyTasksPage() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<TabKey>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [completeModal, setCompleteModal] = useState<string | null>(null);
   const [setupModal, setSetupModal] = useState<GaugeOperation | null>(null);
   const [remarks, setRemarks] = useState('');
@@ -138,9 +143,47 @@ export default function MyTasksPage() {
   const activeTasks = tasks.filter((t: GaugeOperation) => t.status !== 'COMPLETED');
   const completedCount = tasks.length - activeTasks.length;
 
+  const getCategoryCode = (task: GaugeOperation): string => {
+    return (
+      task.gauge?.categoryCode ||
+      task.gauge?.gaugeMaster?.categoryCode ||
+      task.gauge?.poLineItem?.gaugeMaster?.categoryCode ||
+      (task.gauge?.poLineItem as any)?.categoryCode ||
+      (task as any).gaugeMaster?.categoryCode ||
+      ''
+    );
+  };
+
   const filteredTasks = activeTasks.filter((t: GaugeOperation) => {
-    if (activeTab === 'in_progress') return t.status === 'IN_PROGRESS';
-    if (activeTab === 'queued') return t.status === 'QUEUED' || t.status === 'PENDING';
+    if (activeTab === 'in_progress' && t.status !== 'IN_PROGRESS') return false;
+    if (activeTab === 'queued' && (t.status !== 'QUEUED' && t.status !== 'PENDING')) return false;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      const catCode = getCategoryCode(t).toLowerCase();
+      const partName = (t.gauge?.gaugeTypeName || '').toLowerCase();
+      const serial = (t.gauge?.serialNumber || '').toLowerCase();
+      const poNum = (t.gauge?.purchaseOrder?.poNumber || '').toLowerCase();
+      const customer = (t.gauge?.purchaseOrder?.customer?.name || t.gauge?.purchaseOrder?.customerName || '').toLowerCase();
+      const opName = (t.operationName || '').toLowerCase();
+      const machine = (t.machineMaster?.machineCode || t.machineMaster?.name || '').toLowerCase();
+      const material = (t.gauge?.materialGrade || '').toLowerCase();
+      const lineNotes = (t.gauge?.poLineItem?.lineNotes || '').toLowerCase();
+
+      const matches =
+        catCode.includes(q) ||
+        partName.includes(q) ||
+        serial.includes(q) ||
+        poNum.includes(q) ||
+        customer.includes(q) ||
+        opName.includes(q) ||
+        machine.includes(q) ||
+        material.includes(q) ||
+        lineNotes.includes(q);
+
+      if (!matches) return false;
+    }
+
     return true;
   });
 
@@ -205,10 +248,26 @@ export default function MyTasksPage() {
     );
   };
 
-  const Field = ({ label, value, mono }: { label: string; value: string; mono?: boolean }) => (
+  const Field = ({ label, value, mono, badge }: { label: string; value: string; mono?: boolean; badge?: boolean }) => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <span style={{ fontSize: 10, color: '#807665', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.08em' }}>{label}</span>
-      <span className={mono ? 'font-mono' : ''} style={{ fontSize: 13, color: '#1B1C1A', fontWeight: mono ? 500 : 400 }}>{value || 'N/A'}</span>
+      {badge ? (
+        <span className="font-mono" style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: '#6F5100',
+          background: 'rgba(139,105,20,0.08)',
+          border: '1px solid rgba(139,105,20,0.22)',
+          padding: '2px 8px',
+          borderRadius: 6,
+          display: 'inline-block',
+          width: 'fit-content'
+        }}>
+          {value || 'N/A'}
+        </span>
+      ) : (
+        <span className={mono ? 'font-mono' : ''} style={{ fontSize: 13, color: '#1B1C1A', fontWeight: mono ? 500 : 400 }}>{value || 'N/A'}</span>
+      )}
     </div>
   );
 
@@ -216,147 +275,243 @@ export default function MyTasksPage() {
     <div style={{ maxWidth: 1200, margin: '0 auto' }}>
       <style>{css}</style>
 
-      {/* ─── Tab Pills ─── */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 28, flexWrap: 'wrap' }}>
-        {tabs.map(tab => {
-          const Icon = tab.icon;
-          const active = activeTab === tab.key;
-          return (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
-              padding: '10px 20px', borderRadius: 999, border: active ? '1.5px solid #8B6914' : '1.5px solid var(--silk)',
-              background: active ? 'rgba(139,105,20,0.06)' : 'white', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 8, transition: 'all .2s',
-              fontWeight: active ? 600 : 400, color: active ? '#6F5100' : '#807665', fontSize: 13,
-            }}>
-              <Icon size={15} />
-              {tab.label}
-              <span className="font-mono" style={{ fontSize: 12, background: active ? '#8B6914' : 'var(--silk)', color: active ? 'white' : '#807665', padding: '1px 8px', borderRadius: 999, fontWeight: 600 }}>{tab.count}</span>
+      {/* ─── Tabs & Search Bar ─── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+        {/* Tab Pills */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {tabs.map(tab => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.key;
+            return (
+              <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
+                padding: '9px 18px', borderRadius: 999, border: active ? '1.5px solid #8B6914' : '1.5px solid var(--silk)',
+                background: active ? 'rgba(139,105,20,0.06)' : 'white', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 8, transition: 'all .2s',
+                fontWeight: active ? 600 : 400, color: active ? '#6F5100' : '#807665', fontSize: 13,
+              }}>
+                <Icon size={15} />
+                {tab.label}
+                <span className="font-mono" style={{ fontSize: 12, background: active ? '#8B6914' : 'var(--silk)', color: active ? 'white' : '#807665', padding: '1px 8px', borderRadius: 999, fontWeight: 600 }}>{tab.count}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Search Bar */}
+        <div style={{ position: 'relative', minWidth: 260, maxWidth: 420, flex: '1 1 280px' }}>
+          <Search size={16} color="#807665" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          <input
+            type="text"
+            className="input"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search part, part code, serial, PO..."
+            style={{
+              width: '100%',
+              height: 40,
+              paddingLeft: 38,
+              paddingRight: searchQuery ? 36 : 14,
+              borderRadius: 999,
+              border: '1.5px solid var(--silk)',
+              background: 'white',
+              fontSize: 13,
+              transition: 'border-color 0.2s, box-shadow 0.2s',
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              style={{
+                position: 'absolute',
+                right: 12,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 4,
+                color: '#807665',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Clear search"
+            >
+              <X size={14} />
             </button>
-          );
-        })}
+          )}
+        </div>
       </div>
+
+      {/* ─── Search Results Indicator ─── */}
+      {searchQuery.trim() && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, padding: '8px 16px', background: 'rgba(139,105,20,0.05)', borderRadius: 8, border: '1px solid rgba(139,105,20,0.12)', fontSize: 13, color: '#6F5100' }}>
+          <span>
+            Found <strong>{filteredTasks.length}</strong> matching {filteredTasks.length === 1 ? 'task' : 'tasks'} for "{searchQuery}"
+          </span>
+          <button
+            onClick={() => setSearchQuery('')}
+            style={{ background: 'none', border: 'none', color: '#8B6914', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+          >
+            Clear Filter
+          </button>
+        </div>
+      )}
 
       {/* ─── Empty State ─── */}
       {groupedTasks.length === 0 ? (
-        <div style={{ padding: 80, textAlign: 'center', background: 'var(--warm-white)', border: '1px dashed var(--silk)', borderRadius: 10 }}>
-          <Wrench size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
-          <p style={{ fontSize: 18, fontWeight: 500, color: 'var(--charcoal)' }}>No tasks in this category</p>
-          <p style={{ fontSize: 14, marginTop: 8, color: 'var(--ash)' }}>Check back later for new assignments.</p>
+        <div style={{ padding: 60, textAlign: 'center', background: 'var(--warm-white)', border: '1px dashed var(--silk)', borderRadius: 12 }}>
+          {searchQuery ? (
+            <>
+              <Search size={40} style={{ margin: '0 auto 14px', opacity: 0.3, color: '#8B6914' }} />
+              <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--charcoal)', margin: 0 }}>No matching tasks found</p>
+              <p style={{ fontSize: 13, marginTop: 6, color: 'var(--ash)' }}>
+                No operations matched "{searchQuery}". Try searching by a different part name, part code, or serial number.
+              </p>
+              <button
+                onClick={() => setSearchQuery('')}
+                className="btn"
+                style={{ marginTop: 14, padding: '6px 16px', fontSize: 12, borderRadius: 8, background: 'white', border: '1px solid var(--silk)', color: '#6F5100', cursor: 'pointer' }}
+              >
+                Clear Search
+              </button>
+            </>
+          ) : (
+            <>
+              <Wrench size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
+              <p style={{ fontSize: 18, fontWeight: 500, color: 'var(--charcoal)' }}>No tasks in this category</p>
+              <p style={{ fontSize: 14, marginTop: 8, color: 'var(--ash)' }}>Check back later for new assignments.</p>
+            </>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {groupedTasks.map(({ po, tasks: poTasks }) => (
-            <div key={po.id} style={{ background: '#F5F3F0', borderRadius: 12, border: '1px solid #D1C5B2' + '40', overflow: 'hidden' }}>
-              {/* ─── PO Card Header (clickable) ─── */}
-              <div onClick={() => togglePO(po.id)} style={{ padding: '18px 24px', background: 'linear-gradient(135deg, rgba(139,105,20,0.06), rgba(111,81,0,0.03))', borderBottom: (expandedPOs[po.id] !== false) ? '1px solid #D1C5B240' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(139,105,20,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <FileText size={18} color="#8B6914" />
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span className="font-mono" style={{ fontSize: 16, fontWeight: 700, color: '#6F5100', letterSpacing: '-0.02em' }}>{po.poNumber}</span>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#807665', background: 'white', padding: '2px 10px', borderRadius: 999, border: '1px solid #D1C5B240' }}>{poTasks.length} {poTasks.length === 1 ? 'Job' : 'Jobs'}</span>
+          {groupedTasks.map(({ po, tasks: poTasks }) => {
+            const isPoExpanded = searchQuery.trim() ? true : (expandedPOs[po.id] !== false);
+            return (
+              <div key={po.id} style={{ background: '#F5F3F0', borderRadius: 12, border: '1px solid #D1C5B2' + '40', overflow: 'hidden' }}>
+                {/* ─── PO Card Header (clickable) ─── */}
+                <div onClick={() => togglePO(po.id)} style={{ padding: '18px 24px', background: 'linear-gradient(135deg, rgba(139,105,20,0.06), rgba(111,81,0,0.03))', borderBottom: isPoExpanded ? '1px solid #D1C5B240' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(139,105,20,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <FileText size={18} color="#8B6914" />
                     </div>
-                    <span style={{ fontSize: 13, color: '#807665', marginTop: 2, display: 'block' }}>{po.customer?.name || po.customerName || 'Customer'}</span>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span className="font-mono" style={{ fontSize: 16, fontWeight: 700, color: '#6F5100', letterSpacing: '-0.02em' }}>{po.poNumber}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: '#807665', background: 'white', padding: '2px 10px', borderRadius: 999, border: '1px solid #D1C5B240' }}>{poTasks.length} {poTasks.length === 1 ? 'Job' : 'Jobs'}</span>
+                      </div>
+                      <span style={{ fontSize: 13, color: '#807665', marginTop: 2, display: 'block' }}>{po.customer?.name || po.customerName || 'Customer'}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {po.specialInstructions && (
+                      <div style={{ fontSize: 12, color: '#B8860B', background: 'rgba(255,191,0,0.08)', border: '1px solid rgba(255,191,0,0.15)', padding: '6px 14px', borderRadius: 8, maxWidth: 400, lineHeight: 1.4 }}>
+                        <span style={{ fontWeight: 600, marginRight: 6 }}>Note:</span>{po.specialInstructions}
+                      </div>
+                    )}
+                    <ChevronDown size={20} color="#807665" style={{ transform: isPoExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {po.specialInstructions && (
-                    <div style={{ fontSize: 12, color: '#B8860B', background: 'rgba(255,191,0,0.08)', border: '1px solid rgba(255,191,0,0.15)', padding: '6px 14px', borderRadius: 8, maxWidth: 400, lineHeight: 1.4 }}>
-                      <span style={{ fontWeight: 600, marginRight: 6 }}>Note:</span>{po.specialInstructions}
-                    </div>
-                  )}
-                  <ChevronDown size={20} color="#807665" style={{ transform: (expandedPOs[po.id] !== false) ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-                </div>
-              </div>
 
-              {/* ─── Job Cards inside this PO (collapsible) ─── */}
-              {(expandedPOs[po.id] !== false) && (
-              <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {poTasks.map((task: GaugeOperation) => {
-                  const sCfg = STATUS_CFG[task.status] || STATUS_CFG.QUEUED;
-                  const isOpen = expandedCards[task.id] ?? (task.status === 'IN_PROGRESS');
-                  const isInProgress = task.status === 'IN_PROGRESS';
+                {/* ─── Job Cards inside this PO (collapsible) ─── */}
+                {isPoExpanded && (
+                <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {poTasks.map((task: GaugeOperation) => {
+                    const sCfg = STATUS_CFG[task.status] || STATUS_CFG.QUEUED;
+                    const isOpen = expandedCards[task.id] ?? (task.status === 'IN_PROGRESS');
+                    const isInProgress = task.status === 'IN_PROGRESS';
+                    const catCode = getCategoryCode(task);
 
-                  return (
-                    <div key={task.id} className="jc-panel" style={{ borderLeft: `3px solid ${sCfg.dot}` }}>
-                      {/* ─── Card Layout: 30% Left + 70% Right ─── */}
-                      <div style={{ display: 'flex', minHeight: 0 }}>
+                    return (
+                      <div key={task.id} className="jc-panel" style={{ borderLeft: `3px solid ${sCfg.dot}` }}>
+                        {/* ─── Card Layout: 30% Left + 70% Right ─── */}
+                        <div className="task-card-split" style={{ display: 'flex', minHeight: 0 }}>
 
-                        {/* ─── LEFT: Job Summary (30%) ─── */}
-                        <div style={{ width: '32%', padding: '20px 22px', borderRight: '1px solid var(--silk)', background: 'white', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '1px solid #D1C5B2' + '33' }}>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: '#1B1C1A' }}>Job Summary</span>
-                            <StatusBadge status={task.status} />
-                          </div>
-
-                          <Field label="Serial Number" value={task.gauge?.serialNumber || 'N/A'} mono />
-                          <Field label="Part / Product Name" value={task.gauge?.gaugeTypeName || 'N/A'} />
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                            <Field label="Nominal Size" value={`${task.gauge?.nominalSize ?? 'N/A'} mm`} mono />
-                            <Field label="Material" value={task.gauge?.materialGrade || 'Standard'} />
-                          </div>
-
-                          {task.actualStart && (
-                            <Field label="Started" value={new Date(task.actualStart).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })} mono />
-                          )}
-
-                          {/* ─── Setup Warning ─── */}
-                          {task.setupInfo && task.setupInfo.setupStatus === 'PENDING' && (
-                            <div style={{ background: '#FFF3E0', border: '1px solid #FFE0B2', borderRadius: 8, padding: '12px 16px', fontSize: 13, color: '#E65100' }}>
-                              <strong style={{ display: 'block', marginBottom: 4 }}>Setup Required</strong>
-                              Complete the machine setup checklist before starting this operation.
+                          {/* ─── LEFT: Job Summary (30%) ─── */}
+                          <div className="task-card-left" style={{ width: '32%', padding: '20px 22px', borderRight: '1px solid var(--silk)', background: 'white', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '1px solid #D1C5B233' }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: '#1B1C1A' }}>Job Summary</span>
+                              <StatusBadge status={task.status} />
                             </div>
-                          )}
 
-                          {/* ─── Action Buttons ─── */}
-                          <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid #D1C5B2' + '33', display: 'flex', gap: 8 }}>
-                            {(task.status === 'QUEUED' || task.status === 'PENDING') && (
-                              <>
-                                {task.setupInfo && task.setupInfo.setupStatus === 'PENDING' ? (
-                                  <button onClick={() => setSetupModal(task)} 
-                                    className="gradient-copper" style={{ flex: 1, color: 'white', padding: '10px 0', borderRadius: 10, border: 'none', fontWeight: 500, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'filter .2s' }}>
-                                    <Settings size={14} /> Complete Setup
+                            <Field label="Serial Number" value={task.gauge?.serialNumber || 'N/A'} mono />
+                            <Field label="Part / Product Name" value={task.gauge?.gaugeTypeName || 'N/A'} />
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                              <Field label="Part Code" value={catCode || 'N/A'} mono badge={Boolean(catCode)} />
+                              <Field label="Nominal Size" value={`${task.gauge?.nominalSize ?? 'N/A'} mm`} mono />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                              <Field label="Material" value={task.gauge?.materialGrade || 'Standard'} />
+                              {task.actualStart ? (
+                                <Field label="Started" value={new Date(task.actualStart).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })} mono />
+                              ) : (
+                                <Field label="Batch Qty" value={`${task.gauge?.batchQuantity ?? 1} pcs`} mono />
+                              )}
+                            </div>
+
+                            {/* ─── Setup Warning ─── */}
+                            {task.setupInfo && task.setupInfo.setupStatus === 'PENDING' && (
+                              <div style={{ background: '#FFF3E0', border: '1px solid #FFE0B2', borderRadius: 8, padding: '12px 16px', fontSize: 13, color: '#E65100' }}>
+                                <strong style={{ display: 'block', marginBottom: 4 }}>Setup Required</strong>
+                                Complete the machine setup checklist before starting this operation.
+                              </div>
+                            )}
+
+                            {/* ─── Action Buttons ─── */}
+                            <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid #D1C5B2' + '33', display: 'flex', gap: 8 }}>
+                              {(task.status === 'QUEUED' || task.status === 'PENDING') && (
+                                <>
+                                  {task.setupInfo && task.setupInfo.setupStatus === 'PENDING' ? (
+                                    <button onClick={() => setSetupModal(task)} 
+                                      className="gradient-copper" style={{ flex: 1, color: 'white', padding: '10px 0', borderRadius: 10, border: 'none', fontWeight: 500, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'filter .2s' }}>
+                                      <Settings size={14} /> Complete Setup
+                                    </button>
+                                  ) : (
+                                    <button onClick={() => startMut.mutate(task.id)} disabled={startMut.isPending}
+                                      className="gradient-copper" style={{ flex: 1, color: 'white', padding: '10px 0', borderRadius: 10, border: 'none', fontWeight: 500, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'filter .2s' }}>
+                                      {startMut.isPending ? <Loader size={14} className="spin" /> : <Play size={14} />} Start Job
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                              {isInProgress && (
+                                <>
+                                  <button onClick={() => openCompleteModal(task)}
+                                    style={{ flex: 1, background: '#228B22', color: 'white', padding: '10px 0', borderRadius: 10, border: 'none', fontWeight: 500, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                    <CheckCircle size={14} /> Complete
                                   </button>
-                                ) : (
-                                  <button onClick={() => startMut.mutate(task.id)} disabled={startMut.isPending}
-                                    className="gradient-copper" style={{ flex: 1, color: 'white', padding: '10px 0', borderRadius: 10, border: 'none', fontWeight: 500, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'filter .2s' }}>
-                                    {startMut.isPending ? <Loader size={14} className="spin" /> : <Play size={14} />} Start Job
+                                  <button onClick={() => setFlagModal(task.id)}
+                                    style={{ background: 'white', color: '#BA1A1A', padding: '10px 14px', borderRadius: 10, border: '1px solid #BA1A1A40', fontWeight: 500, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                                    <AlertTriangle size={14} />
                                   </button>
+                                </>
+                              )}
+                              {task.status === 'COMPLETED' && (
+                                <span style={{ flex: 1, textAlign: 'center', color: '#228B22', fontSize: 13, fontWeight: 500, padding: '10px 0' }}>✓ Done</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* ─── RIGHT: Operation Detail (70%) ─── */}
+                          <div style={{ flex: 1, padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {/* Operation Header */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: '#1B1C1A', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 12, color: '#807665', background: '#D1C5B2' + '33', padding: '3px 10px', borderRadius: 6, fontWeight: 600 }}>OP #{task.sequenceOrder}</span>
+                                {task.operationName}
+                                {catCode && (
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: '#6F5100', background: 'rgba(139,105,20,0.08)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(139,105,20,0.18)' }}>
+                                    {catCode}
+                                  </span>
                                 )}
-                              </>
-                            )}
-                            {isInProgress && (
-                              <>
-                                <button onClick={() => openCompleteModal(task)}
-                                  style={{ flex: 1, background: '#228B22', color: 'white', padding: '10px 0', borderRadius: 10, border: 'none', fontWeight: 500, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                                  <CheckCircle size={14} /> Complete
-                                </button>
-                                <button onClick={() => setFlagModal(task.id)}
-                                  style={{ background: 'white', color: '#BA1A1A', padding: '10px 14px', borderRadius: 10, border: '1px solid #BA1A1A40', fontWeight: 500, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                                  <AlertTriangle size={14} />
-                                </button>
-                              </>
-                            )}
-                            {task.status === 'COMPLETED' && (
-                              <span style={{ flex: 1, textAlign: 'center', color: '#228B22', fontSize: 13, fontWeight: 500, padding: '10px 0' }}>✓ Done</span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* ─── RIGHT: Operation Detail (70%) ─── */}
-                        <div style={{ flex: 1, padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                          {/* Operation Header */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: '#1B1C1A', display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: 12, color: '#807665', background: '#D1C5B2' + '33', padding: '3px 10px', borderRadius: 6, fontWeight: 600 }}>OP #{task.sequenceOrder}</span>
-                              {task.operationName}
-                            </h3>
-                            <button onClick={() => toggleCard(task.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#807665', padding: 4 }}>
-                              <ChevronDown size={18} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
-                            </button>
-                          </div>
+                              </h3>
+                              <button onClick={() => toggleCard(task.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#807665', padding: 4 }}>
+                                <ChevronDown size={18} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+                              </button>
+                            </div>
 
                           {/* Active Operation Indicator */}
                           {isInProgress && (
@@ -494,7 +649,8 @@ export default function MyTasksPage() {
               </div>
               )}
             </div>
-          ))}
+          );
+        })}
         </div>
       )}
       {/* Completed Work Banner */}

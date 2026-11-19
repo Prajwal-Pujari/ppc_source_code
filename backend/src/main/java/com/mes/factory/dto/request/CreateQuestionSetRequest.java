@@ -43,5 +43,8 @@ public class CreateQuestionSetRequest {
         private Boolean isCritical = false;
         private String checkingMethod;
         private Boolean showInPdir = true;
+        private Boolean isFirstPiece = true;
+        private Boolean isLastPiece = true;
+        private Boolean isInProcess = true;
     }
 }

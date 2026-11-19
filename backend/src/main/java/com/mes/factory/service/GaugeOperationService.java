@@ -132,6 +132,25 @@ public class GaugeOperationService {
 
         publishGaugeUpdate(gauge, "OPERATION_STARTED", operation);
 
+        if (gauge.getFactory() != null) {
+            Map<String, Object> fpData = new java.util.HashMap<>();
+            fpData.put("gaugeId", gauge.getId().toString());
+            fpData.put("operationId", operation.getId().toString());
+            fpData.put("operationName", operation.getOperationName());
+            fpData.put("serialNumber", gauge.getSerialNumber());
+            fpData.put("inspectionType", "FIRST_PIECE");
+
+            eventPublisher.publishGaugeUpdate(gauge.getFactory().getId(), WebSocketEvent.builder()
+                    .eventType("PQC_FIRST_PIECE_REQUIRED")
+                    .entityId(operation.getId())
+                    .entityType("GAUGE_OPERATION")
+                    .title("First Piece Inspection Required")
+                    .message("First piece inspection is required for operation " + operation.getOperationName() + " (" + gauge.getSerialNumber() + ")")
+                    .type("warning")
+                    .data(fpData)
+                    .build());
+        }
+
         log.info("Started operation {} by worker {}", operationId, workerId);
         return operation;
     }
@@ -141,8 +160,13 @@ public class GaugeOperationService {
                                               String remarks, Map<String, Object> qualityParams) {
         GaugeOperation operation = findOperation(operationId);
 
-        if (operation.getStatus() != OperationStatus.IN_PROGRESS) {
-            throw new BusinessException("Operation must be IN_PROGRESS to complete", "INVALID_STATUS");
+        if (operation.getStatus() == OperationStatus.COMPLETED) {
+            log.info("Operation {} is already COMPLETED", operationId);
+            return operation;
+        }
+
+        if (operation.getStatus() == OperationStatus.SKIPPED) {
+            throw new BusinessException("Cannot complete a SKIPPED operation", "INVALID_STATUS");
         }
 
         User worker = userRepository.findById(workerId)

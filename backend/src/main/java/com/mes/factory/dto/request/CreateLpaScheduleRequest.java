@@ -23,7 +23,7 @@ public class CreateLpaScheduleRequest {
     private UUID assignedToId;
     private String assignedRole;
 
-    private String frequency = "DAILY"; // DAILY, WEEKLY, MONTHLY, SHIFT_WISE
+    private String frequency = "1"; // Number of days (e.g. 1, 7, 30) or legacy DAILY/WEEKLY/MONTHLY
 
     @NotNull
     private OffsetDateTime nextDueDate;

@@ -58,7 +58,7 @@ public class LpaQuestionSet {
 
     @Column(name = "default_frequency", length = 50)
     @Builder.Default
-    private String defaultFrequency = "DAILY";
+    private String defaultFrequency = "1";
 
     @Column(name = "is_active")
     @Builder.Default

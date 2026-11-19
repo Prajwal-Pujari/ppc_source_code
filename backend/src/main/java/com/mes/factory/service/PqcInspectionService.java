@@ -17,6 +17,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class PqcInspectionService {
@@ -33,6 +34,7 @@ public class PqcInspectionService {
     private final NcRecordRepository ncRecordRepository;
     private final ReportConfigurationRepository reportConfigurationRepository;
     private final FactoryRepository factoryRepository;
+    private final GaugeOperationService gaugeOperationService;
 
     public PqcInspectionService(PqcInspectionLogRepository inspectionLogRepository,
                                 PqcInspectionPlanRepository inspectionPlanRepository,
@@ -43,7 +45,8 @@ public class PqcInspectionService {
                                 MesEventPublisher eventPublisher,
                                 NcRecordRepository ncRecordRepository,
                                 ReportConfigurationRepository reportConfigurationRepository,
-                                FactoryRepository factoryRepository) {
+                                FactoryRepository factoryRepository,
+                                @org.springframework.context.annotation.Lazy GaugeOperationService gaugeOperationService) {
         this.inspectionLogRepository = inspectionLogRepository;
         this.inspectionPlanRepository = inspectionPlanRepository;
         this.gaugeOperationRepository = gaugeOperationRepository;
@@ -54,6 +57,7 @@ public class PqcInspectionService {
         this.ncRecordRepository = ncRecordRepository;
         this.reportConfigurationRepository = reportConfigurationRepository;
         this.factoryRepository = factoryRepository;
+        this.gaugeOperationService = gaugeOperationService;
     }
 
     public static class ShiftWindow {
@@ -258,6 +262,12 @@ public class PqcInspectionService {
             }
         }
 
+        // Resolve inspection type (FIRST_PIECE, IN_PROCESS, LAST_PIECE)
+        String rawInspectionType = request.getInspectionType();
+        String inspectionType = (rawInspectionType != null && !rawInspectionType.trim().isEmpty())
+                ? rawInspectionType.trim().toUpperCase()
+                : "IN_PROCESS";
+
         // Resolve shift-specific logs BOUNDED to the active shift session window
         List<PqcInspectionLog> existingShiftLogs;
         if (shift != null) {
@@ -270,14 +280,24 @@ public class PqcInspectionService {
             existingShiftLogs = inspectionLogRepository.findByGaugeOperationIdOrderByLogTimeAsc(operation.getId());
         }
 
-        int targetSlotIndex = (request.getSlotIndex() != null && request.getSlotIndex() > 0)
-                ? request.getSlotIndex()
-                : (existingShiftLogs.size() + 1);
+        // Only count IN_PROCESS logs when determining hourly slot indices
+        List<PqcInspectionLog> inProcessLogs = existingShiftLogs.stream()
+                .filter(l -> l.getInspectionType() == null || "IN_PROCESS".equalsIgnoreCase(l.getInspectionType()))
+                .collect(Collectors.toList());
 
-        if (request.getLogTime() == null && Boolean.TRUE.equals(request.getIsBackfill())) {
+        Integer targetSlotIndex;
+        if ("FIRST_PIECE".equals(inspectionType) || "LAST_PIECE".equals(inspectionType)) {
+            targetSlotIndex = request.getSlotIndex() != null ? request.getSlotIndex() : 0;
+        } else {
+            targetSlotIndex = (request.getSlotIndex() != null && request.getSlotIndex() > 0)
+                    ? request.getSlotIndex()
+                    : (inProcessLogs.size() + 1);
+        }
+
+        if (request.getLogTime() == null && Boolean.TRUE.equals(request.getIsBackfill()) && "IN_PROCESS".equals(inspectionType)) {
             // Only backfills of historical slots without custom timestamp use the scheduled slot time if anchor exists
-            if (!existingShiftLogs.isEmpty() && targetSlotIndex > 1) {
-                PqcInspectionLog firstLog = existingShiftLogs.get(0);
+            if (!inProcessLogs.isEmpty() && targetSlotIndex > 1) {
+                PqcInspectionLog firstLog = inProcessLogs.get(0);
                 OffsetDateTime anchorTime = firstLog.getLogTime();
                 double intervalHours = 1.0;
                 if (operation.getGauge().getFactory() != null) {
@@ -312,6 +332,7 @@ public class PqcInspectionService {
                 .incidentDurationMins(request.getIncidentDurationMins())
                 .incidentRemarks(request.getIncidentRemarks())
                 .slotIndex(targetSlotIndex)
+                .inspectionType(inspectionType)
                 .isBackfill(request.getIsBackfill() != null ? request.getIsBackfill() : false)
                 .logTime(resolvedLogTime)
                 .isEscalated(isFailed)
@@ -325,6 +346,9 @@ public class PqcInspectionService {
         if (isFailed) {
             try {
                 ActionTaken action = (request.getScrapQty() != null && request.getScrapQty() > 0) ? ActionTaken.SCRAP : ActionTaken.REWORK;
+                String slotInfo = ("FIRST_PIECE".equals(inspectionType)) ? "First Piece" :
+                        ("LAST_PIECE".equals(inspectionType)) ? "Last Piece" :
+                        ("Hourly Slot #" + targetSlotIndex);
                 NcRecord nc = NcRecord.builder()
                         .gauge(operation.getGauge())
                         .gaugeOperation(operation)
@@ -332,7 +356,7 @@ public class PqcInspectionService {
                         .rejectionReason(escReason)
                         .actionTaken(action)
                         .rejectedQuantity(request.getRejectedQty() > 0 ? request.getRejectedQty() : 1)
-                        .deviationNote("Auto-escalated from PQC Hourly Inspection (Slot #" + (request.getSlotIndex() != null ? request.getSlotIndex() : "") + ")")
+                        .deviationNote("Auto-escalated from PQC Inspection (" + slotInfo + ")")
                         .initiatedBy(inspector)
                         .build();
                 ncRecordRepository.save(nc);
@@ -345,22 +369,37 @@ public class PqcInspectionService {
         // ── AUTO-COMPLETE: if total passed qty >= planned qty, complete the operation ──
         boolean autoCompleted = false;
         int totalPassed = inspectionLogRepository.sumPassedQtyByOperationId(operation.getId());
-        int plannedQty = operation.getGauge().getBatchQuantity();
-        if (totalPassed >= plannedQty && operation.getStatus() == OperationStatus.IN_PROGRESS) {
+        int plannedQty = (operation.getGauge() != null && operation.getGauge().getBatchQuantity() != null)
+                ? operation.getGauge().getBatchQuantity()
+                : 0;
+        if (plannedQty > 0 && totalPassed >= plannedQty && operation.getStatus() != OperationStatus.COMPLETED) {
             operation.setStatus(OperationStatus.COMPLETED);
             operation.setCompletedBy(inspector);
-            operation.setActualEnd(java.time.OffsetDateTime.now());
+            operation.setActualEnd(OffsetDateTime.now());
             operation.setRemarks((operation.getRemarks() != null ? operation.getRemarks() + " | " : "") +
                     "Auto-completed: " + totalPassed + "/" + plannedQty + " passed via PQC inspection");
             gaugeOperationRepository.save(operation);
             autoCompleted = true;
             log.info("Operation {} auto-completed: {}/{} passed", operation.getOperationName(), totalPassed, plannedQty);
 
-            // Check if all operations on this gauge are done → update gauge status
-            long remaining = gaugeOperationRepository.countRemainingByGaugeId(operation.getGauge().getId());
-            if (remaining == 0) {
-                Gauge gauge = operation.getGauge();
-                gauge.setStatus(GaugeStatus.COMPLETED);
+            if (operation.getMachineMaster() != null) {
+                try {
+                    operation.getMachineMaster().setCurrentStatus(MachineStatus.AVAILABLE);
+                    machineMasterRepository.save(operation.getMachineMaster());
+                } catch (Exception e) {
+                    log.warn("Could not update machine status on auto-complete: {}", e.getMessage());
+                }
+            }
+
+            try {
+                gaugeOperationService.checkAndQueueNextOperation(operation.getGauge().getId(), operation.getSequenceOrder());
+            } catch (Exception e) {
+                log.warn("Could not queue next operation on auto-complete: {}", e.getMessage());
+                long remaining = gaugeOperationRepository.countRemainingByGaugeId(operation.getGauge().getId());
+                if (remaining == 0) {
+                    Gauge gauge = operation.getGauge();
+                    gauge.setStatus(GaugeStatus.COMPLETED);
+                }
             }
         }
 
@@ -483,17 +522,23 @@ public class PqcInspectionService {
         // Each shift session maintains its own inspection stack based on factory shift settings and shift date
         ZoneId shiftZone = (activeShift != null) ? getShiftZone(activeShift) : getFactoryZone(factoryId);
         LocalDate effectiveShiftDate = (shiftDate != null) ? shiftDate : LocalDate.now(shiftZone);
-        List<PqcInspectionLog> logs;
+        List<PqcInspectionLog> rawLogs;
         ShiftWindow shiftWindow = null;
         if (activeShift != null) {
             shiftWindow = computeShiftWindow(activeShift, effectiveShiftDate);
-            logs = inspectionLogRepository.findByGaugeOperationIdAndShiftIdAndLogTimeBetweenOrderByLogTimeAsc(
+            rawLogs = inspectionLogRepository.findByGaugeOperationIdAndShiftIdAndLogTimeBetweenOrderByLogTimeAsc(
                     operationId, activeShift.getId(), shiftWindow.getStartTime(), shiftWindow.getEndTime());
         } else if (currentShiftId != null) {
-            logs = inspectionLogRepository.findByGaugeOperationIdAndShiftIdOrderByLogTimeAsc(operationId, currentShiftId);
+            rawLogs = inspectionLogRepository.findByGaugeOperationIdAndShiftIdOrderByLogTimeAsc(operationId, currentShiftId);
         } else {
-            logs = inspectionLogRepository.findByGaugeOperationIdOrderByLogTimeAsc(operationId);
+            rawLogs = inspectionLogRepository.findByGaugeOperationIdOrderByLogTimeAsc(operationId);
         }
+
+        // Only IN_PROCESS logs occupy hourly slots
+        List<PqcInspectionLog> logs = rawLogs.stream()
+                .filter(l -> l.getInspectionType() == null || "IN_PROCESS".equalsIgnoreCase(l.getInspectionType()))
+                .collect(Collectors.toList());
+
         // 3. Map logs to their slot indices
         Map<Integer, PqcInspectionLog> slotToLog = new HashMap<>();
         Set<Integer> loggedSlotIndices = new HashSet<>();
@@ -613,6 +658,72 @@ public class PqcInspectionService {
             slots.add(slot);
         }
 
+        // 8. Check First Piece status for active shift session
+        List<PqcInspectionLog> fpLogs = (activeShift != null && shiftWindow != null)
+                ? inspectionLogRepository.findByGaugeOperationIdAndShiftIdAndInspectionTypeAndLogTimeBetweenOrderByLogTimeDesc(
+                        operationId, activeShift.getId(), "FIRST_PIECE", shiftWindow.getStartTime(), shiftWindow.getEndTime())
+                : inspectionLogRepository.findFirstByGaugeOperationIdAndInspectionTypeOrderByLogTimeDesc(operationId, "FIRST_PIECE")
+                        .map(List::of).orElse(List.of());
+
+        Map<String, Object> firstPieceData = new HashMap<>();
+        if (!fpLogs.isEmpty()) {
+            PqcInspectionLog fp = fpLogs.get(0);
+            boolean fpFailed = fp.getRejectedQty() > 0 || fp.getScrapQty() > 0 || fp.getReworkQty() > 0;
+            firstPieceData.put("status", fpFailed ? "FAILED" : "PASSED");
+            firstPieceData.put("logId", fp.getId().toString());
+            firstPieceData.put("logTime", fp.getLogTime() != null ? fp.getLogTime().toString() : null);
+            firstPieceData.put("inspectorName", fp.getInspector() != null ? fp.getInspector().getFullName() : "-");
+            firstPieceData.put("actualQty", fp.getActualQty());
+            firstPieceData.put("passedQty", fp.getPassedQty());
+            firstPieceData.put("rejectedQty", fp.getRejectedQty());
+            firstPieceData.put("reworkQty", fp.getReworkQty());
+            firstPieceData.put("scrapQty", fp.getScrapQty());
+            firstPieceData.put("isFailed", fpFailed);
+        } else {
+            String fpStatus;
+            if (operation.getStatus() == OperationStatus.IN_PROGRESS) {
+                fpStatus = "PENDING";
+            } else if (operation.getStatus() == OperationStatus.COMPLETED) {
+                fpStatus = "MISSED";
+            } else {
+                fpStatus = "NOT_STARTED";
+            }
+            firstPieceData.put("status", fpStatus);
+            firstPieceData.put("isFailed", false);
+        }
+
+        // 9. Check Last Piece status for active shift session
+        List<PqcInspectionLog> lpLogs = (activeShift != null && shiftWindow != null)
+                ? inspectionLogRepository.findByGaugeOperationIdAndShiftIdAndInspectionTypeAndLogTimeBetweenOrderByLogTimeDesc(
+                        operationId, activeShift.getId(), "LAST_PIECE", shiftWindow.getStartTime(), shiftWindow.getEndTime())
+                : inspectionLogRepository.findFirstByGaugeOperationIdAndInspectionTypeOrderByLogTimeDesc(operationId, "LAST_PIECE")
+                        .map(List::of).orElse(List.of());
+
+        Map<String, Object> lastPieceData = new HashMap<>();
+        if (!lpLogs.isEmpty()) {
+            PqcInspectionLog lp = lpLogs.get(0);
+            boolean lpFailed = lp.getRejectedQty() > 0 || lp.getScrapQty() > 0 || lp.getReworkQty() > 0;
+            lastPieceData.put("status", lpFailed ? "FAILED" : "PASSED");
+            lastPieceData.put("logId", lp.getId().toString());
+            lastPieceData.put("logTime", lp.getLogTime() != null ? lp.getLogTime().toString() : null);
+            lastPieceData.put("inspectorName", lp.getInspector() != null ? lp.getInspector().getFullName() : "-");
+            lastPieceData.put("actualQty", lp.getActualQty());
+            lastPieceData.put("passedQty", lp.getPassedQty());
+            lastPieceData.put("rejectedQty", lp.getRejectedQty());
+            lastPieceData.put("reworkQty", lp.getReworkQty());
+            lastPieceData.put("scrapQty", lp.getScrapQty());
+            lastPieceData.put("isFailed", lpFailed);
+        } else {
+            String lpStatus;
+            if (operation.getStatus() == OperationStatus.IN_PROGRESS || operation.getStatus() == OperationStatus.COMPLETED) {
+                lpStatus = "PENDING";
+            } else {
+                lpStatus = "LOCKED";
+            }
+            lastPieceData.put("status", lpStatus);
+            lastPieceData.put("isFailed", false);
+        }
+
         // Build Response
         Map<String, Object> result = new HashMap<>();
         result.put("operationId", operationId.toString());
@@ -641,6 +752,8 @@ public class PqcInspectionService {
         result.put("firstInspectorName", firstInspectorName);
         result.put("firstInspectorId", firstInspectorId != null ? firstInspectorId.toString() : null);
         result.put("slots", slots);
+        result.put("firstPiece", firstPieceData);
+        result.put("lastPiece", lastPieceData);
 
         return result;
     }

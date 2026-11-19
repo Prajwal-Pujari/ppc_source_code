@@ -96,7 +96,7 @@ public class LpaExcelHelper {
                         newReq.setName(setName);
                         newReq.setDescription("Imported from Excel");
                         newReq.setAuditType(com.mes.factory.entity.postgres.LpaAuditType.valueOf(auditType));
-                        newReq.setDefaultFrequency("DAILY");
+                        newReq.setDefaultFrequency("1");
                         newReq.setImportedPartNo(finalPartNo);
                         newReq.setImportedPartName(finalPartName);
                         newReq.setImportedOperationName(finalOperationName);

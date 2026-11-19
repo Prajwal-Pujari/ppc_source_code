@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { lpaApi, LpaAuditType } from '@/api/lpa.api';
+import { lpaApi, LpaAuditType, normalizeFrequencyToNumber, formatFrequency } from '@/api/lpa.api';
 import type { LpaQuestionSet, LpaQuestionItem } from '@/api/lpa.api';
 import { X, Save, AlertCircle, Loader2, Plus, Trash2, ClipboardList } from 'lucide-react';
 
@@ -25,7 +25,7 @@ export function ManageIndependentChecklistModal({
     setEditingSet({
       name: '',
       auditType: auditType,
-      defaultFrequency: 'MONTHLY',
+      defaultFrequency: '30',
       questions: [],
     });
     setErrorMsg('');
@@ -59,7 +59,7 @@ export function ManageIndependentChecklistModal({
         name: editingSet.name,
         auditType: auditType,
         description: editingSet.description || '',
-        defaultFrequency: editingSet.defaultFrequency || 'MONTHLY',
+        defaultFrequency: normalizeFrequencyToNumber(editingSet.defaultFrequency || '30'),
         questions: editingSet.questions.map((q, i) => ({
           sequenceOrder: i + 1,
           questionText: q.questionText,
@@ -180,18 +180,49 @@ export function ManageIndependentChecklistModal({
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--charcoal)', marginBottom: 6 }}>
-                    Default Frequency *
+                    Default Frequency (No. of Days) *
                   </label>
-                  <select
-                    value={editingSet.defaultFrequency || 'MONTHLY'}
-                    onChange={(e) => setEditingSet({ ...editingSet, defaultFrequency: e.target.value })}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--silk)', background: 'var(--cream)', fontSize: 13 }}
-                  >
-                    <option value="WEEKLY">Weekly</option>
-                    <option value="MONTHLY">Monthly</option>
-                    <option value="QUARTERLY">Quarterly</option>
-                    <option value="YEARLY">Yearly</option>
-                  </select>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      placeholder="e.g. 7, 30, 90"
+                      value={normalizeFrequencyToNumber(editingSet.defaultFrequency || '30')}
+                      onChange={(e) => setEditingSet({ ...editingSet, defaultFrequency: e.target.value })}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--silk)', background: 'var(--cream)', fontSize: 13, fontFamily: 'monospace' }}
+                      required
+                    />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--slate)', whiteSpace: 'nowrap' }}>
+                      day(s)
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                    {[
+                      { label: '7 (Weekly)', val: '7' },
+                      { label: '30 (Monthly)', val: '30' },
+                      { label: '90 (Quarterly)', val: '90' },
+                      { label: '365 (Yearly)', val: '365' },
+                    ].map(p => (
+                      <button
+                        key={p.val}
+                        type="button"
+                        onClick={() => setEditingSet({ ...editingSet, defaultFrequency: p.val })}
+                        style={{
+                          fontSize: 10,
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          background: normalizeFrequencyToNumber(editingSet.defaultFrequency || '30') === p.val ? 'var(--copper-bronze)' : 'var(--warm-white)',
+                          color: normalizeFrequencyToNumber(editingSet.defaultFrequency || '30') === p.val ? '#fff' : 'var(--slate)',
+                          border: '1px solid var(--silk)',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -279,7 +310,7 @@ export function ManageIndependentChecklistModal({
                           </span>
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--slate)', display: 'flex', gap: 16 }}>
-                          <span>Freq: <strong style={{ color: 'var(--charcoal)' }}>{qs.defaultFrequency || 'MONTHLY'}</strong></span>
+                          <span>Freq: <strong style={{ color: 'var(--charcoal)' }}>{formatFrequency(qs.defaultFrequency)}</strong></span>
                           <span>Checkpoints: <strong style={{ color: 'var(--charcoal)' }}>{qs.questions?.length || 0}</strong> items</span>
                         </div>
                       </div>

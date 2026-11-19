@@ -147,7 +147,7 @@ export default function GaugeMasterPage() {
                 <input className="input" name="gaugeTypeName" defaultValue={editing?.gaugeTypeName || ''} required placeholder="e.g. Plain Plug Gauge" />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Category Code</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--slate)', marginBottom: 4 }}>Part Code</label>
                 <input className="input" name="categoryCode" defaultValue={editing?.categoryCode || ''} placeholder="e.g. PPG" />
               </div>
               <div>
@@ -181,7 +181,7 @@ export default function GaugeMasterPage() {
             <tr>
               <th style={{ width: 30 }}></th>
               <th>Part / Product Name</th>
-              <th>Category</th>
+              <th>Part Code</th>
               <th>Material Grade</th>
               <th>Unit</th>
               <th>Operations</th>

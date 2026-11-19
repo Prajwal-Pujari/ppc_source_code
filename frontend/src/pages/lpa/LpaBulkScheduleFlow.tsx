@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { ReactFlow, MiniMap, Controls, Background, useNodesState, useEdgesState, addEdge, MarkerType, Handle, Position, useReactFlow, BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
 import type { Connection, Node, Edge } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { lpaApi, type LpaQuestionSet } from '@/api/lpa.api';
+import { lpaApi, normalizeFrequencyToNumber, formatFrequency, type LpaQuestionSet } from '@/api/lpa.api';
 import { getUsersApi } from '@/api/users.api';
 import { X, Save, Layers, Trash2, Plus } from 'lucide-react';
 
@@ -20,7 +20,8 @@ const CustomChecklistNode = ({ data, id }: any) => {
     const qsId = e.target.value;
     const selectedQs = data.availableChecklists?.find((q: any) => q.id === qsId);
     const targetName = selectedQs ? (selectedQs.operationMaster?.operationName || selectedQs.machineMaster?.machineName || selectedQs.gaugeMaster?.gaugeName || 'General Facility') : '';
-    setNodes((nds) => nds.map(n => n.id === id ? { ...n, data: { ...n.data, qs: selectedQs, label: selectedQs?.name, target: targetName } } : n));
+    const initialFreq = normalizeFrequencyToNumber(selectedQs?.defaultFrequency || '1');
+    setNodes((nds) => nds.map(n => n.id === id ? { ...n, data: { ...n.data, qs: selectedQs, label: selectedQs?.name, target: targetName, frequency: initialFreq } } : n));
   };
 
   const handleDelete = () => {
@@ -60,20 +61,20 @@ const CustomChecklistNode = ({ data, id }: any) => {
 
       <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div>
-          <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--slate)', marginBottom: 2, display: 'block' }}>Frequency</label>
-          <select 
-            value={data.frequency || 'DAILY'} 
+          <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--slate)', marginBottom: 2, display: 'block' }}>Frequency (Days)</label>
+          <input 
+            type="number"
+            min="1"
+            step="1"
+            value={normalizeFrequencyToNumber(data.frequency || data.qs?.defaultFrequency || '1')} 
             onChange={(e) => {
-              setNodes((nds) => nds.map(n => n.id === id ? { ...n, data: { ...n.data, frequency: e.target.value } } : n));
+              const val = e.target.value;
+              setNodes((nds) => nds.map(n => n.id === id ? { ...n, data: { ...n.data, frequency: val } } : n));
             }}
+            placeholder="e.g. 1, 7, 30"
             className="nodrag"
-            style={{ width: '100%', padding: '4px 6px', fontSize: 11, borderRadius: 4, border: '1px solid var(--silk)', background: 'var(--cream)' }}
-          >
-            <option value="SHIFT_WISE">Shift-Wise</option>
-            <option value="DAILY">Daily</option>
-            <option value="WEEKLY">Weekly</option>
-            <option value="MONTHLY">Monthly</option>
-          </select>
+            style={{ width: '100%', padding: '4px 6px', fontSize: 11, borderRadius: 4, border: '1px solid var(--silk)', background: 'var(--cream)', fontFamily: 'monospace' }}
+          />
         </div>
         <div>
           <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--slate)', marginBottom: 2, display: 'block' }}>First Due Date</label>
@@ -289,7 +290,7 @@ export function LpaBulkScheduleFlow({ onClose, onSaved }: { onClose: () => void,
 
         const qs = qsNode.data.qs as any;
         const qsId = qs.id;
-        const assignedFreq = qsNode?.data?.frequency || 'DAILY';
+        const assignedFreq = normalizeFrequencyToNumber(qsNode?.data?.frequency || qs?.defaultFrequency || '1');
         const assignedDate = qsNode?.data?.nextDueDate ? new Date(qsNode.data.nextDueDate as string).toISOString() : new Date().toISOString();
         
         const payload = {

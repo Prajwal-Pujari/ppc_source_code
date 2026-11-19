@@ -11,14 +11,16 @@ import InProcessReportView from './reports/InProcessReportView';
 import PdirReportView from './reports/PdirReportView';
 import LayoutReportView from './reports/LayoutReportView';
 import FaiReportView from './reports/FaiReportView';
+import FirstLastPieceReportView from './reports/FirstLastPieceReportView';
 import { reportConfigApi, type ReportConfiguration } from '@/api/reportConfig.api';
 import { shiftsApi, type FactoryShift } from '@/api/shifts.api';
 import { getGaugeOperations } from '@/api/gauges.api';
 
-type ReportType = 'IN_PROCESS' | 'PDIR' | 'LAYOUT' | 'FAI' | 'FAR' | 'INCOMING';
+type ReportType = 'IN_PROCESS' | 'PIECE' | 'PDIR' | 'LAYOUT' | 'FAI' | 'FAR' | 'INCOMING';
 
 const reportTypes: { id: ReportType; label: string }[] = [
   { id: 'IN_PROCESS', label: 'In-Process Report' },
+  { id: 'PIECE', label: '1st & Last Piece Report' },
   { id: 'PDIR', label: 'PDIR (Pre-Dispatch)' },
   // { id: 'LAYOUT', label: 'Layout Inspection' },
   // { id: 'FAI', label: 'FAI (First Article)' },
@@ -675,6 +677,9 @@ export default function PqcReportDashboard() {
                             config={{ ...reportConfig, activeApproval: filteredReportData.matchedApproval }}
                           />
                         )
+                      )}
+                      {selectedReportType === 'PIECE' && selectedGaugeId && (
+                        <FirstLastPieceReportView gaugeId={selectedGaugeId} />
                       )}
                       {selectedReportType === 'PDIR' && (
                         !isInspectionDone && !showPdirPreview ? (

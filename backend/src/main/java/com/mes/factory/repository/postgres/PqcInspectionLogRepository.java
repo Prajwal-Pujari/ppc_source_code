@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -16,6 +17,17 @@ public interface PqcInspectionLogRepository extends JpaRepository<PqcInspectionL
     List<PqcInspectionLog> findByGaugeOperationIdOrderByLogTimeDesc(UUID gaugeOperationId);
     List<PqcInspectionLog> findByGaugeOperationIdOrderByLogTimeAsc(UUID gaugeOperationId);
     List<PqcInspectionLog> findByGaugeOperationIdAndShiftIdOrderByLogTimeAsc(UUID gaugeOperationId, UUID shiftId);
+    List<PqcInspectionLog> findByGaugeOperationIdAndShiftIdAndInspectionTypeOrderByLogTimeAsc(UUID gaugeOperationId, UUID shiftId, String inspectionType);
+
+    Optional<PqcInspectionLog> findFirstByGaugeOperationIdAndInspectionTypeOrderByLogTimeDesc(UUID gaugeOperationId, String inspectionType);
+
+    @Query("SELECT l FROM PqcInspectionLog l LEFT JOIN FETCH l.inspector WHERE l.gaugeOperation.id = :operationId AND l.shift.id = :shiftId AND l.inspectionType = :inspectionType AND l.logTime >= :startTime AND l.logTime <= :endTime ORDER BY l.logTime DESC")
+    List<PqcInspectionLog> findByGaugeOperationIdAndShiftIdAndInspectionTypeAndLogTimeBetweenOrderByLogTimeDesc(
+            @Param("operationId") UUID operationId,
+            @Param("shiftId") UUID shiftId,
+            @Param("inspectionType") String inspectionType,
+            @Param("startTime") OffsetDateTime startTime,
+            @Param("endTime") OffsetDateTime endTime);
 
     @Query("SELECT l FROM PqcInspectionLog l LEFT JOIN FETCH l.inspector WHERE l.gaugeOperation.id = :operationId AND l.shift.id = :shiftId AND l.logTime >= :startTime AND l.logTime <= :endTime ORDER BY l.logTime ASC")
     List<PqcInspectionLog> findByGaugeOperationIdAndShiftIdAndLogTimeBetweenOrderByLogTimeAsc(
@@ -45,6 +57,42 @@ public interface PqcInspectionLogRepository extends JpaRepository<PqcInspectionL
            "WHERE g.factory.id = :factoryId AND l.incidentType IS NOT NULL AND TRIM(l.incidentType) != '' " +
            "ORDER BY l.logTime DESC")
     List<PqcInspectionLog> findIncidentLogsWithDetails(@Param("factoryId") UUID factoryId);
+
+    @Query("SELECT l FROM PqcInspectionLog l " +
+           "JOIN FETCH l.gauge g " +
+           "LEFT JOIN FETCH g.purchaseOrder po " +
+           "LEFT JOIN FETCH po.customer " +
+           "JOIN FETCH l.gaugeOperation go " +
+           "LEFT JOIN FETCH l.machine m " +
+           "LEFT JOIN FETCH l.shift s " +
+           "JOIN FETCH l.inspector i " +
+           "WHERE g.factory.id = :factoryId AND l.inspectionType IN ('FIRST_PIECE', 'LAST_PIECE') " +
+           "ORDER BY l.logTime DESC")
+    List<PqcInspectionLog> findPieceInspectionLogsWithDetails(@Param("factoryId") UUID factoryId);
+
+    @Query("SELECT l FROM PqcInspectionLog l " +
+           "JOIN FETCH l.gauge g " +
+           "LEFT JOIN FETCH g.purchaseOrder po " +
+           "LEFT JOIN FETCH po.customer " +
+           "JOIN FETCH l.gaugeOperation go " +
+           "LEFT JOIN FETCH l.machine m " +
+           "LEFT JOIN FETCH l.shift s " +
+           "JOIN FETCH l.inspector i " +
+           "WHERE g.factory.id = :factoryId AND l.inspectionType = :type " +
+           "ORDER BY l.logTime DESC")
+    List<PqcInspectionLog> findPieceInspectionLogsWithDetailsByType(@Param("factoryId") UUID factoryId, @Param("type") String type);
+
+    @Query("SELECT l FROM PqcInspectionLog l " +
+           "JOIN FETCH l.gauge g " +
+           "LEFT JOIN FETCH g.purchaseOrder po " +
+           "LEFT JOIN FETCH po.customer " +
+           "JOIN FETCH l.gaugeOperation go " +
+           "LEFT JOIN FETCH l.machine m " +
+           "LEFT JOIN FETCH l.shift s " +
+           "JOIN FETCH l.inspector i " +
+           "WHERE g.id = :gaugeId AND l.inspectionType IN ('FIRST_PIECE', 'LAST_PIECE') " +
+           "ORDER BY go.sequenceOrder ASC, l.logTime ASC")
+    List<PqcInspectionLog> findPieceInspectionLogsByGaugeId(@Param("gaugeId") UUID gaugeId);
 
     @Query("SELECT COALESCE(SUM(l.passedQty), 0) FROM PqcInspectionLog l WHERE l.gaugeOperation.id = :operationId")
     int sumPassedQtyByOperationId(UUID operationId);

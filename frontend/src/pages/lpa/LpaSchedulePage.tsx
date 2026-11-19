@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { lpaApi, type LpaSchedule, type LpaQuestionSet, type LpaAuditType } from '@/api/lpa.api';
+import { lpaApi, normalizeFrequencyToNumber, formatFrequency, type LpaSchedule, type LpaQuestionSet, type LpaAuditType } from '@/api/lpa.api';
 import { getUsersApi } from '@/api/users.api';
 import {
   Calendar, Plus, Clock, CheckCircle2, AlertTriangle, ShieldAlert,
@@ -33,7 +33,7 @@ export function LpaSchedulePage() {
   const [questionSetId, setQuestionSetId] = useState('');
   const [assignedToId, setAssignedToId] = useState('');
   const [assignedRole, setAssignedRole] = useState('');
-  const [frequency, setFrequency] = useState('DAILY');
+  const [frequency, setFrequency] = useState('1');
   const [nextDueDate, setNextDueDate] = useState(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -86,7 +86,7 @@ export function LpaSchedulePage() {
         machineMasterId: selectedQs?.machineMaster?.id || null,
         assignedToId: assignedToId || null,
         assignedRole: assignedRole || null,
-        frequency,
+        frequency: normalizeFrequencyToNumber(frequency),
         nextDueDate: nextDueDate ? new Date(nextDueDate).toISOString() : new Date().toISOString(),
       };
 
@@ -274,7 +274,7 @@ export function LpaSchedulePage() {
                       </div>
                     </td>
                     <td style={{ padding: '16px 20px', fontSize: 13, color: 'var(--slate)' }}>
-                      <span style={{ fontWeight: 600 }}>{s.frequency}</span>
+                      <span style={{ fontWeight: 600 }}>{formatFrequency(s.frequency)}</span>
                     </td>
                     <td style={{ padding: '16px 20px', fontSize: 13, color: isOverdue ? '#dc2626' : 'var(--slate)', fontWeight: isOverdue ? 700 : 500 }}>
                       {new Date(s.nextDueDate).toLocaleDateString()}
@@ -352,7 +352,14 @@ export function LpaSchedulePage() {
                 </label>
                 <select
                   value={questionSetId}
-                  onChange={(e) => setQuestionSetId(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setQuestionSetId(val);
+                    const selected = questionSets.find(q => q.id === val);
+                    if (selected && selected.defaultFrequency) {
+                      setFrequency(normalizeFrequencyToNumber(selected.defaultFrequency));
+                    }
+                  }}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--silk)', background: 'var(--cream)', fontSize: 13 }}
                 >
                   <option value="">-- Choose Checklist Template --</option>
@@ -365,18 +372,49 @@ export function LpaSchedulePage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--charcoal)', marginBottom: 6 }}>
-                    Audit Frequency <span style={{ color: 'red' }}>*</span>
+                    Audit Frequency (No. of Days) <span style={{ color: 'red' }}>*</span>
                   </label>
-                  <select
-                    value={frequency}
-                    onChange={(e) => setFrequency(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--silk)', background: 'var(--cream)', fontSize: 13 }}
-                  >
-                    <option value="SHIFT_WISE">Shift-Wise (Every Shift)</option>
-                    <option value="DAILY">Daily</option>
-                    <option value="WEEKLY">Weekly</option>
-                    <option value="MONTHLY">Monthly</option>
-                  </select>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={normalizeFrequencyToNumber(frequency)}
+                      onChange={(e) => setFrequency(e.target.value)}
+                      placeholder="e.g. 1, 7, 30"
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--silk)', background: 'var(--cream)', fontSize: 13, fontFamily: 'monospace' }}
+                      required
+                    />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--slate)', whiteSpace: 'nowrap' }}>
+                      day(s)
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                    {[
+                      { label: '1 (Daily)', val: '1' },
+                      { label: '7 (Weekly)', val: '7' },
+                      { label: '15 (Bi-Weekly)', val: '15' },
+                      { label: '30 (Monthly)', val: '30' },
+                    ].map(p => (
+                      <button
+                        key={p.val}
+                        type="button"
+                        onClick={() => setFrequency(p.val)}
+                        style={{
+                          fontSize: 10,
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          background: normalizeFrequencyToNumber(frequency) === p.val ? 'var(--copper-bronze)' : 'var(--warm-white)',
+                          color: normalizeFrequencyToNumber(frequency) === p.val ? '#fff' : 'var(--slate)',
+                          border: '1px solid var(--silk)',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--charcoal)', marginBottom: 6 }}>
