@@ -2,6 +2,7 @@ version: '3.8'
 name: pqc-suite
 
 services:
+  # ─── PostgreSQL (Main Database) ───
   pqc-pg:
     image: postgres:15
     container_name: pqc-pg-engine
@@ -16,6 +17,7 @@ services:
       - pqc-pg-data:/var/lib/postgresql/data
     restart: unless-stopped
 
+  # ─── MySQL (Analytics Database) ───
   pqc-my:
     image: mysql:8
     container_name: pqc-my-engine
@@ -29,6 +31,7 @@ services:
       - pqc-my-data:/var/lib/mysql
     restart: unless-stopped
 
+  # ─── Redis (WebSocket & Caching) ───
   pqc-cache:
     image: redis:7-alpine
     container_name: pqc-cache-engine
@@ -39,6 +42,7 @@ services:
       - pqc-cache-data:/data
     restart: unless-stopped
 
+  # ─── File Storage (MinIO Engine) ───
   pqc-storage:
     image: minio/minio:latest
     container_name: pqc-storage-engine
@@ -51,6 +55,49 @@ services:
       - "9111:9111"
     volumes:
       - pqc-storage-data:/data
+    restart: unless-stopped
+
+  # ─── Java Backend (Spring Boot) ───
+  pqc-core:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pqc-core-service
+    depends_on:
+      - pqc-pg
+      - pqc-my
+      - pqc-cache
+      - pqc-storage
+    environment:
+      SPRING_DATASOURCE_PRIMARY_URL: jdbc:postgresql://pqc-pg:5444/ppc_factory
+      SPRING_DATASOURCE_PRIMARY_USERNAME: ppc_db_user
+      SPRING_DATASOURCE_PRIMARY_PASSWORD: ppc_db_password
+      SPRING_DATASOURCE_SECONDARY_URL: jdbc:mysql://pqc-my:3344/ppc_analytics?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_SECONDARY_USERNAME: root
+      SPRING_DATASOURCE_SECONDARY_PASSWORD: root
+      SPRING_DATA_REDIS_HOST: pqc-cache
+      SPRING_DATA_REDIS_PORT: 6399
+      SPRING_FLYWAY_URL: jdbc:postgresql://pqc-pg:5444/ppc_factory
+      SPRING_FLYWAY_USER: ppc_db_user
+      SPRING_FLYWAY_PASSWORD: ppc_db_password
+      MINIO_ENDPOINT: http://pqc-storage:9110
+      MINIO_ACCESS_KEY: ppc_storage_admin
+      MINIO_SECRET_KEY: ppc_storage_secret
+      MES_WEBSOCKET_ALLOWED_ORIGINS: "*"
+    ports:
+      - "9091:9091"
+    restart: unless-stopped
+
+  # ─── React Frontend (Nginx) ───
+  pqc-ui:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pqc-ui-service
+    depends_on:
+      - pqc-core
+    ports:
+      - "9090:9090"
     restart: unless-stopped
 
 volumes:

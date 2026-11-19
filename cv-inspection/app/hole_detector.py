@@ -332,4 +332,39 @@ class SingleHoleDetector:
             "annotated_frame": buffer.tobytes(),
             "annotated_cv": annotated,
         }
-    
+
+    def analyze_frame(self, frame: np.ndarray) -> dict:
+        """
+        Analyze frame for FastAPI endpoints, maintaining compatibility
+        with both single-hole detection and web streaming.
+        """
+        single = self.detect_single_hole(frame, check_thread=True)
+        status_pass = (single["status"] == FeatureStatus.DETECTED.value)
+        has_defect = (single["status"] == FeatureStatus.UNCERTAIN.value)
+        
+        checkpoints = [
+            {
+                "id": "THD_CENTER",
+                "name": "Target Hole (M6)",
+                "status": single["status"],
+                "confidence": single["confidence"],
+                "pass": status_pass,
+            }
+        ]
+        
+        defect_alert = "Thread missing in hole!" if has_defect else None
+        
+        return {
+            "checkpoints": checkpoints,
+            "has_defect": has_defect,
+            "defect_alert": defect_alert,
+            "total_circles_detected": 1 if single["hole_found"] else 0,
+            "threaded_count": 1 if single["thread_found"] else 0,
+            "plain_count": 1 if (single["hole_found"] and not single["thread_found"]) else 0,
+            "annotated_frame": single["annotated_frame"],
+        }
+
+
+# Alias for backward compatibility with app.main
+HoleDetector = SingleHoleDetector
+

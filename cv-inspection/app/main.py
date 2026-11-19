@@ -39,7 +39,10 @@ app.add_middleware(
 detector = HoleDetector()
 
 # Reference geometry from the IGS file
-IGS_PATH = r"d:\mes\saber turbine housing 3d model.igs"
+import os
+IGS_PATH = r"e:\mes\saber turbine housing 3d model.igs"
+if not os.path.exists(IGS_PATH):
+    IGS_PATH = r"d:\mes\saber turbine housing 3d model.igs"
 reference_geometry = None
 
 # Active inspection sessions
