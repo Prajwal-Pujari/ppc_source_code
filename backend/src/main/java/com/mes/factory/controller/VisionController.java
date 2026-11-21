@@ -27,12 +27,25 @@ public class VisionController {
 
     @PostMapping("/results")
     public ResponseEntity<?> submitVisionResult(@RequestBody VisionResultDto dto) {
+        OffsetDateTime parsedInspectedAt = OffsetDateTime.now();
+        if (dto.getInspectedAt() != null && !dto.getInspectedAt().isBlank()) {
+            try {
+                parsedInspectedAt = OffsetDateTime.parse(dto.getInspectedAt());
+            } catch (Exception e) {
+                try {
+                    parsedInspectedAt = OffsetDateTime.parse(dto.getInspectedAt() + "Z");
+                } catch (Exception ignored) {
+                    parsedInspectedAt = OffsetDateTime.now();
+                }
+            }
+        }
+
         VisionInspectionResult result = VisionInspectionResult.builder()
                 .partId(dto.getPartId())
                 .dataMatrix(dto.getDataMatrix())
                 .overallResult(dto.getOverallResult())
                 .inspectionMethod(dto.getInspectionMethod())
-                .inspectedAt(dto.getInspectedAt() != null ? OffsetDateTime.parse(dto.getInspectedAt() + "Z") : OffsetDateTime.now())
+                .inspectedAt(parsedInspectedAt)
                 .defectsFound(dto.getDefectsFound() != null ? dto.getDefectsFound() : 0)
                 .build();
 
