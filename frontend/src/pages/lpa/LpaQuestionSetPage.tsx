@@ -656,12 +656,8 @@ function ManageLpaChecklistsModal({
   const [availableOperations, setAvailableOperations] = useState<OperationMaster[]>(allOperations);
   const [loadingOps, setLoadingOps] = useState(false);
 
-  // When Part / Gauge Master is selected, fetch assigned operations!
-  const handlePartChange = async (partId: string) => {
-    if (!editingSet) return;
-    const selectedPart = gaugeMasters.find(g => g.id === partId);
-    setEditingSet(prev => prev ? ({ ...prev, gaugeMaster: selectedPart }) : null);
-
+  // Fetch assigned operations for a selected Part, always mapping to the true OperationMaster ID
+  const loadOperationsForPart = async (partId: string, preserveOpId?: string) => {
     if (!partId) {
       setAvailableOperations(allOperations);
       return;
@@ -671,17 +667,38 @@ function ManageLpaChecklistsModal({
       setLoadingOps(true);
       const res = await getGaugeMasterOperations(partId);
       const opsList = getArray(res);
-      const assignedOps = opsList
-        .map((item: any) => item.operationMaster || item)
-        .filter((op: any) => op && op.id);
+      const seen = new Set<string>();
+      const assignedOps: OperationMaster[] = [];
+
+      for (const item of opsList) {
+        const trueOpId = item.operationMaster?.id || item.operationMasterId || item.id;
+        if (!trueOpId || seen.has(trueOpId)) continue;
+        seen.add(trueOpId);
+
+        const matchedOp = allOperations.find(o => o.id === trueOpId);
+        if (matchedOp) {
+          assignedOps.push(matchedOp);
+        } else {
+          assignedOps.push({
+            ...(item.operationMaster || item),
+            id: trueOpId,
+            operationName: item.operationMaster?.operationName || item.operationName || '',
+            operationCode: item.operationMaster?.operationCode || item.operationCode || '',
+          } as OperationMaster);
+        }
+      }
 
       if (assignedOps.length > 0) {
         setAvailableOperations(assignedOps);
         // If an operation was already selected and it's not in the new assigned list, reset to All Operations
-        const currentOpId = editingSet.operationMaster?.id;
-        if (currentOpId && !assignedOps.some((o: any) => o.id === currentOpId)) {
-          setEditingSet(prev => prev ? ({ ...prev, operationMaster: undefined }) : null);
-        }
+        setEditingSet(prev => {
+          if (!prev) return prev;
+          const currentOpId = preserveOpId !== undefined ? preserveOpId : prev.operationMaster?.id;
+          if (currentOpId && !assignedOps.some(o => o.id === currentOpId)) {
+            return { ...prev, operationMaster: undefined };
+          }
+          return prev;
+        });
       } else {
         // If no specific operations mapped to this part, fall back to all operations
         setAvailableOperations(allOperations);
@@ -692,6 +709,13 @@ function ManageLpaChecklistsModal({
     } finally {
       setLoadingOps(false);
     }
+  };
+
+  // When Part / Gauge Master is selected, fetch assigned operations!
+  const handlePartChange = async (partId: string) => {
+    const selectedPart = partId ? gaugeMasters.find(g => g.id === partId) : undefined;
+    setEditingSet(prev => prev ? ({ ...prev, gaugeMaster: selectedPart }) : null);
+    await loadOperationsForPart(partId);
   };
 
   // Build Question Library from all existing checklists
@@ -734,7 +758,7 @@ function ManageLpaChecklistsModal({
     });
 
     if (initialPart?.id) {
-      handlePartChange(initialPart.id);
+      loadOperationsForPart(initialPart.id, initialOp?.id);
     } else {
       setAvailableOperations(allOperations);
     }
@@ -743,7 +767,7 @@ function ManageLpaChecklistsModal({
   const handleEdit = (set: LpaQuestionSet) => {
     setEditingSet(JSON.parse(JSON.stringify(set)));
     if (set.gaugeMaster?.id) {
-      handlePartChange(set.gaugeMaster.id);
+      loadOperationsForPart(set.gaugeMaster.id, set.operationMaster?.id);
     } else {
       setAvailableOperations(allOperations);
     }
@@ -987,8 +1011,8 @@ function ManageLpaChecklistsModal({
                       value={editingSet.operationMaster?.id || ''}
                       onChange={(e) => {
                         const opId = e.target.value;
-                        const op = availableOperations.find(o => o.id === opId);
-                        setEditingSet({ ...editingSet, operationMaster: op as any });
+                        const op = opId ? availableOperations.find(o => o.id === opId) : undefined;
+                        setEditingSet(prev => prev ? { ...prev, operationMaster: op as any } : null);
                       }}
                       style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--silk)', background: 'var(--warm-white)', fontSize: 12 }}
                     >

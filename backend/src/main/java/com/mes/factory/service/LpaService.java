@@ -217,6 +217,16 @@ public class LpaService {
         qs.setDefaultFrequency(request.getDefaultFrequency() != null && !request.getDefaultFrequency().trim().isEmpty() ? request.getDefaultFrequency().trim() : "1");
         qs.setAuditType(request.getAuditType());
 
+        OperationMaster op = request.getOperationMasterId() != null ?
+                operationMasterRepository.findById(request.getOperationMasterId()).orElse(null) : null;
+        GaugeMaster gm = request.getGaugeMasterId() != null ?
+                gaugeMasterRepository.findById(request.getGaugeMasterId()).orElse(null) : null;
+        MachineMaster mm = request.getMachineMasterId() != null ?
+                machineMasterRepository.findById(request.getMachineMasterId()).orElse(null) : null;
+        qs.setOperationMaster(op);
+        qs.setGaugeMaster(gm);
+        qs.setMachineMaster(mm);
+
         // LpaAuditLogAnswer maps question_id as a UUID column (not a foreign key constraint), 
         // and snapshots the text. So we can safely delete old questions.
         // Orphan removal will delete them from DB.
