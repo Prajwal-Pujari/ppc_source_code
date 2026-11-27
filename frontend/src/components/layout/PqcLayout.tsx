@@ -35,6 +35,7 @@ const pqcNavItems = [
   { label: 'Personnel', path: '/pqc/personnel', icon: 'badge' },
   { label: 'Analytics', path: '/pqc/analytics', icon: 'bar_chart' },
   { label: 'IoT Devices', path: '/pqc/iot-devices', icon: 'router' },
+  { label: 'Wired Speaker (ESP32)', path: '/pqc/wired-speaker', icon: 'speaker' },
   { label: 'Settings', path: '/pqc/settings', icon: 'settings' },
 ];
 
